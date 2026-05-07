@@ -1,0 +1,130 @@
+{
+  "demo": "01-branch-prediction",
+  "title": "Sorted vs unsorted branch prediction",
+  "machine": {
+    "cpu": "AMD Ryzen 7 3800X",
+    "cores_physical": 8,
+    "cores_logical": 16,
+    "smt_enabled": false,
+    "ram_gb": 32,
+    "ram_speed_mhz": 3200,
+    "compiler": "gcc (Ubuntu 13.2.0-23ubuntu4) 13.2.0",
+    "compiler_flags": "-O3 -march=native",
+    "kernel": "6.8.0-generic",
+    "governor": "performance",
+    "turbo": false,
+    "isolated_cpus": "4-7"
+  },
+  "captured_at": "PLACEHOLDER — run ./bench/scripts/run_one.sh 01-branch-prediction on the reference machine",
+  "runs": [
+    {
+      "variant": "sorted",
+      "n": 1024,
+      "iterations": 100,
+      "ns_per_op": { "median": 0.38, "min": 0.36, "p99": 0.51, "iqr": 0.02 },
+      "ops_per_sec": 2631578947,
+      "branch_misses_per_op": 0.001,
+      "instructions_per_cycle": 3.4
+    },
+    {
+      "variant": "sorted",
+      "n": 10240,
+      "iterations": 100,
+      "ns_per_op": { "median": 0.40, "min": 0.38, "p99": 0.54, "iqr": 0.02 },
+      "ops_per_sec": 2500000000,
+      "branch_misses_per_op": 0.001,
+      "instructions_per_cycle": 3.3
+    },
+    {
+      "variant": "sorted",
+      "n": 102400,
+      "iterations": 100,
+      "ns_per_op": { "median": 0.52, "min": 0.50, "p99": 0.68, "iqr": 0.03 },
+      "ops_per_sec": 1923076923,
+      "branch_misses_per_op": 0.001,
+      "instructions_per_cycle": 3.1
+    },
+    {
+      "variant": "sorted",
+      "n": 1048576,
+      "iterations": 100,
+      "ns_per_op": { "median": 0.91, "min": 0.88, "p99": 1.10, "iqr": 0.04 },
+      "ops_per_sec": 1098901098,
+      "branch_misses_per_op": 0.001,
+      "instructions_per_cycle": 2.8
+    },
+    {
+      "variant": "sorted",
+      "n": 10485760,
+      "iterations": 100,
+      "ns_per_op": { "median": 1.15, "min": 1.12, "p99": 1.38, "iqr": 0.04 },
+      "ops_per_sec": 869565217,
+      "branch_misses_per_op": 0.001,
+      "instructions_per_cycle": 2.9
+    },
+    {
+      "variant": "sorted",
+      "n": 33554432,
+      "iterations": 100,
+      "ns_per_op": { "median": 1.21, "min": 1.18, "p99": 1.45, "iqr": 0.04 },
+      "ops_per_sec": 826446280,
+      "branch_misses_per_op": 0.001,
+      "instructions_per_cycle": 3.2
+    },
+    {
+      "variant": "unsorted",
+      "n": 1024,
+      "iterations": 100,
+      "ns_per_op": { "median": 2.10, "min": 2.05, "p99": 2.41, "iqr": 0.06 },
+      "ops_per_sec": 476190476,
+      "branch_misses_per_op": 0.498,
+      "instructions_per_cycle": 1.1
+    },
+    {
+      "variant": "unsorted",
+      "n": 10240,
+      "iterations": 100,
+      "ns_per_op": { "median": 3.54, "min": 3.48, "p99": 4.02, "iqr": 0.08 },
+      "ops_per_sec": 282485875,
+      "branch_misses_per_op": 0.498,
+      "instructions_per_cycle": 1.0
+    },
+    {
+      "variant": "unsorted",
+      "n": 102400,
+      "iterations": 100,
+      "ns_per_op": { "median": 5.82, "min": 5.71, "p99": 6.44, "iqr": 0.09 },
+      "ops_per_sec": 171821305,
+      "branch_misses_per_op": 0.498,
+      "instructions_per_cycle": 0.95
+    },
+    {
+      "variant": "unsorted",
+      "n": 1048576,
+      "iterations": 100,
+      "ns_per_op": { "median": 6.95, "min": 6.88, "p99": 7.62, "iqr": 0.10 },
+      "ops_per_sec": 143884892,
+      "branch_misses_per_op": 0.498,
+      "instructions_per_cycle": 0.91
+    },
+    {
+      "variant": "unsorted",
+      "n": 10485760,
+      "iterations": 100,
+      "ns_per_op": { "median": 7.28, "min": 7.19, "p99": 8.01, "iqr": 0.11 },
+      "ops_per_sec": 137362637,
+      "branch_misses_per_op": 0.498,
+      "instructions_per_cycle": 0.90
+    },
+    {
+      "variant": "unsorted",
+      "n": 33554432,
+      "iterations": 100,
+      "ns_per_op": { "median": 7.34, "min": 7.21, "p99": 8.12, "iqr": 0.11 },
+      "ops_per_sec": 136239782,
+      "branch_misses_per_op": 0.498,
+      "instructions_per_cycle": 0.90
+    }
+  ],
+  "notes": "Branch predictor learns sorted patterns; unsorted forces ~50% mispredicts. Placeholder data — replace by running run_one.sh on the reference machine."
+}

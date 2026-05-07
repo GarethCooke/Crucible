@@ -1,0 +1,31 @@
+{
+  "name": "crucible-site",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "_securityNote": "npm audit flags Next.js + next-mdx-remote CVEs. None apply: static export, no server, MDX is trusted in-repo content.",
+  "dependencies": {
+    "next": "14.2.35",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "next-mdx-remote": "^5.0.0",
+    "gray-matter": "^4.0.3",
+    "shiki": "^1.29.2",
+    "rehype-pretty-code": "^0.14.1",
+    "d3": "^7.9.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "@types/node": "^22.0.0",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@types/d3": "^7.4.3",
+    "tailwindcss": "^4.1.4",
+    "@tailwindcss/postcss": "^4.1.4"
+  }
+}

@@ -1,0 +1,22 @@
+# Default: normalise line endings on checkout
+* text=auto
+
+# Shell scripts must always use LF — they run on Linux
+*.sh text eol=lf
+
+# C++ source
+*.cpp text eol=lf
+*.h   text eol=lf
+
+# CMake
+CMakeLists.txt text eol=lf
+
+# Web
+*.ts   text eol=lf
+*.tsx  text eol=lf
+*.mjs  text eol=lf
+*.json text eol=lf
+*.css  text eol=lf
+*.mdx  text eol=lf
+*.md   text eol=lf
+*.yml  text eol=lf

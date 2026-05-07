@@ -1,0 +1,93 @@
+---
+title: "Sorted vs unsorted: a 6× branch-prediction gap"
+date: "2026-05-15"
+summary: "Same code. Same data values. ~6× difference. Why?"
+---
+
+Same code. Same data values. Same compiler flags. Yet one version runs
+roughly six times faster than the other. The difference is a single line
+of preparation applied to the input before the loop begins.
+
+## The code
+
+Both variants execute this loop — nothing else:
+
+<CodeCompare
+  lang="cpp"
+  labels={["Sorted input", "Unsorted input"]}
+  naive={`// Input: std::vector<int32_t>, values 0–255
+// sorted ascending before the loop
+int64_t sum = 0;
+for (auto x : data) {
+    if (x >= 128) sum += x;
+}
+benchmark::DoNotOptimize(sum);`}
+  optimized={`// Input: std::vector<int32_t>, values 0–255
+// shuffled (std::shuffle, seed 42) before the loop
+int64_t sum = 0;
+for (auto x : data) {
+    if (x >= 128) sum += x;
+}
+benchmark::DoNotOptimize(sum);`}
+/>
+
+The loop body is byte-for-byte identical. The only difference is whether
+the 32 million integers were sorted before the run started.
+
+## The numbers
+
+<Benchmark
+  slug="01-branch-prediction"
+  chart="throughput-bars"
+  variants={["sorted", "unsorted"]}
+  stat="median"
+/>
+
+At N = 32M, the sorted variant completes in **~1.2 ns/op**; the unsorted
+variant takes **~7.3 ns/op**. That is a **6.1× gap** on identical hardware,
+identical binary, identical data values.
+
+## What is happening
+
+Modern out-of-order CPUs predict branches before they are evaluated.
+The branch predictor watches the history of each conditional jump and
+guesses which way it will go next. When the guess is right, the
+speculatively-executed instructions are committed with no penalty.
+When the guess is wrong, the pipeline is flushed and the correct path
+must be re-fetched and re-executed — a stall of roughly 10–20 cycles on
+a modern microarchitecture.
+
+**Sorted input** gives the predictor an easy job. The first half of the array
+produces `false` on every iteration; the second half produces `true`. After a
+handful of iterations the predictor locks onto these runs and misses almost
+never. Branch misses are measured at **≈ 0.1%** of comparisons.
+
+**Unsorted input** is adversarial. The condition resolves `true` or `false`
+in a pseudo-random order (seed 42, uniform over 0–255). The predictor has no
+exploitable history. Measured branch misses reach **≈ 49.8%** — close to the
+theoretical maximum of 50% for a fair coin flip. IPC drops from **3.2**
+(sorted) to **0.9** (unsorted) as the pipeline repeatedly flushes and
+restarts.
+
+## Takeaway
+
+When you control input ordering — and ordering is free or cheap relative to
+how many times the data is consumed — sorting once can amortise across every
+subsequent scan that contains a branch on the values.
+
+Worth being explicit about the caveat: `std::sort` on 32 M integers takes
+around 2–3 seconds. If the loop runs once, sorting first is a net loss. This
+technique pays when the same dataset is scanned repeatedly, when a hot data
+structure can be kept in sorted order on insertion, or when ordering falls
+out naturally from the problem (e.g., processing events in time order).
+
+The deeper lesson is that algorithmic complexity does not account for the
+cost of branch mispredicts. Two O(n) algorithms with the same instruction
+count can differ by 6× in wall time if one is branch-predictor friendly and
+the other is not. Always measure.
+
+---
+
+*All numbers: median ns/op, N = 32M, AMD Ryzen 7 3800X at 3.9 GHz base,
+governor = performance, Turbo Boost off, isolated cores 4–7.*
+*[Methodology →](/methodology)*

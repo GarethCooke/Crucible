@@ -1,0 +1,17 @@
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - cd site && npm ci
+    build:
+      commands:
+        - cd site && npm run build
+  artifacts:
+    baseDirectory: site/out
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - site/node_modules/**/*
+      - site/.next/cache/**/*

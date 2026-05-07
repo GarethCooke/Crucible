@@ -1,0 +1,23 @@
+# Build output
+bench/build/
+site/.next/
+site/out/
+site/node_modules/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# Env
+.env
+.env.local
+
+# Benchmark artifacts
+*.json.tmp
+perf.data
+perf.data.old

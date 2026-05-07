@@ -1,0 +1,2 @@
+add_executable(bench_01_branch_prediction benchmark.cpp)
+target_link_libraries(bench_01_branch_prediction PRIVATE crucible_common)
