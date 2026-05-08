@@ -1,34 +1,29 @@
 // Shared D3 palette and typography for all Crucible charts.
-// Dark theme mirrors garethcooke.com — surface-900 background, hue-222 accent.
+// Values sourced from design-tokens.ts — do not hardcode colours here.
+
+import { tokens } from '@/lib/design-tokens'
 
 export const palette = {
-  // Named variants — order matches typical sorted/unsorted comparison
-  sorted:   'oklch(65% 0.18 222)',   // cyan  — the "good" result
-  unsorted: 'oklch(65% 0.17 182)',   // emerald-teal — the "bad" result
-  // Generic series for future charts
-  series: [
-    'oklch(65% 0.18 222)',
-    'oklch(65% 0.17 182)',
-    'oklch(65% 0.17 320)',
-    'oklch(65% 0.17 60)',
-  ],
+  sorted:   tokens.color.chart.sorted,
+  unsorted: tokens.color.chart.unsorted,
+  series:   tokens.color.chart.series,
 } as const
 
 export const colors = {
-  bg:         '#0c1220',    // --color-surface-700 (card background)
-  bgSecondary:'#090e18',
-  textPrimary:'#eef2f7',
-  textSecondary:'#8b9dbf',
-  textMuted:  '#435270',
-  border:     'rgba(255,255,255,0.07)',
-  cyan:       'oklch(65% 0.18 222)',
+  bg:           tokens.color.dark.bgCard,
+  bgSecondary:  tokens.color.dark.bgSecondary,
+  textPrimary:  tokens.color.dark.textPrimary,
+  textSecondary:tokens.color.dark.textSecondary,
+  textMuted:    tokens.color.dark.textMuted,
+  border:       tokens.color.dark.border,
+  cyan:         tokens.color.dark.cyan,
 } as const
 
 export const typography = {
-  fontMono: '"JetBrains Mono", ui-monospace, monospace',
-  fontSans: '"Space Grotesk", ui-sans-serif, system-ui, sans-serif',
-  axisSize: 11,
-  labelSize: 12,
+  fontMono: tokens.font.mono,
+  fontSans: tokens.font.sans,
+  axisSize:  tokens.chart.axisSize,
+  labelSize: tokens.chart.labelSize,
 } as const
 
 // Maps a variant name to its colour. Falls back to the first series colour.

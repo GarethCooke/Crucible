@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Inter, Space_Grotesk, JetBrains_Mono } from 'next/font/google'
+import TopNav from '@/components/TopNav'
 import './globals.css'
 
 const inter = Inter({
@@ -35,51 +36,32 @@ export const metadata: Metadata = {
   },
 }
 
+// Prevents flash of wrong theme on load by setting the class before React hydrates.
+const themeInitScript = `try{var t=localStorage.getItem('theme')||'dark';document.documentElement.classList.add(t);}catch(e){document.documentElement.classList.add('dark');}`
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html
       lang="en"
       className={`${inter.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable}`}
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
       <body>
-        <header className="border-b" style={{ borderColor: 'var(--border-color)' }}>
-          <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
-            <a
-              href="/"
-              className="font-sans font-semibold text-lg tracking-tight"
-              style={{ color: 'var(--text-primary)' }}
-            >
-              Crucible
-            </a>
-            <nav className="flex items-center gap-6 text-sm" style={{ color: 'var(--text-secondary)' }}>
-              <a href="/methodology" className="hover:text-white transition-colors">Methodology</a>
-              <a
-                href="https://garethcooke.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:text-white transition-colors"
-              >
-                garethcooke.com ↗
-              </a>
-            </nav>
-          </div>
-        </header>
+        <TopNav />
 
         <main className="max-w-4xl mx-auto px-6 py-12">
           {children}
         </main>
 
-        <footer
-          className="border-t mt-24"
-          style={{ borderColor: 'var(--border-color)', color: 'var(--text-muted)' }}
-        >
+        <footer className="site-footer">
           <div className="max-w-4xl mx-auto px-6 py-8 flex items-center justify-between text-sm">
             <span>Crucible · MIT</span>
             <a
               href="https://garethcooke.com"
               target="_blank"
               rel="noopener noreferrer"
-              className="hover:text-white transition-colors"
             >
               garethcooke.com
             </a>
