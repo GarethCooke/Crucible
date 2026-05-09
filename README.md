@@ -131,6 +131,8 @@ sudo systemctl stop unattended-upgrades.service
 
 Before dropping to TTY (Option 1), fully quit browsers, chat clients, sync agents, and similar — closing windows isn't enough, their background processes keep running in the GNOME session. Option 2 tears all of that down for you, so you can skip this step.
 
+The "Always" steps above, after isolate multi-user.target (tracker3 + unattended-upgrades) are wrapped in `tools/prepare_bench.sh` for convenience.
+
 The per-benchmark wrapper handles `cset shield` setup, IRQ affinity steering, and teardown. The methodology page documents this discipline so readers know the numbers come from a quiescent system.
 
 **Verify the governor and SMT survived GNOME login.** GNOME Power settings can override `cpupower`; SMT state can be reset by firmware updates. After logging into GNOME and dropping back to TTY:
