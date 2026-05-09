@@ -6,6 +6,9 @@ import { tokens } from '@/lib/design-tokens'
 export const palette = {
   sorted:   tokens.color.chart.sorted,
   unsorted: tokens.color.chart.unsorted,
+  // false-sharing demo: padded = good (cyan), unpadded = bad (rose)
+  padded:   tokens.color.chart.series[0],
+  unpadded: tokens.color.chart.series[2],
   series:   tokens.color.chart.series,
 } as const
 

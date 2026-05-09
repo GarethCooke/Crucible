@@ -1,0 +1,204 @@
+{
+  "demo": "false-sharing-pnl",
+  "title": "False sharing: padded vs unpadded P&L accumulators",
+  "machine": {
+    "cpu": "AMD Ryzen 7 3800X",
+    "cores_physical": 8,
+    "cores_logical": 8,
+    "smt_enabled": false,
+    "smt_active": 0,
+    "ram_gb": 32,
+    "ram_speed_mhz": 3200,
+    "compiler": "gcc (Ubuntu 13.2.0-23ubuntu4) 13.2.0",
+    "compiler_flags": "-O2 -march=native",
+    "kernel": "6.8.0-generic",
+    "governor": "performance",
+    "turbo": false,
+    "isolated_cpus": "4-7",
+    "isolated_cores": [4, 5, 6, 7]
+  },
+  "captured_at": "PLACEHOLDER — run tools/perf_capture.sh for each variant on the reference machine",
+  "runs": [
+    {
+      "variant": "unpadded",
+      "threads": 1,
+      "padded": false,
+      "placement": "intra-ccx",
+      "cores_used": [4],
+      "ns_per_op": { "median": 1.52, "min": 1.49, "iqr": 0.04 },
+      "ops_per_sec": 657894736,
+      "counters": {
+        "cache_misses_per_op": 0.001,
+        "cache_miss_ratio": 0.032,
+        "instructions_per_cycle": 1.91
+      },
+      "notes": "cores: [4]; fill seed: 42; 1 thread — no contention, baseline"
+    },
+    {
+      "variant": "padded",
+      "threads": 1,
+      "padded": true,
+      "placement": "intra-ccx",
+      "cores_used": [4],
+      "ns_per_op": { "median": 1.48, "min": 1.45, "iqr": 0.03 },
+      "ops_per_sec": 675675676,
+      "counters": {
+        "cache_misses_per_op": 0.001,
+        "cache_miss_ratio": 0.031,
+        "instructions_per_cycle": 1.94
+      },
+      "notes": "cores: [4]; fill seed: 42; 1 thread — no contention, identical to unpadded"
+    },
+    {
+      "variant": "unpadded",
+      "threads": 2,
+      "padded": false,
+      "placement": "intra-ccx",
+      "cores_used": [4, 5],
+      "ns_per_op": { "median": 3.18, "min": 3.06, "iqr": 0.18 },
+      "ops_per_sec": 314465408,
+      "counters": {
+        "cache_misses_per_op": 0.142,
+        "cache_miss_ratio": 0.318,
+        "instructions_per_cycle": 1.14
+      },
+      "notes": "cores: [4,5]; fill seed: 42; false sharing begins — intra-CCX L3 coherency"
+    },
+    {
+      "variant": "padded",
+      "threads": 2,
+      "padded": true,
+      "placement": "intra-ccx",
+      "cores_used": [4, 5],
+      "ns_per_op": { "median": 0.75, "min": 0.73, "iqr": 0.02 },
+      "ops_per_sec": 1333333333,
+      "counters": {
+        "cache_misses_per_op": 0.002,
+        "cache_miss_ratio": 0.038,
+        "instructions_per_cycle": 1.92
+      },
+      "notes": "cores: [4,5]; fill seed: 42; near-linear scaling — each slot on own cache line"
+    },
+    {
+      "variant": "unpadded",
+      "threads": 4,
+      "padded": false,
+      "placement": "intra-ccx",
+      "cores_used": [4, 5, 6, 7],
+      "ns_per_op": { "median": 7.84, "min": 7.62, "iqr": 0.31 },
+      "ops_per_sec": 127551020,
+      "counters": {
+        "cache_misses_per_op": 0.322,
+        "cache_miss_ratio": 0.381,
+        "instructions_per_cycle": 0.78
+      },
+      "notes": "cores: [4,5,6,7]; fill seed: 42; 20.6× slower than padded 4t — all 4 threads fight for one cache line"
+    },
+    {
+      "variant": "padded",
+      "threads": 4,
+      "padded": true,
+      "placement": "intra-ccx",
+      "cores_used": [4, 5, 6, 7],
+      "ns_per_op": { "median": 0.38, "min": 0.36, "iqr": 0.02 },
+      "ops_per_sec": 2631578947,
+      "counters": {
+        "cache_misses_per_op": 0.003,
+        "cache_miss_ratio": 0.041,
+        "instructions_per_cycle": 1.93
+      },
+      "notes": "cores: [4,5,6,7]; fill seed: 42; near-linear scaling continues"
+    },
+    {
+      "variant": "unpadded",
+      "threads": 2,
+      "padded": false,
+      "placement": "cross-ccx",
+      "cores_used": [0, 4],
+      "ns_per_op": { "median": 12.6, "min": 12.2, "iqr": 0.52 },
+      "ops_per_sec": 79365079,
+      "counters": {
+        "cache_misses_per_op": 0.261,
+        "cache_miss_ratio": 0.398,
+        "instructions_per_cycle": 0.63
+      },
+      "notes": "cores: [0,4]; fill seed: 42; cross-CCX false sharing — Infinity Fabric coherency much more expensive than intra-CCX L3"
+    },
+    {
+      "variant": "padded",
+      "threads": 2,
+      "padded": true,
+      "placement": "cross-ccx",
+      "cores_used": [0, 4],
+      "ns_per_op": { "median": 0.76, "min": 0.74, "iqr": 0.03 },
+      "ops_per_sec": 1315789474,
+      "counters": {
+        "cache_misses_per_op": 0.002,
+        "cache_miss_ratio": 0.039,
+        "instructions_per_cycle": 1.91
+      },
+      "notes": "cores: [0,4]; fill seed: 42; padded is immune to CCX placement — cache lines never share"
+    },
+    {
+      "variant": "unpadded",
+      "threads": 4,
+      "padded": false,
+      "placement": "cross-ccx",
+      "cores_used": [0, 1, 4, 5],
+      "ns_per_op": { "median": 31.4, "min": 30.8, "iqr": 0.88 },
+      "ops_per_sec": 31847133,
+      "counters": {
+        "cache_misses_per_op": 0.418,
+        "cache_miss_ratio": 0.431,
+        "instructions_per_cycle": 0.42
+      },
+      "notes": "cores: [0,1,4,5]; fill seed: 42; 4× threads across CCX boundary — IF latency fully serialises cache line ownership"
+    },
+    {
+      "variant": "padded",
+      "threads": 4,
+      "padded": true,
+      "placement": "cross-ccx",
+      "cores_used": [0, 1, 4, 5],
+      "ns_per_op": { "median": 0.39, "min": 0.37, "iqr": 0.02 },
+      "ops_per_sec": 2564102564,
+      "counters": {
+        "cache_misses_per_op": 0.003,
+        "cache_miss_ratio": 0.040,
+        "instructions_per_cycle": 1.92
+      },
+      "notes": "cores: [0,1,4,5]; fill seed: 42"
+    },
+    {
+      "variant": "unpadded",
+      "threads": 8,
+      "padded": false,
+      "placement": "cross-ccx",
+      "cores_used": [0, 1, 2, 3, 4, 5, 6, 7],
+      "ns_per_op": { "median": 68.2, "min": 66.4, "iqr": 2.14 },
+      "ops_per_sec": 14662756,
+      "counters": {
+        "cache_misses_per_op": 0.471,
+        "cache_miss_ratio": 0.448,
+        "instructions_per_cycle": 0.31
+      },
+      "notes": "cores: [0,1,2,3,4,5,6,7]; fill seed: 42; 341× slower than padded 8t — every write traverses Infinity Fabric to invalidate the shared line"
+    },
+    {
+      "variant": "padded",
+      "threads": 8,
+      "padded": true,
+      "placement": "cross-ccx",
+      "cores_used": [0, 1, 2, 3, 4, 5, 6, 7],
+      "ns_per_op": { "median": 0.20, "min": 0.19, "iqr": 0.01 },
+      "ops_per_sec": 5000000000,
+      "counters": {
+        "cache_misses_per_op": 0.004,
+        "cache_miss_ratio": 0.042,
+        "instructions_per_cycle": 1.94
+      },
+      "notes": "cores: [0,1,2,3,4,5,6,7]; fill seed: 42; 8× throughput vs 1t — perfect linear scaling"
+    }
+  ],
+  "notes": "Placeholder data — replace by running tools/perf_capture.sh for each variant on the reference machine. Fill stream: 1024 doubles (8 KB), mt19937 seed 42, uniform [-1, 1]. Compiler: GCC 13, -O2 -march=native. AMD PMU generic counters used (not AMD-specific l2_request_g1 family). AMD-specific counters are a future-work upgrade for sharper Zen 2 L2/L3 data."
+}

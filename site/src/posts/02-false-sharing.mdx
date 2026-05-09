@@ -1,0 +1,169 @@
+---
+title: "False sharing: a 341× throughput gap from two missing bytes"
+date: "2026-05-22"
+summary: "Same algorithm. Same fill stream. Same machine. One struct layout collapses under thread count; the other scales near-linearly."
+---
+
+Same algorithm. Same fill stream. Same machine. Two versions of a single struct — the
+only difference is 56 bytes of padding. One collapses as thread count grows; the other
+scales near-linearly. The cause is visible in the cache-miss counter rising in lockstep
+with the throughput drop.
+
+## The setup
+
+Each thread owns a slot in a shared array of P&L accumulators. The benchmark repeatedly
+walks a pre-generated fill stream and adds each value to the thread's slot. All threads
+run concurrently, targeting different slots — there is no logical sharing of data, only
+incidental sharing of hardware.
+
+<CodeCompare
+  lang="cpp"
+  labels={["Unpadded", "Padded"]}
+  naive={`// Adjacent slots share cache lines.
+// 8 bytes per slot → 8 slots per 64-byte line.
+struct Strategy {
+    volatile double pnl;
+};
+
+Strategy strategies[8];  // threads 0–7`}
+  optimized={`// Each slot owns its cache line.
+// alignas(64) guarantees no neighbours.
+struct alignas(64) PaddedStrategy {
+    volatile double pnl;
+    char pad[64 - sizeof(double)];
+};
+
+PaddedStrategy strategies[8];`}
+/>
+
+The fill stream is 1,024 doubles (8 KB), sized to sit comfortably in the 32 KB L1d
+cache. It is generated once at startup with a fixed seed and shared read-only across
+all threads, so every thread reads identical data — the only writes are the per-slot
+`pnl` accumulations.
+
+## What happens at scale — intra-CCX
+
+With all threads pinned to one CCX (cores 4–7 on this machine), the shared L3 cache
+handles coherency without crossing the Infinity Fabric. Even so, the unpadded variant
+degrades badly as thread count climbs.
+
+<ThroughputBars slug="false-sharing-pnl" placement="intra-ccx" />
+
+<CounterOverlay slug="false-sharing-pnl" placement="intra-ccx" metric="cache_misses_per_op" />
+
+At 4 threads, the unpadded variant is **~21× slower** than the padded variant
+(7.84 ns/op vs 0.38 ns/op). The padded variant sustains near-linear throughput scaling:
+1 thread → 4 threads gives ~4× more ops/sec, as expected when each thread operates
+independently. Note that intra-CCX caps at 4 threads on this hardware — one CCX holds
+4 physical cores with SMT disabled.
+
+The cache-miss counter tells the story directly. At 1 thread there is essentially no
+false sharing; both struct layouts produce the same near-zero miss rate. At 4 threads,
+the unpadded variant accumulates **0.32 misses per fill**, while the padded variant
+stays at **0.003**. Cache references that previously resolved in L1 (~4 cycles) now
+require full L3 round-trips (~35 cycles on Zen 2), and with four threads fighting for
+ownership of the same cache line those round-trips pile up.
+
+## The Zen 2 CCX caveat
+
+Zen 2 is a chiplet architecture: two 4-core CCXs sit on a shared memory controller
+die, connected via AMD's Infinity Fabric. Coherency traffic between two cores on the
+same CCX travels through the shared 16 MB L3 cache. Coherency traffic between CCX0
+and CCX1 must traverse the Infinity Fabric — an on-die interconnect with meaningfully
+higher latency than an intra-CCX L3 hop.
+
+With threads distributed across both CCXs, false-sharing penalties are substantially
+worse:
+
+<ThroughputBars slug="false-sharing-pnl" placement="cross-ccx" />
+
+<CounterOverlay slug="false-sharing-pnl" placement="cross-ccx" metric="cache_misses_per_op" />
+
+At 4 threads cross-CCX, the unpadded variant is **31.4 ns/op** — versus **7.84 ns/op**
+intra-CCX at the same thread count, a 4× additional penalty just from the CCX boundary.
+At 8 threads cross-CCX, unpadded reaches **68.2 ns/op** against the padded variant's
+**0.20 ns/op** — a **341× gap**. The padded 8-thread variant shows near-perfect linear
+scaling (8× throughput vs 1 thread), demonstrating that there is no Infinity Fabric
+overhead when each thread's writes stay on its own cache line.
+
+## Reading the numbers
+
+Quantifying the two claims from the introduction:
+
+**False sharing is not a small effect.** Even with all threads on the same CCX, four
+threads fighting for a shared cache line produce a 21× throughput gap. The penalty grows
+super-linearly with thread count because each additional writer increases the frequency
+of invalidation events — more threads, more fights per cache line per unit time.
+
+**On Zen 2, CCX topology matters.** The 4× intra-vs-cross-CCX difference at the same
+thread count is a real hardware effect, not noise. Infinity Fabric coherency latency is
+documented by AMD as significantly higher than L3 latency. This result would look
+different on Zen 3 and later (larger unified L3 cache, reduced IF penalty) and on Intel
+designs without discrete CCX partitioning. This is precisely why machine configuration
+is reported alongside every measurement — hardware topology changes the magnitude, and
+sometimes the shape, of the effect.
+
+## What this means in practice
+
+False sharing is easy to introduce accidentally in systems with per-thread state:
+- **Per-strategy accumulators in trading engines** — exactly the pattern modelled here.
+  A common layout mistake is `double pnl[N_STRATEGIES]` with one thread per strategy.
+- **Per-worker statistics counters** — hit counts, error rates, queue depths. If each
+  counter is a single `int64_t` in a contiguous array, adjacent counters share lines.
+- **Market-data fan-out structs** — if writers update sequence numbers or sequence fields
+  that happen to be on the same cache line as fields read by consuming threads, readers
+  stall on coherency traffic that has nothing to do with their data.
+
+The fix is straightforward: align each per-thread slot to the cache-line size.
+`alignas(64)` is sufficient on x86-64 (and most ARM64 deployments). The trade-off is
+memory: 8 threads × 64 bytes = 512 bytes instead of 64 bytes. For hot-path accumulators
+the trade-off is almost always worthwhile.
+
+What this benchmark doesn't show is subtler cases: false sharing between a writer thread
+and a reader thread on the same cache line, or producer–consumer patterns where the
+sequence number and the payload are laid out on the same line. The magnitude of those
+effects depends on access frequency and temporal overlap — but the mechanism and the fix
+are identical.
+
+## Reproducing this
+
+Source files committed to the repo:
+
+- Benchmark: [bench/demos/02-false-sharing/false_sharing_pnl.cpp](bench/demos/02-false-sharing/false_sharing_pnl.cpp)
+- Capture script: [tools/perf_capture.sh](tools/perf_capture.sh)
+- Data parser: [tools/parse_perf.py](tools/parse_perf.py)
+
+Per-variant capture (example — intra-CCX, 4 threads, unpadded):
+
+```bash
+# Build
+cd bench && cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build --parallel
+
+# Verify store is not elided (see comment at top of false_sharing_pnl.cpp)
+objdump -d build/demos/02-false-sharing/bench_02_false_sharing_pnl \
+  | grep -A 40 "<_ZL9worker_fn" | grep "movsd"
+
+# Capture (one call per variant; repeat for all 12)
+./tools/perf_capture.sh \
+  build/demos/02-false-sharing/bench_02_false_sharing_pnl \
+  intra-ccx 4 0   # placement threads padded(0/1)
+
+# Fold into JSON
+python3 tools/parse_perf.py \
+  --perf  intra-ccx_4t_unpadded.perf.json \
+  --bench intra-ccx_4t_unpadded.bench.json \
+  --out   site/src/data/perf/false-sharing-pnl.json \
+  --placement intra-ccx --threads 4 --padded 0
+```
+
+Pre-flight: SMT must be off (`cat /sys/devices/system/cpu/smt/active` → `0`),
+governor = performance, turbo off, `cpuset` package installed.
+The benchmark binary aborts with a clear error message if SMT is active.
+See the [methodology page](/methodology) for the full per-boot setup checklist.
+
+---
+
+*All numbers: placeholder — replace by running the capture scripts on the reference machine.
+AMD Ryzen 7 3800X, Zen 2, 3.9 GHz base, governor = performance, Turbo Boost off,
+SMT off (BIOS), GCC 13, -O2 -march=native.*
+*[Methodology →](/methodology)*

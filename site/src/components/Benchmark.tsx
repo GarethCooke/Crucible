@@ -1,6 +1,6 @@
 import { readFile } from 'fs/promises'
 import path from 'path'
-import { ThroughputBars } from './charts/ThroughputBars'
+import { ThroughputBarsChart } from './charts/ThroughputBarsChart'
 
 interface BenchmarkProps {
   slug: string
@@ -53,7 +53,7 @@ export async function Benchmark({
     : data.runs
 
   if (chart === 'throughput-bars') {
-    return <ThroughputBars runs={runs} stat={stat} targetN={n} title={data.title} />
+    return <ThroughputBarsChart runs={runs} stat={stat} targetN={n} title={data.title} />
   }
 
   return null

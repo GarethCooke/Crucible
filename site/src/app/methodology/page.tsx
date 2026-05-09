@@ -75,10 +75,18 @@ export default function MethodologyPage() {
           <span className="ml-4">SSE4.2 · AVX · AVX2 · FMA · <strong style={{ color: 'var(--text-primary)' }}>no AVX-512</strong></span>
         </div>
       </div>
-      <p className="text-sm mb-12" style={{ color: 'var(--text-muted)' }}>
+      <p className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>
         Zen 2 implements 256-bit AVX2 as two 128-bit µops — called out explicitly in any SIMD post.
         Full <code style={{ color: 'var(--cyan)' }}>lscpu --extended</code> output, kernel version, and
         compiler version are committed to the repo alongside each benchmark result.
+      </p>
+      <p className="text-sm mb-12" style={{ color: 'var(--text-muted)' }}>
+        <strong style={{ color: 'var(--text-secondary)' }}>Boot parameters.</strong>{' '}
+        No core-isolation boot parameters are committed (<code>isolcpus=</code>,{' '}
+        <code>nohz_full=</code>, <code>rcu_nocbs=</code> are all unset). Demos with hard
+        tail-latency claims (sub-microsecond p99.9) may introduce <code>nohz_full=</code> at
+        that point, with each addition documented in that demo&rsquo;s methodology notes
+        alongside the data it is needed for.
       </p>
 
       {/* ── Four commitments ──────────────────────────────────────────────── */}
@@ -98,9 +106,14 @@ export default function MethodologyPage() {
           deliver at nominal frequency.
         </Commitment>
         <Commitment n={3} title="Core isolation">
-          Cores 4–7 are isolated via <code>isolcpus=4-7</code> kernel boot parameters.
-          Benchmarks are pinned with <code>taskset -c 4-7</code>. Isolated cores receive no
-          scheduler interrupts, giving clean iteration-to-iteration timing.
+          Per-benchmark <code>cpuset</code> shielding via <code>cset shield</code>, configured
+          immediately before each benchmark run and reset after. Exact shielded core IDs are
+          recorded in each demo&rsquo;s JSON <code>machine.isolated_cores</code> field. IRQ
+          affinity is steered to non-shielded cores via{' '}
+          <code>/proc/irq/*/smp_affinity</code> by the wrapper script. SMT is disabled at the
+          BIOS level — verified via <code>/sys/devices/system/cpu/smt/active</code> returning{' '}
+          <code>0</code> and <code>lscpu</code> reporting 8 CPUs — to remove SMT-sibling resource
+          sharing (L1, L2, execution ports, frontend) from all measurements.
         </Commitment>
         <Commitment n={4} title="Statistical reporting">
           Each benchmark runs ≥20 repetitions after warmup. Every chart states which statistic
