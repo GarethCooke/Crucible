@@ -87,21 +87,20 @@ Run after every reboot, before any benchmark run. (Optionally wrap in a systemd 
 # Pin CPU governor to performance
 sudo cpupower frequency-set -g performance
 
-# Disable Turbo in software (belt-and-braces with BIOS CPB off)
-echo 0 | sudo tee /sys/devices/system/cpu/cpufreq/boost
-
 # If SMT was not disabled in BIOS, disable at runtime (reverts on reboot)
 # echo off | sudo tee /sys/devices/system/cpu/smt/control
 
 # Verify
-cpupower frequency-info | grep "current policy"             # should be performance
-cat /sys/devices/system/cpu/cpufreq/boost                    # should print 0
+cpupower frequency-info | grep "current policy"             # max should be base clock (3.90 GHz on 3800X), not boost
+cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq    # should report 3900000 (kHz) if CPB off; 4500000 if on
 cat /sys/devices/system/cpu/smt/active                       # should print 0 (SMT off)
 lscpu | grep "^CPU(s):"                                      # should report 8
 sudo dmidecode -t memory | grep -i "configured.*speed"       # should report 3200 MT/s (XMP active)
 ```
 
-The verifications matter because GNOME (Desktop edition) can override the CPU governor at session start, and firmware updates or CMOS resets can revert BIOS settings — re-enabling SMT, or dropping memory back to JEDEC default (typically 2666 or 2933 MT/s on this CPU). If any check fails after a reboot where the configured state is expected, BIOS has likely been reverted; re-check.
+Ubuntu 24.04 on Zen 2 uses the `amd-pstate` cpufreq driver, which doesn't expose `/sys/devices/system/cpu/cpufreq/boost`. CPB is disabled at the BIOS level instead, and verified above by reading the policy max frequency: if it matches the CPU's base clock (3.9 GHz on the 3800X), boost is off.
+
+The verifications matter because GNOME (Desktop edition) can override the CPU governor at session start, and firmware updates or CMOS resets can revert BIOS settings — re-enabling SMT, re-enabling CPB, or dropping memory back to JEDEC default (typically 2666 or 2933 MT/s on this CPU). If any check fails after a reboot where the configured state is expected, BIOS has likely been reverted; re-check.
 
 ---
 
