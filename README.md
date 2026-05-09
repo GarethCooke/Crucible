@@ -51,25 +51,18 @@ Run once after Ubuntu install. Identical for both editions. Survives reboot.
 
 ```bash
 sudo apt install linux-tools-$(uname -r) linux-tools-generic \
-                 cpufrequtils jq build-essential cmake
+                 cpufrequtils cpuset jq build-essential cmake
 ```
 
-### Kernel boot parameters (core isolation)
+The `cpuset` package provides `cset`, used for per-benchmark core shielding.
 
-Edit `/etc/default/grub`:
+### Core isolation strategy
 
-```
-GRUB_CMDLINE_LINUX_DEFAULT="quiet isolcpus=4-7 nohz_full=4-7 rcu_nocbs=4-7"
-```
+Core isolation is applied at runtime via `cpuset` shielding (`cset shield`), invoked per-benchmark by the wrapper scripts in `bench/scripts/`. No `isolcpus=`, `nohz_full=`, or `rcu_nocbs=` boot parameters are committed.
 
-Then:
+This trades a small amount of strictness — kernel threads and IRQ handlers may briefly touch shielded cores until IRQ affinity is steered — for the flexibility to shield different core sets per demo (intra-CCX vs cross-CCX, for example) without rebooting.
 
-```bash
-sudo update-grub
-sudo reboot
-# Verify after reboot:
-cat /proc/cmdline   # should show isolcpus=4-7
-```
+Future demos with hard tail-latency claims (sub-microsecond p99.9) may introduce `nohz_full=` at that point, documented in that demo's methodology notes.
 
 ### Persistent perf access
 
@@ -81,7 +74,7 @@ sudo sysctl --system
 ### BIOS settings
 
 - **Core Performance Boost: Disabled** — eliminates turbo variance
-- **SMT: Disabled** — or leave on and pin only to physical cores 0–3
+- **SMT (Simultaneous Multithreading): Disabled** — removes SMT-sibling sharing of L1/L2/execution-port resources from all measurements. Runtime fallback if BIOS access is unavailable: `echo off | sudo tee /sys/devices/system/cpu/smt/control` (reverts on reboot, must be re-applied per boot).
 - **XMP: Enabled** at documented memory speed (DDR4-3200)
 
 ---
@@ -97,10 +90,18 @@ sudo cpupower frequency-set -g performance
 # Disable Turbo in software (belt-and-braces with BIOS CPB off)
 echo 0 | sudo tee /sys/devices/system/cpu/cpufreq/boost
 
+# If SMT was not disabled in BIOS, disable at runtime (reverts on reboot)
+# echo off | sudo tee /sys/devices/system/cpu/smt/control
+
 # Verify
-cpupower frequency-info | grep "current policy"
-cat /sys/devices/system/cpu/cpufreq/boost   # should print 0
+cpupower frequency-info | grep "current policy"             # should be performance
+cat /sys/devices/system/cpu/cpufreq/boost                    # should print 0
+cat /sys/devices/system/cpu/smt/active                       # should print 0 (SMT off)
+lscpu | grep "^CPU(s):"                                      # should report 8
+sudo dmidecode -t memory | grep -i "configured.*speed"       # should report 3200 MT/s (XMP active)
 ```
+
+The verifications matter because GNOME (Desktop edition) can override the CPU governor at session start, and firmware updates or CMOS resets can revert BIOS settings — re-enabling SMT, or dropping memory back to JEDEC default (typically 2666 or 2933 MT/s on this CPU). If any check fails after a reboot where the configured state is expected, BIOS has likely been reverted; re-check.
 
 ---
 
@@ -108,7 +109,7 @@ cat /sys/devices/system/cpu/cpufreq/boost   # should print 0
 
 ### Server edition
 
-Nothing extra needed — no GUI session, no compositor, no indexer. Run benchmarks directly.
+Nothing extra needed — no GUI session, no compositor, no indexer. Run benchmarks directly. The per-benchmark wrapper handles `cset shield` setup, IRQ affinity steering, and teardown — manual `cset` invocation isn't required at this layer.
 
 ### Desktop edition
 
@@ -130,15 +131,17 @@ sudo systemctl stop unattended-upgrades.service
 ```
 
 Before dropping to TTY (Option 1), fully quit browsers, chat clients, sync agents, and similar — closing windows isn't enough, their background processes keep running in the GNOME session. Option 2 tears all of that down for you, so you can skip this step.
-The methodology page documents this discipline so readers know the numbers come from a quiescent system.
 
-**Verify the governor survived GNOME login.** GNOME Power settings can override `cpupower`. After logging into GNOME and dropping back to TTY:
+The per-benchmark wrapper handles `cset shield` setup, IRQ affinity steering, and teardown. The methodology page documents this discipline so readers know the numbers come from a quiescent system.
+
+**Verify the governor and SMT survived GNOME login.** GNOME Power settings can override `cpupower`; SMT state can be reset by firmware updates. After logging into GNOME and dropping back to TTY:
 
 ```bash
-cpupower frequency-info | grep "current policy"   # should still be performance
+cpupower frequency-info | grep "current policy"     # should still be performance
+cat /sys/devices/system/cpu/smt/active              # should still be 0
 ```
 
-If it's been stomped, add a systemd unit that re-applies `performance` on graphical-session start.
+If either has been stomped, re-apply via the per-boot commands; consider a systemd unit that re-applies them on graphical-session start.
 
 ---
 
@@ -168,7 +171,7 @@ Run all demos:
 ./bench/scripts/run_all.sh
 ```
 
-Both scripts require per-boot setup applied and (on Desktop edition) the runtime discipline above. JSON output is committed to the repo alongside the site so deploys are purely static.
+Both scripts require per-boot setup applied and (on Desktop edition) the runtime discipline above. The wrappers handle `cset shield` setup, IRQ affinity steering (`/proc/irq/*/smp_affinity`), `perf stat` capture, and JSON emission; the shielded core set used per run is recorded in `machine.isolated_cores` of the demo's JSON. JSON output is committed to the repo alongside the site so deploys are purely static.
 
 ---
 
@@ -193,12 +196,14 @@ Manual deploy: upload `site/out/` to any static host.
 
 ## Reference machine
 
-- AMD Ryzen 7 3800X — 8 cores / 16 threads, Zen 2
+- AMD Ryzen 7 3800X — 8 cores / 16 threads, Zen 2 (two 4-core CCXs sharing L3 only via Infinity Fabric)
 - 32 GB DDR4-3200
 - ASUS ROG STRIX B550-F GAMING (Wi-Fi)
 - Ubuntu LTS Desktop edition, dual-boot with Windows
-- Boot: `isolcpus=4-7 nohz_full=4-7 rcu_nocbs=4-7`
-- BIOS: Core Performance Boost disabled, SMT disabled
+- BIOS: Core Performance Boost disabled, SMT disabled, XMP enabled (DDR4-3200)
+- Core isolation: `cset shield` per-benchmark; specific shielded core set recorded per run
+
+CCX layout (verified via `lscpu --extended`): cores 0–3 share L3 instance 0 (CCX0); cores 4–7 share L3 instance 1 (CCX1). With SMT disabled the OS exposes 8 logical CPUs (0–7), one per physical core.
 
 ISA: SSE4.2, AVX, AVX2, FMA. **No AVX-512.** Zen 2 implements 256-bit AVX2 as two 128-bit µops — noted in any SIMD post.
 
