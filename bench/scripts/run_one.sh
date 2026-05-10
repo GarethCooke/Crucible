@@ -24,7 +24,7 @@ BINARY="${BENCH_ROOT}/build/demos/${SLUG}/${BINARY_NAME}"
 
 echo "==> Building ${SLUG}..."
 cmake -B "${BENCH_ROOT}/build" -S "${BENCH_ROOT}" -DCMAKE_BUILD_TYPE=Release -Wno-dev --quiet
-cmake --build "${BENCH_ROOT}/build" --parallel --quiet
+cmake --build "${BENCH_ROOT}/build" --parallel --log-level=ERROR
 
 if [[ ! -x "${BINARY}" ]]; then
     echo "ERROR: binary not found at ${BINARY}" >&2
