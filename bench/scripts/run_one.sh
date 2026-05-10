@@ -47,14 +47,14 @@ echo "==> Collecting machine info..."
 MACHINE_JSON=$(sudo cset shield --exec -- "${BINARY}" --machine-info)
 
 TMPFILE=$(mktemp /tmp/crucible_bench_XXXXXX.json)
+sudo chmod 666 "${TMPFILE}"
 
 echo "==> Running benchmarks (20 repetitions per variant×size)..."
 sudo cset shield --exec -- "${BINARY}" \
     --benchmark_format=json \
     --benchmark_repetitions=20 \
     --benchmark_report_aggregates_only=false \
-    --benchmark_out="${TMPFILE}" \
-    --benchmark_out_format=json
+    > "${TMPFILE}"
 
 echo "==> Releasing cset shield..."
 sudo cset shield --reset > /dev/null
