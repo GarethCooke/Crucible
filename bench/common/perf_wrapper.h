@@ -73,10 +73,13 @@ public:
 
     Counts read() const noexcept {
         Counts c;
-        static_cast<void>(::read(fd_branches_, &c.branches,      sizeof(uint64_t)));
-        static_cast<void>(::read(fd_misses_,   &c.branch_misses, sizeof(uint64_t)));
-        static_cast<void>(::read(fd_instrs_,   &c.instructions,  sizeof(uint64_t)));
-        static_cast<void>(::read(fd_cycles_,   &c.cycles,        sizeof(uint64_t)));
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-result"
+        ::read(fd_branches_, &c.branches,      sizeof(uint64_t));
+        ::read(fd_misses_,   &c.branch_misses, sizeof(uint64_t));
+        ::read(fd_instrs_,   &c.instructions,  sizeof(uint64_t));
+        ::read(fd_cycles_,   &c.cycles,        sizeof(uint64_t));
+#pragma GCC diagnostic pop
         return c;
     }
 
