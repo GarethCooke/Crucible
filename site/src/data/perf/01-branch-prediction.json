@@ -2,129 +2,189 @@
   "demo": "01-branch-prediction",
   "title": "Sorted vs unsorted branch prediction",
   "machine": {
-    "cpu": "AMD Ryzen 7 3800X",
+    "cpu": "AMD Ryzen 7 3800X 8-Core ProcessorAMD Ryzen 7 3800X 8-Core Processor              Unknown CPU @ 3.9GHz",
     "cores_physical": 8,
-    "cores_logical": 16,
+    "cores_logical": 8,
     "smt_enabled": false,
-    "ram_gb": 32,
-    "ram_speed_mhz": 3200,
-    "compiler": "gcc (Ubuntu 13.2.0-23ubuntu4) 13.2.0",
+    "ram_gb": 31,
+    "ram_speed_mhz": 0,
+    "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
     "compiler_flags": "-O3 -march=native",
-    "kernel": "6.8.0-generic",
-    "governor": "performance",
+    "kernel": "6.8.0-111-generic",
+    "governor": "ondemand",
     "turbo": false,
-    "isolated_cpus": "4-7"
+    "isolated_cpus": ""
   },
-  "captured_at": "PLACEHOLDER — run ./bench/scripts/run_one.sh 01-branch-prediction on the reference machine",
+  "captured_at": "2026-05-10T14:13:29Z",
   "runs": [
     {
       "variant": "sorted",
       "n": 1024,
-      "iterations": 100,
-      "ns_per_op": { "median": 0.38, "min": 0.36, "p99": 0.51, "iqr": 0.02 },
-      "ops_per_sec": 2631578947,
-      "branch_misses_per_op": 0.001,
-      "instructions_per_cycle": 3.4
+      "iterations": 29771,
+      "ns_per_op": {
+        "median": 23528.749,
+        "min": 23501.4023,
+        "p99": 23563.7137,
+        "iqr": 24.2496
+      },
+      "ops_per_sec": 43581634,
+      "branch_misses_per_op": 0.0069,
+      "instructions_per_cycle": 1.932
     },
     {
       "variant": "sorted",
       "n": 10240,
-      "iterations": 100,
-      "ns_per_op": { "median": 0.40, "min": 0.38, "p99": 0.54, "iqr": 0.02 },
-      "ops_per_sec": 2500000000,
-      "branch_misses_per_op": 0.001,
-      "instructions_per_cycle": 3.3
+      "iterations": 27246,
+      "ns_per_op": {
+        "median": 25707.434,
+        "min": 25663.4748,
+        "p99": 25736.9595,
+        "iqr": 17.4444
+      },
+      "ops_per_sec": 398819457,
+      "branch_misses_per_op": 0.0007,
+      "instructions_per_cycle": 2.077
     },
     {
       "variant": "sorted",
       "n": 102400,
-      "iterations": 100,
-      "ns_per_op": { "median": 0.52, "min": 0.50, "p99": 0.68, "iqr": 0.03 },
-      "ops_per_sec": 1923076923,
-      "branch_misses_per_op": 0.001,
-      "instructions_per_cycle": 3.1
+      "iterations": 14891,
+      "ns_per_op": {
+        "median": 47090.4336,
+        "min": 47063.977,
+        "p99": 47121.8749,
+        "iqr": 25.3215
+      },
+      "ops_per_sec": 2177687987,
+      "branch_misses_per_op": 0.0001,
+      "instructions_per_cycle": 2.094
     },
     {
       "variant": "sorted",
       "n": 1048576,
-      "iterations": 100,
-      "ns_per_op": { "median": 0.91, "min": 0.88, "p99": 1.10, "iqr": 0.04 },
-      "ops_per_sec": 1098901098,
-      "branch_misses_per_op": 0.001,
-      "instructions_per_cycle": 2.8
+      "iterations": 2637,
+      "ns_per_op": {
+        "median": 265702.7442,
+        "min": 265561.3038,
+        "p99": 265773.6739,
+        "iqr": 120.6571
+      },
+      "ops_per_sec": 3952753282,
+      "branch_misses_per_op": 0.0,
+      "instructions_per_cycle": 2.096
     },
     {
       "variant": "sorted",
       "n": 10485760,
-      "iterations": 100,
-      "ns_per_op": { "median": 1.15, "min": 1.12, "p99": 1.38, "iqr": 0.04 },
-      "ops_per_sec": 869565217,
-      "branch_misses_per_op": 0.001,
-      "instructions_per_cycle": 2.9
+      "iterations": 245,
+      "ns_per_op": {
+        "median": 2925156.0551,
+        "min": 2870534.4939,
+        "p99": 2939273.4985,
+        "iqr": 13373.2653
+      },
+      "ops_per_sec": 3598965244,
+      "branch_misses_per_op": 0.0,
+      "instructions_per_cycle": 1.758
     },
     {
       "variant": "sorted",
       "n": 33554432,
-      "iterations": 100,
-      "ns_per_op": { "median": 1.21, "min": 1.18, "p99": 1.45, "iqr": 0.04 },
-      "ops_per_sec": 826446280,
-      "branch_misses_per_op": 0.001,
-      "instructions_per_cycle": 3.2
+      "iterations": 75,
+      "ns_per_op": {
+        "median": 9293439.6534,
+        "min": 9198389.2933,
+        "p99": 9315741.7897,
+        "iqr": 36081.0433
+      },
+      "ops_per_sec": 3626524959,
+      "branch_misses_per_op": 0.0,
+      "instructions_per_cycle": 1.759
     },
     {
       "variant": "unsorted",
       "n": 1024,
-      "iterations": 100,
-      "ns_per_op": { "median": 2.10, "min": 2.05, "p99": 2.41, "iqr": 0.06 },
-      "ops_per_sec": 476190476,
-      "branch_misses_per_op": 0.498,
-      "instructions_per_cycle": 1.1
+      "iterations": 29743,
+      "ns_per_op": {
+        "median": 23554.0608,
+        "min": 23531.8795,
+        "p99": 23577.1641,
+        "iqr": 18.0845
+      },
+      "ops_per_sec": 43532062,
+      "branch_misses_per_op": 0.0068,
+      "instructions_per_cycle": 1.925
     },
     {
       "variant": "unsorted",
       "n": 10240,
-      "iterations": 100,
-      "ns_per_op": { "median": 3.54, "min": 3.48, "p99": 4.02, "iqr": 0.08 },
-      "ops_per_sec": 282485875,
-      "branch_misses_per_op": 0.498,
-      "instructions_per_cycle": 1.0
+      "iterations": 27261,
+      "ns_per_op": {
+        "median": 25730.3684,
+        "min": 25718.5978,
+        "p99": 25746.8048,
+        "iqr": 18.1141
+      },
+      "ops_per_sec": 398509823,
+      "branch_misses_per_op": 0.0007,
+      "instructions_per_cycle": 2.074
     },
     {
       "variant": "unsorted",
       "n": 102400,
-      "iterations": 100,
-      "ns_per_op": { "median": 5.82, "min": 5.71, "p99": 6.44, "iqr": 0.09 },
-      "ops_per_sec": 171821305,
-      "branch_misses_per_op": 0.498,
-      "instructions_per_cycle": 0.95
+      "iterations": 14861,
+      "ns_per_op": {
+        "median": 47128.9793,
+        "min": 47096.5171,
+        "p99": 47168.094,
+        "iqr": 16.6872
+      },
+      "ops_per_sec": 2175965029,
+      "branch_misses_per_op": 0.0001,
+      "instructions_per_cycle": 2.091
     },
     {
       "variant": "unsorted",
       "n": 1048576,
-      "iterations": 100,
-      "ns_per_op": { "median": 6.95, "min": 6.88, "p99": 7.62, "iqr": 0.10 },
-      "ops_per_sec": 143884892,
-      "branch_misses_per_op": 0.498,
-      "instructions_per_cycle": 0.91
+      "iterations": 2638,
+      "ns_per_op": {
+        "median": 265696.3705,
+        "min": 265567.6884,
+        "p99": 265817.0324,
+        "iqr": 162.3165
+      },
+      "ops_per_sec": 3953598781,
+      "branch_misses_per_op": 0.0,
+      "instructions_per_cycle": 2.096
     },
     {
       "variant": "unsorted",
       "n": 10485760,
-      "iterations": 100,
-      "ns_per_op": { "median": 7.28, "min": 7.19, "p99": 8.01, "iqr": 0.11 },
-      "ops_per_sec": 137362637,
-      "branch_misses_per_op": 0.498,
-      "instructions_per_cycle": 0.90
+      "iterations": 240,
+      "ns_per_op": {
+        "median": 2915063.375,
+        "min": 2884502.5333,
+        "p99": 2927134.3761,
+        "iqr": 17538.201
+      },
+      "ops_per_sec": 3612165645,
+      "branch_misses_per_op": 0.0,
+      "instructions_per_cycle": 1.765
     },
     {
       "variant": "unsorted",
       "n": 33554432,
-      "iterations": 100,
-      "ns_per_op": { "median": 7.34, "min": 7.21, "p99": 8.12, "iqr": 0.11 },
-      "ops_per_sec": 136239782,
-      "branch_misses_per_op": 0.498,
-      "instructions_per_cycle": 0.90
+      "iterations": 76,
+      "ns_per_op": {
+        "median": 9270771.8158,
+        "min": 9171141.1316,
+        "p99": 9295775.8475,
+        "iqr": 46462.4243
+      },
+      "ops_per_sec": 3636759356,
+      "branch_misses_per_op": 0.0,
+      "instructions_per_cycle": 1.764
     }
   ],
-  "notes": "Branch predictor learns sorted patterns; unsorted forces ~50% mispredicts. Placeholder data — replace by running run_one.sh on the reference machine."
+  "notes": "Branch predictor learns sorted patterns; unsorted forces ~50% mispredicts."
 }
