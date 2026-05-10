@@ -8,14 +8,14 @@ Deployed at [crucible.garethcooke.com](https://crucible.garethcooke.com). Compan
 
 ## Prerequisites
 
-| Tool | Version |
-|---|---|
-| GCC | 13+ |
-| CMake | ≥ 3.20 |
-| `perf` | kernel 5.x+ (`linux-tools-$(uname -r)`) |
-| `jq` | any recent |
-| Node.js | 20 LTS |
-| npm | 10+ |
+| Tool    | Version                                 |
+| ------- | --------------------------------------- |
+| GCC     | 13+                                     |
+| CMake   | ≥ 3.20                                  |
+| `perf`  | kernel 5.x+ (`linux-tools-$(uname -r)`) |
+| `jq`    | any recent                              |
+| Node.js | 20 LTS                                  |
+| npm     | 10+                                     |
 
 ---
 
@@ -129,9 +129,9 @@ tracker3 daemon --terminate
 sudo systemctl stop unattended-upgrades.service
 ```
 
-Before dropping to TTY (Option 1), fully quit browsers, chat clients, sync agents, and similar — closing windows isn't enough, their background processes keep running in the GNOME session. Option 2 tears all of that down for you, so you can skip this step.
+These two "Always" steps above (tracker3 + unattended-upgrades) are wrapped in `tools/prepare_bench.sh` for convenience.
 
-The "Always" steps above, after isolate multi-user.target (tracker3 + unattended-upgrades) are wrapped in `tools/prepare_bench.sh` for convenience.
+Before dropping to TTY (Option 1), fully quit browsers, chat clients, sync agents, and similar — closing windows isn't enough, their background processes keep running in the GNOME session. Option 2 tears all of that down for you, so you can skip this step.
 
 The per-benchmark wrapper handles `cset shield` setup, IRQ affinity steering, and teardown. The methodology page documents this discipline so readers know the numbers come from a quiescent system.
 
