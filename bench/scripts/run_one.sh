@@ -44,7 +44,7 @@ sudo cset shield --cpu=4-7 > /dev/null
 SHIELD_ACTIVE=1
 
 echo "==> Collecting machine info..."
-MACHINE_JSON=$(sudo cset shield --exec -- "${BINARY}" --machine-info)
+MACHINE_JSON=$(sudo cset shield --exec -- "${BINARY}" --machine-info | grep -v '^cset:')
 
 TMPFILE=$(mktemp /tmp/crucible_bench_XXXXXX.json)
 sudo chmod 666 "${TMPFILE}"
@@ -54,7 +54,7 @@ sudo cset shield --exec -- "${BINARY}" \
     --benchmark_format=json \
     --benchmark_repetitions=20 \
     --benchmark_report_aggregates_only=false \
-    > "${TMPFILE}"
+    | grep -v '^cset:' > "${TMPFILE}"
 
 echo "==> Releasing cset shield..."
 sudo cset shield --reset > /dev/null
