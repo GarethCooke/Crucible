@@ -46,7 +46,7 @@ SHIELD_ACTIVE=1
 echo "==> Collecting machine info..."
 MACHINE_JSON=$(sudo cset shield --exec -- "${BINARY}" --machine-info \
     | grep -v '^cset:' \
-    | tr -d '\000-\010\013\014\016-\037\177')
+    | tr -d '\000-\010\013-\037\177')
 
 TMPFILE=$(mktemp /tmp/crucible_bench_XXXXXX.json)
 sudo chmod 666 "${TMPFILE}"
