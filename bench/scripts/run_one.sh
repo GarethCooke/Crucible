@@ -23,7 +23,7 @@ BINARY_NAME="bench_$(echo "${SLUG}" | tr '-' '_')"
 BINARY="${BENCH_ROOT}/build/demos/${SLUG}/${BINARY_NAME}"
 
 echo "==> Building ${SLUG}..."
-cmake -B "${BENCH_ROOT}/build" -S "${BENCH_ROOT}" -DCMAKE_BUILD_TYPE=Release -Wno-dev --quiet
+cmake -B "${BENCH_ROOT}/build" -S "${BENCH_ROOT}" -DCMAKE_BUILD_TYPE=Release -Wno-dev --log-level=ERROR
 cmake --build "${BENCH_ROOT}/build" --parallel --log-level=ERROR
 
 if [[ ! -x "${BINARY}" ]]; then
