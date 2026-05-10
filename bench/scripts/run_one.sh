@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # run_one.sh <demo-slug>
-# Builds the demo, runs it under taskset on isolated cores, and emits
+# Builds the demo, runs it inside a cset shield on cores 4-7, and emits
 # a schema-conformant JSON file to site/src/data/perf/<slug>.json.
 #
 # Prerequisites:
 #   - One-time machine setup complete (see README.md)
-#   - jq installed
+#   - jq and cpuset (provides cset) installed
+#   - Sudo cached: run `sudo -v` before invocation to avoid mid-script prompts
 #   - Run from the repo root
 
 set -euo pipefail
@@ -14,39 +15,52 @@ SLUG="${1:?Usage: run_one.sh <demo-slug>}"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 BENCH_ROOT="${REPO_ROOT}/bench"
 OUT_JSON="${REPO_ROOT}/site/src/data/perf/${SLUG}.json"
-BINARY="${BENCH_ROOT}/build/demos/${SLUG//[-]/_}/bench_${SLUG//[-]/_}"
 
-# Map slug → binary name (CMake target names use underscores)
-BINARY_NAME="bench_$(echo "${SLUG}" | tr '-' '_' | sed 's/^0*//')"
-# Handle leading zeros: 01-branch-prediction → bench_01_branch_prediction
-BINARY_NAME="bench_$(echo "${SLUG}" | tr '-' '_')"
+BINARY_NAME="bench_${SLUG//-/_}"
 BINARY="${BENCH_ROOT}/build/demos/${SLUG}/${BINARY_NAME}"
+
+# Cleanup runs on any exit path (success, error, or interrupt)
+TMPFILE=""
+SHIELD_ACTIVE=0
+cleanup() {
+    [[ -n "${TMPFILE}" ]] && rm -f "${TMPFILE}"
+    if [[ "${SHIELD_ACTIVE}" -eq 1 ]]; then
+        sudo cset shield --reset > /dev/null 2>&1 || true
+    fi
+}
+trap cleanup EXIT
 
 echo "==> Building ${SLUG}..."
 cmake -B "${BENCH_ROOT}/build" -S "${BENCH_ROOT}" -DCMAKE_BUILD_TYPE=Release -Wno-dev --log-level=ERROR
-cmake --build "${BENCH_ROOT}/build" --parallel --log-level=ERROR
+cmake --build "${BENCH_ROOT}/build" --parallel > /dev/null
 
 if [[ ! -x "${BINARY}" ]]; then
     echo "ERROR: binary not found at ${BINARY}" >&2
     exit 1
 fi
 
+echo "==> Activating cset shield on cores 4-7..."
+sudo cset shield --cpu=4-7 > /dev/null
+SHIELD_ACTIVE=1
+
 echo "==> Collecting machine info..."
-MACHINE_JSON=$(taskset -c 4-7 "${BINARY}" --machine-info)
+MACHINE_JSON=$(sudo cset shield --exec -- "${BINARY}" --machine-info)
 
 TMPFILE=$(mktemp /tmp/crucible_bench_XXXXXX.json)
-trap 'rm -f "${TMPFILE}"' EXIT
 
 echo "==> Running benchmarks (20 repetitions per variant×size)..."
-taskset -c 4-7 "${BINARY}" \
+sudo cset shield --exec -- "${BINARY}" \
     --benchmark_format=json \
     --benchmark_repetitions=20 \
     --benchmark_report_aggregates_only=false \
     --benchmark_out="${TMPFILE}" \
     --benchmark_out_format=json
 
-echo "==> Assembling output JSON..."
+echo "==> Releasing cset shield..."
+sudo cset shield --reset > /dev/null
+SHIELD_ACTIVE=0
 
+echo "==> Assembling output JSON..."
 CAPTURED_AT=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
 python3 "${BENCH_ROOT}/scripts/assemble_results.py" \
