@@ -1,448 +1,271 @@
-000000000000b9c0 <_ZL13sum_thresholdRKSt6vectorIiSaIiEE>:
-    b9c0:	48 8b 07             	mov    (%rdi),%rax
-    b9c3:	48 8b 4f 08          	mov    0x8(%rdi),%rcx
-    b9c7:	31 f6                	xor    %esi,%esi
-    b9c9:	48 39 c1             	cmp    %rax,%rcx
-    b9cc:	74 16                	je     b9e4 <_ZL13sum_thresholdRKSt6vectorIiSaIiEE+0x24>
-    b9ce:	66 90                	xchg   %ax,%ax
-    b9d0:	48 63 10             	movslq (%rax),%rdx
-    b9d3:	83 fa 7f             	cmp    $0x7f,%edx
-    b9d6:	7e 03                	jle    b9db <_ZL13sum_thresholdRKSt6vectorIiSaIiEE+0x1b>
-    b9d8:	48 01 d6             	add    %rdx,%rsi
-    b9db:	48 83 c0 04          	add    $0x4,%rax
-    b9df:	48 39 c8             	cmp    %rcx,%rax
-    b9e2:	75 ec                	jne    b9d0 <_ZL13sum_thresholdRKSt6vectorIiSaIiEE+0x10>
-    b9e4:	48 89 f0             	mov    %rsi,%rax
-    b9e7:	c3                   	ret
-    b9e8:	0f 1f 84 00 00 00 00 	nopl   0x0(%rax,%rax,1)
-    b9ef:	00 
+000000000000b8e0 <_ZL13sum_thresholdRKSt6vectorIiSaIiEE>:
+    b8e0:	48 8b 07             	mov    (%rdi),%rax
+    b8e3:	48 8b 4f 08          	mov    0x8(%rdi),%rcx
+    b8e7:	31 f6                	xor    %esi,%esi
+    b8e9:	48 39 c1             	cmp    %rax,%rcx
+    b8ec:	74 16                	je     b904 <_ZL13sum_thresholdRKSt6vectorIiSaIiEE+0x24>
+    b8ee:	66 90                	xchg   %ax,%ax
+    b8f0:	48 63 10             	movslq (%rax),%rdx
+    b8f3:	83 fa 7f             	cmp    $0x7f,%edx
+    b8f6:	7e 03                	jle    b8fb <_ZL13sum_thresholdRKSt6vectorIiSaIiEE+0x1b>
+    b8f8:	48 01 d6             	add    %rdx,%rsi
+    b8fb:	48 83 c0 04          	add    $0x4,%rax
+    b8ff:	48 39 c8             	cmp    %rcx,%rax
+    b902:	75 ec                	jne    b8f0 <_ZL13sum_thresholdRKSt6vectorIiSaIiEE+0x10>
+    b904:	48 89 f0             	mov    %rsi,%rax
+    b907:	c3                   	ret
+    b908:	0f 1f 84 00 00 00 00 	nopl   0x0(%rax,%rax,1)
+    b90f:	00 
 
-    cbe4:	e8 d7 ed ff ff       	call   b9c0 <_ZL13sum_thresholdRKSt6vectorIiSaIiEE>
-    cbe9:	8b 84 24 b0 00 00 00 	mov    0xb0(%rsp),%eax
-    cbf0:	c5 f9 6f 84 24 b0 00 	vmovdqa 0xb0(%rsp),%xmm0
-    cbf7:	00 00 
-    cbf9:	48 8b 9c 24 88 00 00 	mov    0x88(%rsp),%rbx
-    cc00:	00 
-    cc01:	89 44 24 5c          	mov    %eax,0x5c(%rsp)
-    cc05:	8b 84 24 b4 00 00 00 	mov    0xb4(%rsp),%eax
-    cc0c:	89 44 24 58          	mov    %eax,0x58(%rsp)
-    cc10:	8b 84 24 b8 00 00 00 	mov    0xb8(%rsp),%eax
-    cc17:	c4 e3 79 16 84 24 80 	vpextrd $0x3,%xmm0,0x80(%rsp)
-    cc1e:	00 00 00 03 
-    cc22:	c4 c3 79 16 c4 02    	vpextrd $0x2,%xmm0,%r12d
-    cc28:	c4 e3 79 16 44 24 78 	vpextrd $0x1,%xmm0,0x78(%rsp)
-    cc2f:	01 
-    cc30:	c5 f9 7e 44 24 70    	vmovd  %xmm0,0x70(%rsp)
-    cc36:	c5 f9 7f 84 24 70 01 	vmovdqa %xmm0,0x170(%rsp)
-    cc3d:	00 00 
-    cc3f:	c5 f9 7f 44 24 60    	vmovdqa %xmm0,0x60(%rsp)
-    cc45:	89 44 24 54          	mov    %eax,0x54(%rsp)
-    cc49:	8b 84 24 bc 00 00 00 	mov    0xbc(%rsp),%eax
-    cc50:	89 44 24 50          	mov    %eax,0x50(%rsp)
-    cc54:	8b 3b                	mov    (%rbx),%edi
-    cc56:	31 d2                	xor    %edx,%edx
-    cc58:	be 01 24 00 00       	mov    $0x2401,%esi
-    cc5d:	31 c0                	xor    %eax,%eax
-    cc5f:	48 83 c3 04          	add    $0x4,%rbx
-    cc63:	e8 d8 a2 ff ff       	call   6f40 <ioctl@plt>
-    cc68:	4c 39 fb             	cmp    %r15,%rbx
-    cc6b:	75 e7                	jne    cc54 <_ZL9BM_SortedRN9benchmark5StateE+0xaf4>
-    cc6d:	48 8b 74 24 48       	mov    0x48(%rsp),%rsi
-    cc72:	8b 7c 24 70          	mov    0x70(%rsp),%edi
-    cc76:	c5 e9 ef d2          	vpxor  %xmm2,%xmm2,%xmm2
-    cc7a:	ba 08 00 00 00       	mov    $0x8,%edx
-    cc7f:	c5 fd 7f 94 24 e0 00 	vmovdqa %ymm2,0xe0(%rsp)
-    cc86:	00 00 
-    cc88:	c5 f8 77             	vzeroupper
-    cc8b:	e8 e0 a2 ff ff       	call   6f70 <read@plt>
-    cc90:	48 8b 74 24 28       	mov    0x28(%rsp),%rsi
-    cc95:	ba 08 00 00 00       	mov    $0x8,%edx
-    cc9a:	8b 7c 24 78          	mov    0x78(%rsp),%edi
-    cc9e:	e8 cd a2 ff ff       	call   6f70 <read@plt>
-    cca3:	48 8b 74 24 20       	mov    0x20(%rsp),%rsi
-    cca8:	ba 08 00 00 00       	mov    $0x8,%edx
-    ccad:	44 89 e7             	mov    %r12d,%edi
-    ccb0:	e8 bb a2 ff ff       	call   6f70 <read@plt>
-    ccb5:	48 8b 74 24 18       	mov    0x18(%rsp),%rsi
-    ccba:	ba 08 00 00 00       	mov    $0x8,%edx
-    ccbf:	8b bc 24 80 00 00 00 	mov    0x80(%rsp),%edi
-    ccc6:	e8 a5 a2 ff ff       	call   6f70 <read@plt>
-    cccb:	4c 03 ac 24 e8 00 00 	add    0xe8(%rsp),%r13
-    ccd2:	00 
-    ccd3:	4c 03 b4 24 f8 00 00 	add    0xf8(%rsp),%r14
-    ccda:	00 
-    ccdb:	48 8b 8c 24 f0 00 00 	mov    0xf0(%rsp),%rcx
-    cce2:	00 
-    cce3:	48 01 4c 24 40       	add    %rcx,0x40(%rsp)
-    cce8:	48 ff 4c 24 30       	decq   0x30(%rsp)
-    cced:	c5 f9 6f 44 24 60    	vmovdqa 0x60(%rsp),%xmm0
-    ccf3:	0f 85 a7 fe ff ff    	jne    cba0 <_ZL9BM_SortedRN9benchmark5StateE+0xa40>
-    ccf9:	48 8b 84 24 c0 00 00 	mov    0xc0(%rsp),%rax
-    cd00:	00 
-    cd01:	4c 89 eb             	mov    %r13,%rbx
-    cd04:	48 89 44 24 78       	mov    %rax,0x78(%rsp)
-    cd09:	e9 b2 f7 ff ff       	jmp    c4c0 <_ZL9BM_SortedRN9benchmark5StateE+0x360>
-    cd0e:	4c 89 ac 24 88 00 00 	mov    %r13,0x88(%rsp)
-    cd15:	00 
-    cd16:	4d 8d 76 40          	lea    0x40(%r14),%r14
-    cd1a:	bb 04 00 00 00       	mov    $0x4,%ebx
-    cd1f:	49 89 cd             	mov    %rcx,%r13
-    cd22:	eb 3a                	jmp    cd5e <_ZL9BM_SortedRN9benchmark5StateE+0xbfe>
-    cd24:	66 66 2e 0f 1f 84 00 	data16 cs nopw 0x0(%rax,%rax,1)
-    cd2b:	00 00 00 00 
-    cd2f:	90                   	nop
-    cd30:	4c 89 e2             	mov    %r12,%rdx
-    cd33:	4c 29 ea             	sub    %r13,%rdx
-    cd36:	48 83 fa 04          	cmp    $0x4,%rdx
-    cd3a:	0f 8e 1f 02 00 00    	jle    cf5f <_ZL9BM_SortedRN9benchmark5StateE+0xdff>
-    cd40:	48 89 df             	mov    %rbx,%rdi
-    cd43:	4c 89 ee             	mov    %r13,%rsi
-    cd46:	48 29 d7             	sub    %rdx,%rdi
-    cd49:	4c 01 e7             	add    %r12,%rdi
-    cd4c:	e8 0f a3 ff ff       	call   7060 <memmove@plt>
-    cd51:	49 83 c4 04          	add    $0x4,%r12
-    cd55:	45 89 7d 00          	mov    %r15d,0x0(%r13)
-    cd59:	4d 39 e6             	cmp    %r12,%r14
-    cd5c:	74 40                	je     cd9e <_ZL9BM_SortedRN9benchmark5StateE+0xc3e>
-    cd5e:	45 8b 3c 24          	mov    (%r12),%r15d
-    cd62:	41 8b 45 00          	mov    0x0(%r13),%eax
-    cd66:	4c 89 e1             	mov    %r12,%rcx
-    cd69:	41 39 c7             	cmp    %eax,%r15d
-    cd6c:	7c c2                	jl     cd30 <_ZL9BM_SortedRN9benchmark5StateE+0xbd0>
-    cd6e:	41 8b 54 24 fc       	mov    -0x4(%r12),%edx
-    cd73:	49 8d 44 24 fc       	lea    -0x4(%r12),%rax
-    cd78:	41 39 d7             	cmp    %edx,%r15d
-    cd7b:	7d 15                	jge    cd92 <_ZL9BM_SortedRN9benchmark5StateE+0xc32>
-    cd7d:	0f 1f 00             	nopl   (%rax)
-    cd80:	89 50 04             	mov    %edx,0x4(%rax)
-    cd83:	48 89 c1             	mov    %rax,%rcx
-    cd86:	8b 50 fc             	mov    -0x4(%rax),%edx
-    cd89:	48 83 e8 04          	sub    $0x4,%rax
-    cd8d:	41 39 d7             	cmp    %edx,%r15d
-    cd90:	7c ee                	jl     cd80 <_ZL9BM_SortedRN9benchmark5StateE+0xc20>
-    cd92:	49 83 c4 04          	add    $0x4,%r12
-    cd96:	44 89 39             	mov    %r15d,(%rcx)
-    cd99:	4d 39 e6             	cmp    %r12,%r14
-    cd9c:	75 c0                	jne    cd5e <_ZL9BM_SortedRN9benchmark5StateE+0xbfe>
-    cd9e:	4c 8b ac 24 88 00 00 	mov    0x88(%rsp),%r13
-    cda5:	00 
-    cda6:	4d 39 f5             	cmp    %r14,%r13
-    cda9:	0f 84 e1 f4 ff ff    	je     c290 <_ZL9BM_SortedRN9benchmark5StateE+0x130>
-    cdaf:	41 8b 0e             	mov    (%r14),%ecx
-    cdb2:	41 8b 56 fc          	mov    -0x4(%r14),%edx
-    cdb6:	49 8d 46 fc          	lea    -0x4(%r14),%rax
-    cdba:	39 d1                	cmp    %edx,%ecx
-    cdbc:	7d 31                	jge    cdef <_ZL9BM_SortedRN9benchmark5StateE+0xc8f>
-    cdbe:	66 90                	xchg   %ax,%ax
-    cdc0:	89 50 04             	mov    %edx,0x4(%rax)
-    cdc3:	48 89 c6             	mov    %rax,%rsi
-    cdc6:	8b 50 fc             	mov    -0x4(%rax),%edx
-    cdc9:	48 83 e8 04          	sub    $0x4,%rax
-    cdcd:	39 d1                	cmp    %edx,%ecx
-    cdcf:	7c ef                	jl     cdc0 <_ZL9BM_SortedRN9benchmark5StateE+0xc60>
-    cdd1:	49 83 c6 04          	add    $0x4,%r14
-    cdd5:	89 0e                	mov    %ecx,(%rsi)
-    cdd7:	4d 39 f5             	cmp    %r14,%r13
-    cdda:	0f 84 b0 f4 ff ff    	je     c290 <_ZL9BM_SortedRN9benchmark5StateE+0x130>
-    cde0:	41 8b 0e             	mov    (%r14),%ecx
-    cde3:	41 8b 56 fc          	mov    -0x4(%r14),%edx
-    cde7:	49 8d 46 fc          	lea    -0x4(%r14),%rax
-    cdeb:	39 d1                	cmp    %edx,%ecx
-    cded:	7c d1                	jl     cdc0 <_ZL9BM_SortedRN9benchmark5StateE+0xc60>
-    cdef:	4c 89 f6             	mov    %r14,%rsi
-    cdf2:	49 83 c6 04          	add    $0x4,%r14
-    cdf6:	89 0e                	mov    %ecx,(%rsi)
-    cdf8:	4d 39 f5             	cmp    %r14,%r13
-    cdfb:	75 e3                	jne    cde0 <_ZL9BM_SortedRN9benchmark5StateE+0xc80>
-    cdfd:	e9 8e f4 ff ff       	jmp    c290 <_ZL9BM_SortedRN9benchmark5StateE+0x130>
-    ce02:	48 89 d8             	mov    %rbx,%rax
-    ce05:	83 e3 01             	and    $0x1,%ebx
-    ce08:	c5 c1 57 ff          	vxorpd %xmm7,%xmm7,%xmm7
-    ce0c:	48 d1 e8             	shr    $1,%rax
-    ce0f:	48 09 d8             	or     %rbx,%rax
-    ce12:	c4 e1 c3 2a c0       	vcvtsi2sd %rax,%xmm7,%xmm0
-    ce17:	c5 fb 58 c0          	vaddsd %xmm0,%xmm0,%xmm0
-    ce1b:	e9 ec f6 ff ff       	jmp    c50c <_ZL9BM_SortedRN9benchmark5StateE+0x3ac>
-    ce20:	b8 10 00 00 00       	mov    $0x10,%eax
-    ce25:	48 29 d8             	sub    %rbx,%rax
-    ce28:	48 3d ff ff ff 7f    	cmp    $0x7fffffff,%rax
-    ce2e:	7f 14                	jg     ce44 <_ZL9BM_SortedRN9benchmark5StateE+0xce4>
-    ce30:	48 3d 00 00 00 80    	cmp    $0xffffffff80000000,%rax
-    ce36:	0f 8c ee fb ff ff    	jl     ca2a <_ZL9BM_SortedRN9benchmark5StateE+0x8ca>
-    ce3c:	85 c0                	test   %eax,%eax
-    ce3e:	0f 88 e6 fb ff ff    	js     ca2a <_ZL9BM_SortedRN9benchmark5StateE+0x8ca>
-    ce44:	48 b8 01 00 00 00 e8 	movabs $0x3e800000001,%rax
-    ce4b:	03 00 00 
-    ce4e:	4d 89 6e 40          	mov    %r13,0x40(%r14)
-    ce52:	49 89 46 48          	mov    %rax,0x48(%r14)
-    ce56:	e9 27 fc ff ff       	jmp    ca82 <_ZL9BM_SortedRN9benchmark5StateE+0x922>
-    ce5b:	48 8b 84 24 98 01 00 	mov    0x198(%rsp),%rax
-    ce62:	00 
-    ce63:	64 48 2b 04 25 28 00 	sub    %fs:0x28,%rax
-    ce6a:	00 00 
-    ce6c:	0f 85 1c 01 00 00    	jne    cf8e <_ZL9BM_SortedRN9benchmark5StateE+0xe2e>
-    ce72:	48 8d 65 d8          	lea    -0x28(%rbp),%rsp
-    ce76:	5b                   	pop    %rbx
-    ce77:	41 5c                	pop    %r12
-    ce79:	41 5d                	pop    %r13
-    ce7b:	41 5e                	pop    %r14
-    ce7d:	41 5f                	pop    %r15
-    ce7f:	5d                   	pop    %rbp
-    ce80:	c3                   	ret
-    ce81:	4d 85 e4             	test   %r12,%r12
-    ce84:	74 23                	je     cea9 <_ZL9BM_SortedRN9benchmark5StateE+0xd49>
-    ce86:	4c 89 e2             	mov    %r12,%rdx
-    ce89:	48 89 df             	mov    %rbx,%rdi
-    ce8c:	4c 89 8c 24 88 00 00 	mov    %r9,0x88(%rsp)
-    ce93:	00 
-    ce94:	e8 17 9c ff ff       	call   6ab0 <memcmp@plt>
-    ce99:	85 c0                	test   %eax,%eax
-    ce9b:	4c 8b 8c 24 88 00 00 	mov    0x88(%rsp),%r9
-    cea2:	00 
-    cea3:	0f 85 eb f7 ff ff    	jne    c694 <_ZL9BM_SortedRN9benchmark5StateE+0x534>
-    cea9:	c5 fb 10 74 24 60    	vmovsd 0x60(%rsp),%xmm6
-    ceaf:	48 b8 00 00 00 00 e8 	movabs $0x3e800000000,%rax
-    ceb6:	03 00 00 
-    ceb9:	49 89 41 48          	mov    %rax,0x48(%r9)
-    cebd:	c4 c1 7b 11 71 40    	vmovsd %xmm6,0x40(%r9)
-    cec3:	e9 36 f8 ff ff       	jmp    c6fe <_ZL9BM_SortedRN9benchmark5StateE+0x59e>
-    cec8:	48 85 db             	test   %rbx,%rbx
-    cecb:	74 13                	je     cee0 <_ZL9BM_SortedRN9benchmark5StateE+0xd80>
-    cecd:	48 89 da             	mov    %rbx,%rdx
-    ced0:	4c 89 ff             	mov    %r15,%rdi
-    ced3:	e8 d8 9b ff ff       	call   6ab0 <memcmp@plt>
-    ced8:	85 c0                	test   %eax,%eax
-    ceda:	0f 85 9e f9 ff ff    	jne    c87e <_ZL9BM_SortedRN9benchmark5StateE+0x71e>
-    cee0:	c5 fb 10 5c 24 60    	vmovsd 0x60(%rsp),%xmm3
-    cee6:	48 b8 00 00 00 00 e8 	movabs $0x3e800000000,%rax
-    ceed:	03 00 00 
-    cef0:	49 89 46 48          	mov    %rax,0x48(%r14)
-    cef4:	c4 c1 7b 11 5e 40    	vmovsd %xmm3,0x40(%r14)
-    cefa:	e9 fa f9 ff ff       	jmp    c8f9 <_ZL9BM_SortedRN9benchmark5StateE+0x799>
-    ceff:	48 85 db             	test   %rbx,%rbx
-    cf02:	0f 84 3c ff ff ff    	je     ce44 <_ZL9BM_SortedRN9benchmark5StateE+0xce4>
-    cf08:	48 89 da             	mov    %rbx,%rdx
-    cf0b:	4c 89 e7             	mov    %r12,%rdi
-    cf0e:	e8 9d 9b ff ff       	call   6ab0 <memcmp@plt>
-    cf13:	85 c0                	test   %eax,%eax
-    cf15:	0f 84 29 ff ff ff    	je     ce44 <_ZL9BM_SortedRN9benchmark5StateE+0xce4>
-    cf1b:	e9 02 fb ff ff       	jmp    ca22 <_ZL9BM_SortedRN9benchmark5StateE+0x8c2>
-    cf20:	4c 89 f0             	mov    %r14,%rax
-    cf23:	4c 89 f2             	mov    %r14,%rdx
-    cf26:	c5 c1 57 ff          	vxorpd %xmm7,%xmm7,%xmm7
-    cf2a:	48 d1 e8             	shr    $1,%rax
-    cf2d:	83 e2 01             	and    $0x1,%edx
-    cf30:	48 09 d0             	or     %rdx,%rax
-    cf33:	c4 e1 c3 2a c0       	vcvtsi2sd %rax,%xmm7,%xmm0
-    cf38:	c5 fb 58 c0          	vaddsd %xmm0,%xmm0,%xmm0
-    cf3c:	e9 08 f8 ff ff       	jmp    c749 <_ZL9BM_SortedRN9benchmark5StateE+0x5e9>
-    cf41:	48 89 c1             	mov    %rax,%rcx
-    cf44:	48 d1 e8             	shr    $1,%rax
-    cf47:	c5 d9 57 e4          	vxorpd %xmm4,%xmm4,%xmm4
-    cf4b:	83 e1 01             	and    $0x1,%ecx
-    cf4e:	48 09 c8             	or     %rcx,%rax
-    cf51:	c4 e1 db 2a c8       	vcvtsi2sd %rax,%xmm4,%xmm1
-    cf56:	c5 f3 58 c9          	vaddsd %xmm1,%xmm1,%xmm1
-    cf5a:	e9 d8 f7 ff ff       	jmp    c737 <_ZL9BM_SortedRN9benchmark5StateE+0x5d7>
-    cf5f:	0f 85 ec fd ff ff    	jne    cd51 <_ZL9BM_SortedRN9benchmark5StateE+0xbf1>
-    cf65:	41 89 04 24          	mov    %eax,(%r12)
-    cf69:	e9 e3 fd ff ff       	jmp    cd51 <_ZL9BM_SortedRN9benchmark5StateE+0xbf1>
-    cf6e:	0f 85 cd f2 ff ff    	jne    c241 <_ZL9BM_SortedRN9benchmark5StateE+0xe1>
-    cf74:	41 89 04 24          	mov    %eax,(%r12)
-    cf78:	e9 c4 f2 ff ff       	jmp    c241 <_ZL9BM_SortedRN9benchmark5StateE+0xe1>
-    cf7d:	45 31 ed             	xor    %r13d,%r13d
-    cf80:	48 c7 44 24 60 00 00 	movq   $0x0,0x60(%rsp)
-    cf87:	00 00 
-    cf89:	e9 91 f5 ff ff       	jmp    c51f <_ZL9BM_SortedRN9benchmark5StateE+0x3bf>
-    cf8e:	e8 5d 9e ff ff       	call   6df0 <__stack_chk_fail@plt>
-    cf93:	f3 0f 1e fa          	endbr64
-    cf97:	48 89 c3             	mov    %rax,%rbx
-    cf9a:	e9 a8 a2 ff ff       	jmp    7247 <_ZL9BM_SortedRN9benchmark5StateE.cold>
-    cf9f:	f3 0f 1e fa          	endbr64
-    cfa3:	48 89 c3             	mov    %rax,%rbx
-    cfa6:	c5 f8 77             	vzeroupper
-    cfa9:	e9 a9 a2 ff ff       	jmp    7257 <_ZL9BM_SortedRN9benchmark5StateE.cold+0x10>
-    cfae:	f3 0f 1e fa          	endbr64
-    cfb2:	48 89 c3             	mov    %rax,%rbx
-    cfb5:	e9 27 a3 ff ff       	jmp    72e1 <_ZL9BM_SortedRN9benchmark5StateE.cold+0x9a>
-    cfba:	e9 dd a2 ff ff       	jmp    729c <_ZL9BM_SortedRN9benchmark5StateE.cold+0x55>
-    cfbf:	f3 0f 1e fa          	endbr64
-    cfc3:	48 89 c3             	mov    %rax,%rbx
-    cfc6:	e9 2b a3 ff ff       	jmp    72f6 <_ZL9BM_SortedRN9benchmark5StateE.cold+0xaf>
-    cfcb:	0f 1f 44 00 00       	nopl   0x0(%rax,%rax,1)
-
-    da55:	e8 66 df ff ff       	call   b9c0 <_ZL13sum_thresholdRKSt6vectorIiSaIiEE>
-    da5a:	8b 84 24 b0 00 00 00 	mov    0xb0(%rsp),%eax
-    da61:	c5 f9 6f 84 24 b0 00 	vmovdqa 0xb0(%rsp),%xmm0
-    da68:	00 00 
-    da6a:	4c 8b a4 24 88 00 00 	mov    0x88(%rsp),%r12
-    da71:	00 
-    da72:	89 44 24 5c          	mov    %eax,0x5c(%rsp)
-    da76:	8b 84 24 b4 00 00 00 	mov    0xb4(%rsp),%eax
-    da7d:	89 44 24 58          	mov    %eax,0x58(%rsp)
-    da81:	8b 84 24 b8 00 00 00 	mov    0xb8(%rsp),%eax
-    da88:	c4 e3 79 16 84 24 80 	vpextrd $0x3,%xmm0,0x80(%rsp)
-    da8f:	00 00 00 03 
-    da93:	c4 c3 79 16 c5 02    	vpextrd $0x2,%xmm0,%r13d
-    da99:	c4 e3 79 16 44 24 70 	vpextrd $0x1,%xmm0,0x70(%rsp)
-    daa0:	01 
-    daa1:	c5 f9 7e 44 24 78    	vmovd  %xmm0,0x78(%rsp)
-    daa7:	c5 f9 7f 84 24 70 01 	vmovdqa %xmm0,0x170(%rsp)
-    daae:	00 00 
-    dab0:	c5 f9 7f 44 24 60    	vmovdqa %xmm0,0x60(%rsp)
-    dab6:	89 44 24 54          	mov    %eax,0x54(%rsp)
-    daba:	8b 84 24 bc 00 00 00 	mov    0xbc(%rsp),%eax
-    dac1:	89 44 24 50          	mov    %eax,0x50(%rsp)
-    dac5:	41 8b 3c 24          	mov    (%r12),%edi
-    dac9:	31 d2                	xor    %edx,%edx
-    dacb:	be 01 24 00 00       	mov    $0x2401,%esi
-    dad0:	31 c0                	xor    %eax,%eax
-    dad2:	49 83 c4 04          	add    $0x4,%r12
-    dad6:	e8 65 94 ff ff       	call   6f40 <ioctl@plt>
-    dadb:	4c 39 e3             	cmp    %r12,%rbx
-    dade:	75 e5                	jne    dac5 <_ZL11BM_UnsortedRN9benchmark5StateE+0xa45>
-    dae0:	48 8b 74 24 48       	mov    0x48(%rsp),%rsi
-    dae5:	8b 7c 24 78          	mov    0x78(%rsp),%edi
-    dae9:	c5 e9 ef d2          	vpxor  %xmm2,%xmm2,%xmm2
-    daed:	ba 08 00 00 00       	mov    $0x8,%edx
-    daf2:	c5 fd 7f 94 24 e0 00 	vmovdqa %ymm2,0xe0(%rsp)
-    daf9:	00 00 
-    dafb:	c5 f8 77             	vzeroupper
-    dafe:	e8 6d 94 ff ff       	call   6f70 <read@plt>
-    db03:	48 8b 74 24 28       	mov    0x28(%rsp),%rsi
-    db08:	ba 08 00 00 00       	mov    $0x8,%edx
-    db0d:	8b 7c 24 70          	mov    0x70(%rsp),%edi
-    db11:	e8 5a 94 ff ff       	call   6f70 <read@plt>
-    db16:	48 8b 74 24 20       	mov    0x20(%rsp),%rsi
-    db1b:	ba 08 00 00 00       	mov    $0x8,%edx
-    db20:	44 89 ef             	mov    %r13d,%edi
-    db23:	e8 48 94 ff ff       	call   6f70 <read@plt>
-    db28:	48 8b 74 24 18       	mov    0x18(%rsp),%rsi
-    db2d:	ba 08 00 00 00       	mov    $0x8,%edx
-    db32:	8b bc 24 80 00 00 00 	mov    0x80(%rsp),%edi
-    db39:	e8 32 94 ff ff       	call   6f70 <read@plt>
-    db3e:	4c 03 b4 24 e8 00 00 	add    0xe8(%rsp),%r14
-    db45:	00 
-    db46:	4c 03 bc 24 f0 00 00 	add    0xf0(%rsp),%r15
-    db4d:	00 
-    db4e:	48 8b 8c 24 f8 00 00 	mov    0xf8(%rsp),%rcx
-    db55:	00 
-    db56:	48 01 4c 24 40       	add    %rcx,0x40(%rsp)
-    db5b:	48 ff 4c 24 30       	decq   0x30(%rsp)
-    db60:	c5 f9 6f 44 24 60    	vmovdqa 0x60(%rsp),%xmm0
-    db66:	0f 85 a4 fe ff ff    	jne    da10 <_ZL11BM_UnsortedRN9benchmark5StateE+0x990>
-    db6c:	4c 89 f3             	mov    %r14,%rbx
-    db6f:	4c 8b 74 24 40       	mov    0x40(%rsp),%r14
-    db74:	e9 87 f7 ff ff       	jmp    d300 <_ZL11BM_UnsortedRN9benchmark5StateE+0x280>
-    db79:	48 89 d8             	mov    %rbx,%rax
-    db7c:	83 e3 01             	and    $0x1,%ebx
-    db7f:	c5 c1 57 ff          	vxorpd %xmm7,%xmm7,%xmm7
-    db83:	48 d1 e8             	shr    $1,%rax
-    db86:	48 09 d8             	or     %rbx,%rax
-    db89:	c4 e1 c3 2a c0       	vcvtsi2sd %rax,%xmm7,%xmm0
-    db8e:	c5 fb 58 c0          	vaddsd %xmm0,%xmm0,%xmm0
-    db92:	e9 b6 f7 ff ff       	jmp    d34d <_ZL11BM_UnsortedRN9benchmark5StateE+0x2cd>
-    db97:	b8 10 00 00 00       	mov    $0x10,%eax
-    db9c:	48 29 d8             	sub    %rbx,%rax
-    db9f:	48 3d ff ff ff 7f    	cmp    $0x7fffffff,%rax
-    dba5:	7f 14                	jg     dbbb <_ZL11BM_UnsortedRN9benchmark5StateE+0xb3b>
-    dba7:	48 3d 00 00 00 80    	cmp    $0xffffffff80000000,%rax
-    dbad:	0f 8c d8 fc ff ff    	jl     d88b <_ZL11BM_UnsortedRN9benchmark5StateE+0x80b>
-    dbb3:	85 c0                	test   %eax,%eax
-    dbb5:	0f 88 d0 fc ff ff    	js     d88b <_ZL11BM_UnsortedRN9benchmark5StateE+0x80b>
-    dbbb:	48 b8 01 00 00 00 e8 	movabs $0x3e800000001,%rax
-    dbc2:	03 00 00 
-    dbc5:	4d 89 6f 40          	mov    %r13,0x40(%r15)
-    dbc9:	49 89 47 48          	mov    %rax,0x48(%r15)
-    dbcd:	e9 19 fd ff ff       	jmp    d8eb <_ZL11BM_UnsortedRN9benchmark5StateE+0x86b>
-    dbd2:	48 8b 84 24 98 01 00 	mov    0x198(%rsp),%rax
-    dbd9:	00 
-    dbda:	64 48 2b 04 25 28 00 	sub    %fs:0x28,%rax
-    dbe1:	00 00 
-    dbe3:	0f 85 06 01 00 00    	jne    dcef <_ZL11BM_UnsortedRN9benchmark5StateE+0xc6f>
-    dbe9:	48 8d 65 d8          	lea    -0x28(%rbp),%rsp
-    dbed:	5b                   	pop    %rbx
-    dbee:	41 5c                	pop    %r12
-    dbf0:	41 5d                	pop    %r13
-    dbf2:	41 5e                	pop    %r14
-    dbf4:	41 5f                	pop    %r15
-    dbf6:	5d                   	pop    %rbp
-    dbf7:	c3                   	ret
-    dbf8:	4d 85 e4             	test   %r12,%r12
-    dbfb:	74 23                	je     dc20 <_ZL11BM_UnsortedRN9benchmark5StateE+0xba0>
-    dbfd:	4c 89 e2             	mov    %r12,%rdx
-    dc00:	48 89 df             	mov    %rbx,%rdi
-    dc03:	4c 89 8c 24 88 00 00 	mov    %r9,0x88(%rsp)
-    dc0a:	00 
-    dc0b:	e8 a0 8e ff ff       	call   6ab0 <memcmp@plt>
-    dc10:	85 c0                	test   %eax,%eax
-    dc12:	4c 8b 8c 24 88 00 00 	mov    0x88(%rsp),%r9
-    dc19:	00 
-    dc1a:	0f 85 c1 f8 ff ff    	jne    d4e1 <_ZL11BM_UnsortedRN9benchmark5StateE+0x461>
-    dc20:	c5 fb 10 74 24 60    	vmovsd 0x60(%rsp),%xmm6
-    dc26:	48 b8 00 00 00 00 e8 	movabs $0x3e800000000,%rax
-    dc2d:	03 00 00 
-    dc30:	49 89 41 48          	mov    %rax,0x48(%r9)
-    dc34:	c4 c1 7b 11 71 40    	vmovsd %xmm6,0x40(%r9)
-    dc3a:	e9 14 f9 ff ff       	jmp    d553 <_ZL11BM_UnsortedRN9benchmark5StateE+0x4d3>
-    dc3f:	48 85 db             	test   %rbx,%rbx
-    dc42:	74 18                	je     dc5c <_ZL11BM_UnsortedRN9benchmark5StateE+0xbdc>
-    dc44:	48 8b bc 24 80 00 00 	mov    0x80(%rsp),%rdi
-    dc4b:	00 
-    dc4c:	48 89 da             	mov    %rbx,%rdx
-    dc4f:	e8 5c 8e ff ff       	call   6ab0 <memcmp@plt>
-    dc54:	85 c0                	test   %eax,%eax
-    dc56:	0f 85 70 fa ff ff    	jne    d6cc <_ZL11BM_UnsortedRN9benchmark5StateE+0x64c>
-    dc5c:	c5 fb 10 5c 24 60    	vmovsd 0x60(%rsp),%xmm3
-    dc62:	48 b8 00 00 00 00 e8 	movabs $0x3e800000000,%rax
-    dc69:	03 00 00 
-    dc6c:	49 89 46 48          	mov    %rax,0x48(%r14)
-    dc70:	c4 c1 7b 11 5e 40    	vmovsd %xmm3,0x40(%r14)
-    dc76:	e9 d4 fa ff ff       	jmp    d74f <_ZL11BM_UnsortedRN9benchmark5StateE+0x6cf>
-    dc7b:	48 85 db             	test   %rbx,%rbx
-    dc7e:	0f 84 37 ff ff ff    	je     dbbb <_ZL11BM_UnsortedRN9benchmark5StateE+0xb3b>
-    dc84:	48 89 da             	mov    %rbx,%rdx
-    dc87:	4c 89 f7             	mov    %r14,%rdi
-    dc8a:	e8 21 8e ff ff       	call   6ab0 <memcmp@plt>
-    dc8f:	85 c0                	test   %eax,%eax
-    dc91:	0f 84 24 ff ff ff    	je     dbbb <_ZL11BM_UnsortedRN9benchmark5StateE+0xb3b>
-    dc97:	e9 e7 fb ff ff       	jmp    d883 <_ZL11BM_UnsortedRN9benchmark5StateE+0x803>
-    dc9c:	4c 89 f0             	mov    %r14,%rax
-    dc9f:	4c 89 f2             	mov    %r14,%rdx
-    dca2:	c5 c1 57 ff          	vxorpd %xmm7,%xmm7,%xmm7
-    dca6:	48 d1 e8             	shr    $1,%rax
-    dca9:	83 e2 01             	and    $0x1,%edx
-    dcac:	48 09 d0             	or     %rdx,%rax
-    dcaf:	c4 e1 c3 2a c0       	vcvtsi2sd %rax,%xmm7,%xmm0
-    dcb4:	c5 fb 58 c0          	vaddsd %xmm0,%xmm0,%xmm0
-    dcb8:	e9 dc f8 ff ff       	jmp    d599 <_ZL11BM_UnsortedRN9benchmark5StateE+0x519>
-    dcbd:	4c 89 f8             	mov    %r15,%rax
-    dcc0:	4c 89 fa             	mov    %r15,%rdx
-    dcc3:	c5 d9 57 e4          	vxorpd %xmm4,%xmm4,%xmm4
-    dcc7:	48 d1 e8             	shr    $1,%rax
-    dcca:	83 e2 01             	and    $0x1,%edx
-    dccd:	48 09 d0             	or     %rdx,%rax
-    dcd0:	c4 e1 db 2a c8       	vcvtsi2sd %rax,%xmm4,%xmm1
-    dcd5:	c5 f3 58 c9          	vaddsd %xmm1,%xmm1,%xmm1
-    dcd9:	e9 a9 f8 ff ff       	jmp    d587 <_ZL11BM_UnsortedRN9benchmark5StateE+0x507>
-    dcde:	45 31 ed             	xor    %r13d,%r13d
-    dce1:	48 c7 44 24 60 00 00 	movq   $0x0,0x60(%rsp)
-    dce8:	00 00 
-    dcea:	e9 71 f6 ff ff       	jmp    d360 <_ZL11BM_UnsortedRN9benchmark5StateE+0x2e0>
-    dcef:	e8 fc 90 ff ff       	call   6df0 <__stack_chk_fail@plt>
-    dcf4:	f3 0f 1e fa          	endbr64
-    dcf8:	48 89 c3             	mov    %rax,%rbx
-    dcfb:	c5 f8 77             	vzeroupper
-    dcfe:	e9 8c 96 ff ff       	jmp    738f <_ZL11BM_UnsortedRN9benchmark5StateE.cold+0x59>
-    dd03:	f3 0f 1e fa          	endbr64
-    dd07:	48 89 c3             	mov    %rax,%rbx
-    dd0a:	e9 d7 96 ff ff       	jmp    73e6 <_ZL11BM_UnsortedRN9benchmark5StateE.cold+0xb0>
-    dd0f:	f3 0f 1e fa          	endbr64
-    dd13:	48 89 c3             	mov    %rax,%rbx
-    dd16:	e9 64 96 ff ff       	jmp    737f <_ZL11BM_UnsortedRN9benchmark5StateE.cold+0x49>
-    dd1b:	f3 0f 1e fa          	endbr64
-    dd1f:	48 89 c3             	mov    %rax,%rbx
-    dd22:	e9 ad 96 ff ff       	jmp    73d4 <_ZL11BM_UnsortedRN9benchmark5StateE.cold+0x9e>
-    dd27:	66 0f 1f 84 00 00 00 	nopw   0x0(%rax,%rax,1)
-    dd2e:	00 00 
+    cbad:	e8 2e ed ff ff       	call   b8e0 <_ZL13sum_thresholdRKSt6vectorIiSaIiEE>
+    cbb2:	c5 f9 6f 9c 24 80 00 	vmovdqa 0x80(%rsp),%xmm3
+    cbb9:	00 00 
+    cbbb:	4c 8b a4 24 98 00 00 	mov    0x98(%rsp),%r12
+    cbc2:	00 
+    cbc3:	c5 f9 7f 9c 24 70 01 	vmovdqa %xmm3,0x170(%rsp)
+    cbca:	00 00 
+    cbcc:	41 8b 3c 24          	mov    (%r12),%edi
+    cbd0:	31 d2                	xor    %edx,%edx
+    cbd2:	be 01 24 00 00       	mov    $0x2401,%esi
+    cbd7:	31 c0                	xor    %eax,%eax
+    cbd9:	49 83 c4 04          	add    $0x4,%r12
+    cbdd:	e8 5e a3 ff ff       	call   6f40 <ioctl@plt>
+    cbe2:	4c 39 e3             	cmp    %r12,%rbx
+    cbe5:	75 e5                	jne    cbcc <_ZL7BM_implRN9benchmark5StateEb+0xa9c>
+    cbe7:	48 8b 74 24 78       	mov    0x78(%rsp),%rsi
+    cbec:	8b 7c 24 68          	mov    0x68(%rsp),%edi
+    cbf0:	c5 d9 ef e4          	vpxor  %xmm4,%xmm4,%xmm4
+    cbf4:	ba 08 00 00 00       	mov    $0x8,%edx
+    cbf9:	c5 fd 7f a4 24 e0 00 	vmovdqa %ymm4,0xe0(%rsp)
+    cc00:	00 00 
+    cc02:	c5 f8 77             	vzeroupper
+    cc05:	e8 66 a3 ff ff       	call   6f70 <read@plt>
+    cc0a:	48 8b 74 24 50       	mov    0x50(%rsp),%rsi
+    cc0f:	ba 08 00 00 00       	mov    $0x8,%edx
+    cc14:	8b 7c 24 6c          	mov    0x6c(%rsp),%edi
+    cc18:	e8 53 a3 ff ff       	call   6f70 <read@plt>
+    cc1d:	48 8b 74 24 48       	mov    0x48(%rsp),%rsi
+    cc22:	ba 08 00 00 00       	mov    $0x8,%edx
+    cc27:	8b 7c 24 70          	mov    0x70(%rsp),%edi
+    cc2b:	e8 40 a3 ff ff       	call   6f70 <read@plt>
+    cc30:	48 8b 74 24 40       	mov    0x40(%rsp),%rsi
+    cc35:	ba 08 00 00 00       	mov    $0x8,%edx
+    cc3a:	8b 7c 24 74          	mov    0x74(%rsp),%edi
+    cc3e:	e8 2d a3 ff ff       	call   6f70 <read@plt>
+    cc43:	4c 03 b4 24 e8 00 00 	add    0xe8(%rsp),%r14
+    cc4a:	00 
+    cc4b:	4c 03 ac 24 f8 00 00 	add    0xf8(%rsp),%r13
+    cc52:	00 
+    cc53:	48 8b 8c 24 f0 00 00 	mov    0xf0(%rsp),%rcx
+    cc5a:	00 
+    cc5b:	48 01 8c 24 90 00 00 	add    %rcx,0x90(%rsp)
+    cc62:	00 
+    cc63:	48 ff 4c 24 58       	decq   0x58(%rsp)
+    cc68:	0f 85 f2 fe ff ff    	jne    cb60 <_ZL7BM_implRN9benchmark5StateEb+0xa30>
+    cc6e:	e9 41 f8 ff ff       	jmp    c4b4 <_ZL7BM_implRN9benchmark5StateEb+0x384>
+    cc73:	66 66 2e 0f 1f 84 00 	data16 cs nopw 0x0(%rax,%rax,1)
+    cc7a:	00 00 00 00 
+    cc7e:	66 90                	xchg   %ax,%ax
+    cc80:	48 89 c6             	mov    %rax,%rsi
+    cc83:	48 8d 84 24 c0 00 00 	lea    0xc0(%rsp),%rax
+    cc8a:	00 
+    cc8b:	48 89 c7             	mov    %rax,%rdi
+    cc8e:	48 89 44 24 60       	mov    %rax,0x60(%rsp)
+    cc93:	e8 e8 f3 ff ff       	call   c080 <_ZL13make_shuffledl>
+    cc98:	e9 c3 f5 ff ff       	jmp    c260 <_ZL7BM_implRN9benchmark5StateEb+0x130>
+    cc9d:	4c 89 f0             	mov    %r14,%rax
+    cca0:	41 83 e6 01          	and    $0x1,%r14d
+    cca4:	c5 c9 57 f6          	vxorpd %xmm6,%xmm6,%xmm6
+    cca8:	48 d1 e8             	shr    $1,%rax
+    ccab:	4c 09 f0             	or     %r14,%rax
+    ccae:	c4 e1 cb 2a c0       	vcvtsi2sd %rax,%xmm6,%xmm0
+    ccb3:	c5 fb 58 c0          	vaddsd %xmm0,%xmm0,%xmm0
+    ccb7:	e9 48 f8 ff ff       	jmp    c504 <_ZL7BM_implRN9benchmark5StateEb+0x3d4>
+    ccbc:	b8 10 00 00 00       	mov    $0x10,%eax
+    ccc1:	4c 29 e0             	sub    %r12,%rax
+    ccc4:	48 3d ff ff ff 7f    	cmp    $0x7fffffff,%rax
+    ccca:	7f 14                	jg     cce0 <_ZL7BM_implRN9benchmark5StateEb+0xbb0>
+    cccc:	48 3d 00 00 00 80    	cmp    $0xffffffff80000000,%rax
+    ccd2:	0f 8c 20 fd ff ff    	jl     c9f8 <_ZL7BM_implRN9benchmark5StateEb+0x8c8>
+    ccd8:	85 c0                	test   %eax,%eax
+    ccda:	0f 88 18 fd ff ff    	js     c9f8 <_ZL7BM_implRN9benchmark5StateEb+0x8c8>
+    cce0:	48 b8 01 00 00 00 e8 	movabs $0x3e800000001,%rax
+    cce7:	03 00 00 
+    ccea:	4d 89 77 40          	mov    %r14,0x40(%r15)
+    ccee:	49 89 47 48          	mov    %rax,0x48(%r15)
+    ccf2:	e9 59 fd ff ff       	jmp    ca50 <_ZL7BM_implRN9benchmark5StateEb+0x920>
+    ccf7:	48 8b 84 24 98 01 00 	mov    0x198(%rsp),%rax
+    ccfe:	00 
+    ccff:	64 48 2b 04 25 28 00 	sub    %fs:0x28,%rax
+    cd06:	00 00 
+    cd08:	0f 85 26 02 00 00    	jne    cf34 <_ZL7BM_implRN9benchmark5StateEb+0xe04>
+    cd0e:	48 8d 65 d8          	lea    -0x28(%rbp),%rsp
+    cd12:	5b                   	pop    %rbx
+    cd13:	41 5c                	pop    %r12
+    cd15:	41 5d                	pop    %r13
+    cd17:	41 5e                	pop    %r14
+    cd19:	41 5f                	pop    %r15
+    cd1b:	5d                   	pop    %rbp
+    cd1c:	c3                   	ret
+    cd1d:	4d 85 f6             	test   %r14,%r14
+    cd20:	74 23                	je     cd45 <_ZL7BM_implRN9benchmark5StateEb+0xc15>
+    cd22:	4c 89 f2             	mov    %r14,%rdx
+    cd25:	4c 89 e7             	mov    %r12,%rdi
+    cd28:	4c 89 8c 24 98 00 00 	mov    %r9,0x98(%rsp)
+    cd2f:	00 
+    cd30:	e8 7b 9d ff ff       	call   6ab0 <memcmp@plt>
+    cd35:	85 c0                	test   %eax,%eax
+    cd37:	4c 8b 8c 24 98 00 00 	mov    0x98(%rsp),%r9
+    cd3e:	00 
+    cd3f:	0f 85 3a f9 ff ff    	jne    c67f <_ZL7BM_implRN9benchmark5StateEb+0x54f>
+    cd45:	c5 fb 10 7c 24 48    	vmovsd 0x48(%rsp),%xmm7
+    cd4b:	48 b8 00 00 00 00 e8 	movabs $0x3e800000000,%rax
+    cd52:	03 00 00 
+    cd55:	49 89 41 48          	mov    %rax,0x48(%r9)
+    cd59:	c4 c1 7b 11 79 40    	vmovsd %xmm7,0x40(%r9)
+    cd5f:	e9 85 f9 ff ff       	jmp    c6e9 <_ZL7BM_implRN9benchmark5StateEb+0x5b9>
+    cd64:	4d 85 e4             	test   %r12,%r12
+    cd67:	74 13                	je     cd7c <_ZL7BM_implRN9benchmark5StateEb+0xc4c>
+    cd69:	4c 89 e2             	mov    %r12,%rdx
+    cd6c:	48 89 df             	mov    %rbx,%rdi
+    cd6f:	e8 3c 9d ff ff       	call   6ab0 <memcmp@plt>
+    cd74:	85 c0                	test   %eax,%eax
+    cd76:	0f 85 c6 fa ff ff    	jne    c842 <_ZL7BM_implRN9benchmark5StateEb+0x712>
+    cd7c:	c5 fb 10 6c 24 48    	vmovsd 0x48(%rsp),%xmm5
+    cd82:	48 b8 00 00 00 00 e8 	movabs $0x3e800000000,%rax
+    cd89:	03 00 00 
+    cd8c:	49 89 47 48          	mov    %rax,0x48(%r15)
+    cd90:	c4 c1 7b 11 6f 40    	vmovsd %xmm5,0x40(%r15)
+    cd96:	e9 22 fb ff ff       	jmp    c8bd <_ZL7BM_implRN9benchmark5StateEb+0x78d>
+    cd9b:	4d 85 e4             	test   %r12,%r12
+    cd9e:	0f 84 3c ff ff ff    	je     cce0 <_ZL7BM_implRN9benchmark5StateEb+0xbb0>
+    cda4:	4c 89 e2             	mov    %r12,%rdx
+    cda7:	4c 89 ef             	mov    %r13,%rdi
+    cdaa:	e8 01 9d ff ff       	call   6ab0 <memcmp@plt>
+    cdaf:	85 c0                	test   %eax,%eax
+    cdb1:	0f 84 29 ff ff ff    	je     cce0 <_ZL7BM_implRN9benchmark5StateEb+0xbb0>
+    cdb7:	e9 34 fc ff ff       	jmp    c9f0 <_ZL7BM_implRN9benchmark5StateEb+0x8c0>
+    cdbc:	4c 89 b4 24 98 00 00 	mov    %r14,0x98(%rsp)
+    cdc3:	00 
+    cdc4:	4d 8d 7d 40          	lea    0x40(%r13),%r15
+    cdc8:	bb 04 00 00 00       	mov    $0x4,%ebx
+    cdcd:	4d 89 ee             	mov    %r13,%r14
+    cdd0:	eb 3b                	jmp    ce0d <_ZL7BM_implRN9benchmark5StateEb+0xcdd>
+    cdd2:	66 66 2e 0f 1f 84 00 	data16 cs nopw 0x0(%rax,%rax,1)
+    cdd9:	00 00 00 00 
+    cddd:	0f 1f 00             	nopl   (%rax)
+    cde0:	4c 89 e2             	mov    %r12,%rdx
+    cde3:	4c 29 f2             	sub    %r14,%rdx
+    cde6:	48 83 fa 04          	cmp    $0x4,%rdx
+    cdea:	0f 8e 26 01 00 00    	jle    cf16 <_ZL7BM_implRN9benchmark5StateEb+0xde6>
+    cdf0:	48 89 df             	mov    %rbx,%rdi
+    cdf3:	4c 89 f6             	mov    %r14,%rsi
+    cdf6:	48 29 d7             	sub    %rdx,%rdi
+    cdf9:	4c 01 e7             	add    %r12,%rdi
+    cdfc:	e8 5f a2 ff ff       	call   7060 <memmove@plt>
+    ce01:	49 83 c4 04          	add    $0x4,%r12
+    ce05:	45 89 2e             	mov    %r13d,(%r14)
+    ce08:	4d 39 e7             	cmp    %r12,%r15
+    ce0b:	74 41                	je     ce4e <_ZL7BM_implRN9benchmark5StateEb+0xd1e>
+    ce0d:	45 8b 2c 24          	mov    (%r12),%r13d
+    ce11:	41 8b 06             	mov    (%r14),%eax
+    ce14:	4c 89 e1             	mov    %r12,%rcx
+    ce17:	41 39 c5             	cmp    %eax,%r13d
+    ce1a:	7c c4                	jl     cde0 <_ZL7BM_implRN9benchmark5StateEb+0xcb0>
+    ce1c:	41 8b 54 24 fc       	mov    -0x4(%r12),%edx
+    ce21:	49 8d 44 24 fc       	lea    -0x4(%r12),%rax
+    ce26:	41 39 d5             	cmp    %edx,%r13d
+    ce29:	7d 17                	jge    ce42 <_ZL7BM_implRN9benchmark5StateEb+0xd12>
+    ce2b:	0f 1f 44 00 00       	nopl   0x0(%rax,%rax,1)
+    ce30:	89 50 04             	mov    %edx,0x4(%rax)
+    ce33:	48 89 c1             	mov    %rax,%rcx
+    ce36:	8b 50 fc             	mov    -0x4(%rax),%edx
+    ce39:	48 83 e8 04          	sub    $0x4,%rax
+    ce3d:	41 39 d5             	cmp    %edx,%r13d
+    ce40:	7c ee                	jl     ce30 <_ZL7BM_implRN9benchmark5StateEb+0xd00>
+    ce42:	49 83 c4 04          	add    $0x4,%r12
+    ce46:	44 89 29             	mov    %r13d,(%rcx)
+    ce49:	4d 39 e7             	cmp    %r12,%r15
+    ce4c:	75 bf                	jne    ce0d <_ZL7BM_implRN9benchmark5StateEb+0xcdd>
+    ce4e:	4c 8b b4 24 98 00 00 	mov    0x98(%rsp),%r14
+    ce55:	00 
+    ce56:	4d 39 fe             	cmp    %r15,%r14
+    ce59:	0f 84 01 f4 ff ff    	je     c260 <_ZL7BM_implRN9benchmark5StateEb+0x130>
+    ce5f:	41 8b 0f             	mov    (%r15),%ecx
+    ce62:	41 8b 57 fc          	mov    -0x4(%r15),%edx
+    ce66:	49 8d 47 fc          	lea    -0x4(%r15),%rax
+    ce6a:	39 d1                	cmp    %edx,%ecx
+    ce6c:	7d 31                	jge    ce9f <_ZL7BM_implRN9benchmark5StateEb+0xd6f>
+    ce6e:	66 90                	xchg   %ax,%ax
+    ce70:	89 50 04             	mov    %edx,0x4(%rax)
+    ce73:	48 89 c6             	mov    %rax,%rsi
+    ce76:	8b 50 fc             	mov    -0x4(%rax),%edx
+    ce79:	48 83 e8 04          	sub    $0x4,%rax
+    ce7d:	39 d1                	cmp    %edx,%ecx
+    ce7f:	7c ef                	jl     ce70 <_ZL7BM_implRN9benchmark5StateEb+0xd40>
+    ce81:	49 83 c7 04          	add    $0x4,%r15
+    ce85:	89 0e                	mov    %ecx,(%rsi)
+    ce87:	4d 39 fe             	cmp    %r15,%r14
+    ce8a:	0f 84 d0 f3 ff ff    	je     c260 <_ZL7BM_implRN9benchmark5StateEb+0x130>
+    ce90:	41 8b 0f             	mov    (%r15),%ecx
+    ce93:	41 8b 57 fc          	mov    -0x4(%r15),%edx
+    ce97:	49 8d 47 fc          	lea    -0x4(%r15),%rax
+    ce9b:	39 d1                	cmp    %edx,%ecx
+    ce9d:	7c d1                	jl     ce70 <_ZL7BM_implRN9benchmark5StateEb+0xd40>
+    ce9f:	4c 89 fe             	mov    %r15,%rsi
+    cea2:	49 83 c7 04          	add    $0x4,%r15
+    cea6:	89 0e                	mov    %ecx,(%rsi)
+    cea8:	4d 39 fe             	cmp    %r15,%r14
+    ceab:	75 e3                	jne    ce90 <_ZL7BM_implRN9benchmark5StateEb+0xd60>
+    cead:	e9 ae f3 ff ff       	jmp    c260 <_ZL7BM_implRN9benchmark5StateEb+0x130>
+    ceb2:	66 66 2e 0f 1f 84 00 	data16 cs nopw 0x0(%rax,%rax,1)
+    ceb9:	00 00 00 00 
+    cebd:	0f 1f 00             	nopl   (%rax)
+    cec0:	4c 89 e8             	mov    %r13,%rax
+    cec3:	4c 89 ea             	mov    %r13,%rdx
+    cec6:	c5 c1 57 ff          	vxorpd %xmm7,%xmm7,%xmm7
+    ceca:	48 d1 e8             	shr    $1,%rax
+    cecd:	83 e2 01             	and    $0x1,%edx
+    ced0:	48 09 d0             	or     %rdx,%rax
+    ced3:	c4 e1 c3 2a c0       	vcvtsi2sd %rax,%xmm7,%xmm0
+    ced8:	c5 fb 58 c0          	vaddsd %xmm0,%xmm0,%xmm0
+    cedc:	e9 56 f8 ff ff       	jmp    c737 <_ZL7BM_implRN9benchmark5StateEb+0x607>
+    cee1:	48 89 c1             	mov    %rax,%rcx
+    cee4:	48 d1 e8             	shr    $1,%rax
+    cee7:	c5 c9 57 f6          	vxorpd %xmm6,%xmm6,%xmm6
+    ceeb:	83 e1 01             	and    $0x1,%ecx
+    ceee:	48 09 c8             	or     %rcx,%rax
+    cef1:	c4 e1 cb 2a c8       	vcvtsi2sd %rax,%xmm6,%xmm1
+    cef6:	c5 f3 58 c9          	vaddsd %xmm1,%xmm1,%xmm1
+    cefa:	e9 26 f8 ff ff       	jmp    c725 <_ZL7BM_implRN9benchmark5StateEb+0x5f5>
+    ceff:	48 c7 44 24 58 00 00 	movq   $0x0,0x58(%rsp)
+    cf06:	00 00 
+    cf08:	48 c7 44 24 48 00 00 	movq   $0x0,0x48(%rsp)
+    cf0f:	00 00 
+    cf11:	e9 03 f6 ff ff       	jmp    c519 <_ZL7BM_implRN9benchmark5StateEb+0x3e9>
+    cf16:	0f 85 e5 fe ff ff    	jne    ce01 <_ZL7BM_implRN9benchmark5StateEb+0xcd1>
+    cf1c:	41 89 04 24          	mov    %eax,(%r12)
+    cf20:	e9 dc fe ff ff       	jmp    ce01 <_ZL7BM_implRN9benchmark5StateEb+0xcd1>
+    cf25:	0f 85 e6 f2 ff ff    	jne    c211 <_ZL7BM_implRN9benchmark5StateEb+0xe1>
+    cf2b:	41 89 04 24          	mov    %eax,(%r12)
+    cf2f:	e9 dd f2 ff ff       	jmp    c211 <_ZL7BM_implRN9benchmark5StateEb+0xe1>
+    cf34:	e8 b7 9e ff ff       	call   6df0 <__stack_chk_fail@plt>
+    cf39:	f3 0f 1e fa          	endbr64
+    cf3d:	48 89 c3             	mov    %rax,%rbx
+    cf40:	e9 02 a3 ff ff       	jmp    7247 <_ZL7BM_implRN9benchmark5StateEb.cold>
+    cf45:	f3 0f 1e fa          	endbr64
+    cf49:	48 89 c3             	mov    %rax,%rbx
+    cf4c:	e9 f6 a2 ff ff       	jmp    7247 <_ZL7BM_implRN9benchmark5StateEb.cold>
+    cf51:	f3 0f 1e fa          	endbr64
+    cf55:	48 89 c3             	mov    %rax,%rbx
+    cf58:	48 8d 84 24 70 01 00 	lea    0x170(%rsp),%rax
+    cf5f:	00 
+    cf60:	48 89 84 24 98 00 00 	mov    %rax,0x98(%rsp)
+    cf67:	00 
+    cf68:	c5 f8 77             	vzeroupper
+    cf6b:	e9 e7 a2 ff ff       	jmp    7257 <_ZL7BM_implRN9benchmark5StateEb.cold+0x10>
+    cf70:	f3 0f 1e fa          	endbr64
+    cf74:	48 89 c3             	mov    %rax,%rbx
+    cf77:	e9 cb a2 ff ff       	jmp    7247 <_ZL7BM_implRN9benchmark5StateEb.cold>
+    cf7c:	0f 1f 40 00          	nopl   0x0(%rax)
 
