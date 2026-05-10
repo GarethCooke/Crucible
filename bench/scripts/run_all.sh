@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 # run_all.sh — runs every demo in order, emitting JSON for each.
-# Run from the repo root.
+#
+# Prerequisites:
+#   - One-time machine setup complete (see README.md)
+#   - jq and cpuset (provides cset) installed
+#   - Run from the repo root
+
+# Cache sudo credentials up front so per-demo cset calls don't prompt mid-run
+sudo -v
 
 set -euo pipefail
 
