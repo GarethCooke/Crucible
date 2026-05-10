@@ -30,6 +30,13 @@ cleanup() {
 }
 trap cleanup EXIT
 
+echo "==> Setting CPU governor to performance..."
+for c in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
+    echo performance | sudo tee "$c" >/dev/null
+done
+actual=$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null || echo unknown)
+[[ "$actual" == "performance" ]] || { echo "ERROR: governor not performance: $actual" >&2; exit 1; }
+
 echo "==> Building ${SLUG}..."
 cmake -B "${BENCH_ROOT}/build" -S "${BENCH_ROOT}" -DCMAKE_BUILD_TYPE=Release -Wno-dev --log-level=ERROR
 cmake --build "${BENCH_ROOT}/build" --parallel > /dev/null
@@ -37,6 +44,27 @@ cmake --build "${BENCH_ROOT}/build" --parallel > /dev/null
 if [[ ! -x "${BINARY}" ]]; then
     echo "ERROR: binary not found at ${BINARY}" >&2
     exit 1
+fi
+
+# ─── Disassembly guard — fails loudly if the compiler defeats the experiment ──
+if [[ "${SLUG}" == "01-branch-prediction" ]]; then
+    DISASM_OUT="${REPO_ROOT}/site/src/data/perf/01-branch-prediction.disasm.txt"
+    echo "==> Verifying disassembly of sum_threshold (must contain jl/jge, no cmov/SIMD)..."
+    objdump -d "${BINARY}" \
+        | awk '/<_?Z[NL]?13sum_threshold/,/^$/' \
+        > "${DISASM_OUT}" 2>/dev/null || true
+    if ! grep -qE '\b(jl|jge|jb|jae)\b' "${DISASM_OUT}"; then
+        echo "ERROR: no jl/jge/jb/jae found in sum_threshold — branch may have been eliminated." >&2
+        echo "       Check for cmov/SIMD ops:" >&2
+        grep -E '\b(cmov|vpcmpgtd|vpand|vpaddd)\b' "${DISASM_OUT}" >&2 || true
+        exit 1
+    fi
+    if grep -qE '\b(cmov[a-z]*|vpcmpgtd|vpand|vpaddd)\b' "${DISASM_OUT}"; then
+        echo "ERROR: cmov or SIMD ops found in sum_threshold — compiler eliminated the branch." >&2
+        grep -E '\b(cmov[a-z]*|vpcmpgtd|vpand|vpaddd)\b' "${DISASM_OUT}" >&2
+        exit 1
+    fi
+    echo "    OK — branch instructions confirmed. Disassembly saved to ${DISASM_OUT}"
 fi
 
 echo "==> Activating cset shield on cores 4-7..."

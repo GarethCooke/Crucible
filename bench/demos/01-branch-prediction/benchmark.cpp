@@ -39,6 +39,13 @@ static std::vector<int32_t> make_shuffled(int64_t n) {
 // Hot loop — identical code for both variants, only input ordering differs.
 // ---------------------------------------------------------------------------
 
+// Disable the two transformations that defeat this experiment:
+//   - tree-vectorize  -> SIMD masked add (no branch)
+//   - if-conversion   -> scalar cmov     (no branch)
+// Keeping -O3 elsewhere; only this function is constrained.
+__attribute__((noinline, optimize("no-tree-vectorize",
+                                  "no-if-conversion",
+                                  "no-if-conversion2")))
 static int64_t sum_threshold(const std::vector<int32_t>& data) {
     int64_t sum = 0;
     for (auto x : data) {

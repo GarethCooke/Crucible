@@ -4,6 +4,7 @@
 
 #include <array>
 #include <cstdio>
+#include <sched.h>
 #include <string>
 
 namespace crucible {
@@ -31,41 +32,83 @@ inline std::string shell(const char* cmd) {
     return safe;
 }
 
+// Returns the CPU affinity of the calling process as a compact range string,
+// e.g. "4-7" or "0-7".  Reports what the kernel actually scheduled on, not
+// what was requested via CLI flags or environment variables.
+inline std::string cpu_affinity_string() {
+    cpu_set_t set;
+    CPU_ZERO(&set);
+    if (sched_getaffinity(0, sizeof(set), &set) != 0)
+        return "";
+
+    std::string result;
+    int range_start = -1;
+    int range_end   = -1;
+
+    auto flush = [&]() {
+        if (range_start < 0) return;
+        if (!result.empty()) result += ',';
+        result += std::to_string(range_start);
+        if (range_end > range_start) {
+            result += '-';
+            result += std::to_string(range_end);
+        }
+        range_start = range_end = -1;
+    };
+
+    for (int cpu = 0; cpu < CPU_SETSIZE; ++cpu) {
+        if (CPU_ISSET(cpu, &set)) {
+            if (range_start < 0)   range_start = cpu;
+            range_end = cpu;
+        } else {
+            flush();
+        }
+    }
+    flush();
+    return result;
+}
+
 } // namespace detail
 
 // Returns a JSON object string (no surrounding braces) for the "machine" field.
 inline std::string machine_info_json() {
     using detail::shell;
 
-    const auto cpu      = shell("lscpu | grep 'Model name' | sed 's/.*: *//'");
+    // head -1: guard against lscpu printing one line per socket/NUMA node
+    const auto cpu      = shell("lscpu | grep 'Model name' | sed 's/.*: *//' | head -1");
     const auto phys     = shell("lscpu | grep '^Core(s) per socket' | awk '{print $NF}'");
     const auto logical  = shell("lscpu | grep '^CPU(s):' | awk 'NR==1{print $NF}'");
     const auto smt_raw  = shell("lscpu | grep '^Thread(s) per core' | awk '{print $NF}'");
     const auto ram_gb   = shell("awk '/MemTotal/{printf \"%.0f\", $2/1024/1024}' /proc/meminfo");
+    // null when dmidecode is unavailable without sudo; renderer treats null as "not captured"
     const auto ram_mhz  = shell("dmidecode -t 17 2>/dev/null | awk '/Speed:.*MHz/{print $2; exit}'");
     const auto compiler = shell("gcc --version | head -1");
     const auto flags    = shell("echo \"$CXXFLAGS\"");
     const auto kernel   = shell("uname -r");
     const auto governor = shell("cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null || echo unknown");
     const auto turbo_r  = shell("cat /sys/devices/system/cpu/cpufreq/boost 2>/dev/null || echo 1");
-    const auto iso_cpus = shell("grep -o 'isolcpus=[^ ]*' /proc/cmdline | cut -d= -f2");
+    // isolated_cpus: kernel-level isolation (empty unless isolcpus= is on the cmdline)
+    const auto iso_cpus    = shell("grep -o 'isolcpus=[^ ]*' /proc/cmdline | cut -d= -f2");
+    // cpu_affinity: actual cpuset the process is running on (taskset, cset, or unrestricted)
+    const auto cpu_affinity = detail::cpu_affinity_string();
 
     const bool smt_on   = (smt_raw != "1");
     const bool turbo_on = (turbo_r != "0");
 
     return
-        "\"cpu\":\""           + cpu      + "\","
-        "\"cores_physical\":"  + (phys.empty()    ? "0" : phys)    + ","
-        "\"cores_logical\":"   + (logical.empty() ? "0" : logical) + ","
-        "\"smt_enabled\":"     + (smt_on ? "true" : "false")       + ","
-        "\"ram_gb\":"          + (ram_gb.empty()  ? "0" : ram_gb)  + ","
-        "\"ram_speed_mhz\":"   + (ram_mhz.empty() ? "0" : ram_mhz)+ ","
-        "\"compiler\":\""      + compiler  + "\","
+        "\"cpu\":\""            + cpu      + "\","
+        "\"cores_physical\":"   + (phys.empty()    ? "0" : phys)    + ","
+        "\"cores_logical\":"    + (logical.empty() ? "0" : logical) + ","
+        "\"smt_enabled\":"      + (smt_on ? "true" : "false")       + ","
+        "\"ram_gb\":"           + (ram_gb.empty()  ? "0" : ram_gb)  + ","
+        "\"ram_speed_mhz\":"    + (ram_mhz.empty() ? "null" : ram_mhz) + ","
+        "\"compiler\":\""       + compiler  + "\","
         "\"compiler_flags\":\"" + (flags.empty() ? "-O3 -march=native" : flags) + "\","
-        "\"kernel\":\""        + kernel   + "\","
-        "\"governor\":\""      + governor + "\","
-        "\"turbo\":"           + (turbo_on ? "true" : "false")     + ","
-        "\"isolated_cpus\":\"" + iso_cpus + "\"";
+        "\"kernel\":\""         + kernel   + "\","
+        "\"governor\":\""       + governor + "\","
+        "\"turbo\":"            + (turbo_on ? "true" : "false")     + ","
+        "\"isolated_cpus\":\""  + iso_cpus + "\","
+        "\"cpu_affinity\":\""   + cpu_affinity + "\"";
 }
 
 } // namespace crucible

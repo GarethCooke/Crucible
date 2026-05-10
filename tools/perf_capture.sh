@@ -21,6 +21,14 @@
 
 set -euo pipefail
 
+# ─── Ensure CPU governor is set to performance before any measurement ─────────
+echo "==> Setting CPU governor to performance..."
+for c in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
+    echo performance | sudo tee "$c" >/dev/null
+done
+actual=$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null || echo unknown)
+[[ "$actual" == "performance" ]] || { echo "ERROR: governor not performance: $actual" >&2; exit 1; }
+
 BINARY="${1:?Usage: $0 <binary> <placement> <threads> <padded>}"
 PLACEMENT="${2:?}"
 THREADS="${3:?}"
