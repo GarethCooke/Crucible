@@ -20,11 +20,13 @@ inline std::string shell(const char* cmd) {
     ::pclose(fp);
     while (!out.empty() && (out.back() == '\n' || out.back() == '\r'))
         out.pop_back();
-    // Escape double-quotes for JSON embedding
+    // Escape for JSON: strip control chars, escape backslash and double-quote
     std::string safe;
-    for (char c : out) {
-        if (c == '"') safe += "\\\"";
-        else          safe += c;
+    for (unsigned char c : out) {
+        if (c < 0x20 || c == 0x7f) continue;  // drop all ASCII control chars
+        if (c == '\\') { safe += "\\\\"; continue; }
+        if (c == '"')  { safe += "\\\""; continue; }
+        safe += static_cast<char>(c);
     }
     return safe;
 }
