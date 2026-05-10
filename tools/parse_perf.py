@@ -13,11 +13,14 @@ Run once per variant. The script upserts the run entry into the JSON file
 
 import argparse
 import json
-import math
-import re
-import statistics
 import sys
+import os
 from pathlib import Path
+
+# Shared statistics module (bench/scripts/stats_utils.py)
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                '..', 'bench', 'scripts'))
+from stats_utils import percentile
 
 
 # ─── perf stat JSON parsing ──────────────────────────────────────────────────
@@ -53,8 +56,7 @@ def parse_bench_json(path: Path, filter_name: str) -> dict:
 
     # Collect all individual repetitions (not aggregate rows)
     ns_per_iter_values = []
-    items_per_iter = None
-    iters_per_rep = None
+    items_per_sec = None
 
     for bm in data.get("benchmarks", []):
         name = bm.get("name", "")
@@ -69,37 +71,28 @@ def parse_bench_json(path: Path, filter_name: str) -> dict:
             continue
         ns_per_iter_values.append(ns)
 
-        if items_per_iter is None:
-            items_per_iter = bm.get("items_per_second", None)
-            iters_per_rep = bm.get("iterations", None)
+        if items_per_sec is None:
+            items_per_sec = bm.get("items_per_second", None)
 
     if not ns_per_iter_values:
         raise ValueError(f"No benchmark rows matching '{filter_name}' found in {path}")
 
-    # Extract threads/N_ITERS/N_FILLS from the first entry
-    # ns_per_iter = wall_time for one GB outer iteration
-    # items_per_outer_iter reported as items_per_second × real_time_ns×1e-9
-    # ns_per_op = ns_per_iter / items_per_outer_iter
-    # We back-compute items_per_iter from items_per_second × real_time
-    ns_vals = sorted(ns_per_iter_values)
-    n = len(ns_vals)
-    median_ns_iter = statistics.median(ns_vals)
-    min_ns_iter = ns_vals[0]
-    q1 = ns_vals[n // 4]
-    q3 = ns_vals[(3 * n) // 4]
-    iqr_ns_iter = q3 - q1
-
-    # items_per_second from GB is total_items / real_time_seconds for one repetition
-    # We need items_per_outer_iter = items_per_second × real_time_seconds
-    # = items_per_second × ns_per_iter × 1e-9
-    if items_per_iter is None:
+    # ns_per_iter = wall_time for one GB outer iteration.
+    # Since SetItemsProcessed is constant across reps,
+    # items_per_sec × real_time_s = total_items is invariant —
+    # so using items_per_sec from any rep is correct.
+    if items_per_sec is None:
         raise ValueError("items_per_second not found in benchmark output")
 
-    # compute ns_per_op for the median iteration
-    items_per_outer = items_per_iter * (median_ns_iter * 1e-9)
+    ns_vals = sorted(ns_per_iter_values)
+    median_ns_iter = percentile(ns_vals, 50)
+    min_ns_iter    = ns_vals[0]
+    iqr_ns_iter    = percentile(ns_vals, 75) - percentile(ns_vals, 25)
+
+    items_per_outer  = items_per_sec * (median_ns_iter * 1e-9)
     ns_per_op_median = median_ns_iter / items_per_outer if items_per_outer > 0 else 0.0
-    ns_per_op_min    = min_ns_iter / (items_per_iter * (min_ns_iter * 1e-9)) if items_per_iter > 0 else 0.0
-    iqr_ns_op        = iqr_ns_iter / items_per_outer if items_per_outer > 0 else 0.0
+    ns_per_op_min    = min_ns_iter    / (items_per_sec * (min_ns_iter * 1e-9)) if items_per_sec > 0 else 0.0
+    iqr_ns_op        = iqr_ns_iter    / items_per_outer if items_per_outer > 0 else 0.0
     ops_per_sec      = int(1e9 / ns_per_op_median) if ns_per_op_median > 0 else 0
 
     return {
@@ -158,7 +151,8 @@ def main():
     ops_approx = timing["ops_per_sec"] // 10  # ~100ms worth
     counters = derive_counters(perf_counts, ops_approx)
 
-    # Determine cores_used
+    # Core assignments — SYNC: must match intra_ccx_cores/cross_ccx_cores in
+    # bench/demos/02-false-sharing/false_sharing_pnl.cpp
     if placement == "intra-ccx":
         cores_map = {1: [4], 2: [4, 5], 4: [4, 5, 6, 7]}
     else:

@@ -34,5 +34,8 @@ add_library(crucible_common INTERFACE)
 target_include_directories(crucible_common INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/common)
 target_link_libraries(crucible_common INTERFACE benchmark::benchmark)
 
+enable_testing()
+
+add_subdirectory(tests)
 add_subdirectory(demos/01-branch-prediction)
 add_subdirectory(demos/02-false-sharing)

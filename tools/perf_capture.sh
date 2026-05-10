@@ -21,13 +21,11 @@
 
 set -euo pipefail
 
-# ─── Ensure CPU governor is set to performance before any measurement ─────────
-echo "==> Setting CPU governor to performance..."
-for c in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
-    echo performance | sudo tee "$c" >/dev/null
-done
-actual=$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null || echo unknown)
-[[ "$actual" == "performance" ]] || { echo "ERROR: governor not performance: $actual" >&2; exit 1; }
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=bench/scripts/lib.sh
+source "${SCRIPT_DIR}/../bench/scripts/lib.sh"
+
+set_governor_performance
 
 BINARY="${1:?Usage: $0 <binary> <placement> <threads> <padded>}"
 PLACEMENT="${2:?}"
@@ -85,7 +83,7 @@ case "$SHIELD_CPUS" in
     4-7)          IRQ_MASK="0f" ;;   # only CPUs 0-3 handle IRQs
     0,4)          IRQ_MASK="ee" ;;
     0,1,4,5)      IRQ_MASK="cc" ;;
-    0-7)          IRQ_MASK="00" ;;   # no safe IRQ CPUs; accept noise
+    0-7)          IRQ_MASK="ff" ;;   # all 8 CPUs shielded — leave mask unchanged to avoid routing IRQs into the workload
 esac
 for affinity_file in /proc/irq/*/smp_affinity; do
     echo "$IRQ_MASK" | sudo tee "$affinity_file" > /dev/null 2>&1 || true

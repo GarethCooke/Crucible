@@ -45,7 +45,7 @@ public:
         fd_instrs_     = open_hw(PERF_COUNT_HW_INSTRUCTIONS);
         fd_cycles_     = open_hw(PERF_COUNT_HW_CPU_CYCLES);
 
-        if (fd_branches_ < 0)
+        if (fd_branches_ < 0 || fd_misses_ < 0 || fd_instrs_ < 0 || fd_cycles_ < 0)
             throw std::runtime_error(
                 "perf_event_open failed — run: sysctl kernel.perf_event_paranoid=1");
     }
@@ -111,6 +111,9 @@ public:
         double ipc() const noexcept { return 0.0; }
         Counts& operator+=(const Counts&) noexcept { return *this; }
     };
+    PerfCounters(const PerfCounters&)            = delete;
+    PerfCounters& operator=(const PerfCounters&) = delete;
+    PerfCounters() = default;
     void start() noexcept {}
     void stop()  noexcept {}
     Counts read() const noexcept { return {}; }

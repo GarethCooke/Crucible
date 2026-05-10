@@ -83,6 +83,8 @@ inline std::string machine_info_json() {
     // null when dmidecode is unavailable without sudo; renderer treats null as "not captured"
     const auto ram_mhz  = shell("dmidecode -t 17 2>/dev/null | awk '/Speed:.*MHz/{print $2; exit}'");
     const auto compiler = shell("gcc --version | head -1");
+    // $CXXFLAGS reflects the shell environment at process startup, not the
+    // CMake-generated flags.  If unset, the renderer falls back to -O3 -march=native.
     const auto flags    = shell("echo \"$CXXFLAGS\"");
     const auto kernel   = shell("uname -r");
     const auto governor = shell("cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null || echo unknown");

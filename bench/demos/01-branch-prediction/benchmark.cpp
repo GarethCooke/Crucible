@@ -58,9 +58,9 @@ static int64_t sum_threshold(const std::vector<int32_t>& data) {
 // Benchmarks
 // ---------------------------------------------------------------------------
 
-static void BM_Sorted(benchmark::State& state) {
+static void BM_impl(benchmark::State& state, bool sorted) {
     const int64_t n = state.range(0);
-    const auto data = make_sorted(n);
+    const auto data = sorted ? make_sorted(n) : make_shuffled(n);
 
     crucible::PerfCounters perf;
     crucible::PerfCounters::Counts total{};
@@ -79,26 +79,8 @@ static void BM_Sorted(benchmark::State& state) {
     state.SetItemsProcessed(ops);
 }
 
-static void BM_Unsorted(benchmark::State& state) {
-    const int64_t n = state.range(0);
-    const auto data = make_shuffled(n);
-
-    crucible::PerfCounters perf;
-    crucible::PerfCounters::Counts total{};
-
-    for (auto _ : state) {
-        perf.start();
-        auto result = sum_threshold(data);
-        benchmark::DoNotOptimize(result);
-        perf.stop();
-        total += perf.read();
-    }
-
-    const int64_t ops = static_cast<int64_t>(state.iterations()) * n;
-    state.counters["branch_misses_per_op"] = total.branch_misses_per_op(ops);
-    state.counters["ipc"]                  = total.ipc();
-    state.SetItemsProcessed(ops);
-}
+static void BM_Sorted(benchmark::State& state)   { BM_impl(state, true);  }
+static void BM_Unsorted(benchmark::State& state) { BM_impl(state, false); }
 
 // Run at six sizes. --benchmark_repetitions=20 is set in run_one.sh.
 static void sizes(benchmark::internal::Benchmark* b) {

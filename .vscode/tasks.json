@@ -1,0 +1,41 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Test: Python unit tests",
+      "type": "shell",
+      "command": "python3 -m unittest bench/scripts/test_stats_utils.py tools/test_parse_perf.py -v",
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "test",
+      "presentation": { "reveal": "always", "panel": "shared", "clear": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "Test: C++ stats (build)",
+      "type": "shell",
+      "command": "c++ -std=c++20 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX14.2.sdk -I bench/common bench/tests/test_stats.cpp -o /tmp/crucible_test_stats",
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "build",
+      "presentation": { "reveal": "silent", "panel": "shared" },
+      "problemMatcher": ["$gcc"]
+    },
+    {
+      "label": "Test: C++ stats (run)",
+      "type": "shell",
+      "command": "/tmp/crucible_test_stats",
+      "dependsOn": "Test: C++ stats (build)",
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "test",
+      "presentation": { "reveal": "always", "panel": "shared", "clear": false },
+      "problemMatcher": []
+    },
+    {
+      "label": "Test: all unit tests",
+      "dependsOn": ["Test: Python unit tests", "Test: C++ stats (run)"],
+      "dependsOrder": "sequence",
+      "group": { "kind": "test", "isDefault": true },
+      "presentation": { "reveal": "always", "panel": "shared" },
+      "problemMatcher": []
+    }
+  ]
+}

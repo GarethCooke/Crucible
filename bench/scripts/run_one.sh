@@ -19,6 +19,9 @@ OUT_JSON="${REPO_ROOT}/site/src/data/perf/${SLUG}.json"
 BINARY_NAME="bench_${SLUG//-/_}"
 BINARY="${BENCH_ROOT}/build/demos/${SLUG}/${BINARY_NAME}"
 
+# shellcheck source=bench/scripts/lib.sh
+source "${BENCH_ROOT}/scripts/lib.sh"
+
 # Cleanup runs on any exit path (success, error, or interrupt)
 TMPFILE=""
 SHIELD_ACTIVE=0
@@ -30,12 +33,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-echo "==> Setting CPU governor to performance..."
-for c in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
-    echo performance | sudo tee "$c" >/dev/null
-done
-actual=$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null || echo unknown)
-[[ "$actual" == "performance" ]] || { echo "ERROR: governor not performance: $actual" >&2; exit 1; }
+set_governor_performance
 
 echo "==> Building ${SLUG}..."
 cmake -B "${BENCH_ROOT}/build" -S "${BENCH_ROOT}" -DCMAKE_BUILD_TYPE=Release -Wno-dev --log-level=ERROR
@@ -68,7 +66,7 @@ if [[ "${SLUG}" == "01-branch-prediction" ]]; then
 fi
 
 echo "==> Activating cset shield on cores 4-7..."
-sudo cset shield --cpu=4-7 > /dev/null
+sudo cset shield --cpu=4-7 --kthread=on > /dev/null
 SHIELD_ACTIVE=1
 
 echo "==> Collecting machine info..."

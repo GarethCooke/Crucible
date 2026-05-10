@@ -1,69 +1,77 @@
-import json, sys, os
+"""Parse Google Benchmark JSON and emit a schema-conformant site data file.
 
-bench_file, slug, captured_at, machine_json, out_path = sys.argv[1:]
+Usage (called by run_one.sh):
+    python3 bench/scripts/assemble_results.py \\
+        <bench_file> <slug> <captured_at> <machine_json> <out_path>
+"""
 
-with open(bench_file) as f:
-    raw = json.load(f)
+import argparse
+import json
+import os
+import sys
+from pathlib import Path
 
-machine = json.loads(machine_json)
+from stats_utils import bench_stats
 
-def stats(values):
-    s = sorted(values)
-    n = len(s)
-    if n == 0:
-        return {"median": 0, "min": 0, "p99": 0, "iqr": 0}
-    def pct(p):
-        idx = p / 100 * (n - 1)
-        lo  = int(idx)
-        frac = idx - lo
-        if lo + 1 >= n: return s[-1]
-        return s[lo] * (1 - frac) + s[lo + 1] * frac
-    return {
-        "median": round(pct(50), 4),
-        "min":    round(s[0],    4),
-        "p99":    round(pct(99), 4),
-        "iqr":    round(pct(75) - pct(25), 4),
+
+def main() -> None:
+    ap = argparse.ArgumentParser(description=__doc__,
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("bench_file",   type=Path, help="Google Benchmark JSON output")
+    ap.add_argument("slug",                    help="Demo slug, e.g. 01-branch-prediction")
+    ap.add_argument("captured_at",             help="ISO-8601 capture timestamp")
+    ap.add_argument("machine_json",            help="JSON string from --machine-info")
+    ap.add_argument("out_path",     type=Path, help="Destination site data JSON file")
+    args = ap.parse_args()
+
+    with open(args.bench_file) as f:
+        raw = json.load(f)
+
+    machine = json.loads(args.machine_json)
+
+    groups: dict = {}
+    for b in raw.get("benchmarks", []):
+        if b.get("run_type") != "iteration":
+            continue
+        name = b["name"]
+        parts = name.split("/")
+        variant_raw = parts[0].removeprefix("BM_").lower()
+        n = int(parts[1]) if len(parts) > 1 else 0
+        key = (variant_raw, n)
+        groups.setdefault(key, []).append(b)
+
+    runs = []
+    for (variant, n), reps in sorted(groups.items(), key=lambda x: (x[0][0], x[0][1])):
+        times = [r["real_time"] for r in reps]
+        ops_s = [r.get("items_per_second", 0) for r in reps]
+        bm    = [r.get("branch_misses_per_op", 0) for r in reps]
+        ipc   = [r.get("ipc", 0) for r in reps]
+
+        runs.append({
+            "variant":                variant,
+            "n":                      n,
+            "iterations":             reps[0].get("iterations", 0),
+            "ns_per_op":              bench_stats(times),
+            "ops_per_sec":            round(sorted(ops_s)[len(ops_s) // 2]),
+            "branch_misses_per_op":   round(sorted(bm)[len(bm) // 2], 4),
+            "instructions_per_cycle": round(sorted(ipc)[len(ipc) // 2], 3),
+        })
+
+    output = {
+        "demo":        args.slug,
+        "title":       "Sorted vs unsorted branch prediction",
+        "machine":     machine,
+        "captured_at": args.captured_at,
+        "runs":        runs,
+        "notes":       "Branch predictor learns sorted patterns; unsorted forces ~50% mispredicts.",
     }
 
-groups = {}
-for b in raw.get("benchmarks", []):
-    if b.get("run_type") != "iteration":
-        continue
-    name = b["name"]
-    parts = name.split("/")
-    variant_raw = parts[0].removeprefix("BM_").lower()
-    n = int(parts[1]) if len(parts) > 1 else 0
-    key = (variant_raw, n)
-    groups.setdefault(key, []).append(b)
+    os.makedirs(os.path.dirname(args.out_path), exist_ok=True)
+    with open(args.out_path, "w") as f:
+        json.dump(output, f, indent=2)
 
-runs = []
-for (variant, n), reps in sorted(groups.items(), key=lambda x: (x[0][0], x[0][1])):
-    times = [r["real_time"] for r in reps]
-    ops_s = [r.get("items_per_second", 0) for r in reps]
-    bm    = [r.get("branch_misses_per_op", 0) for r in reps]
-    ipc   = [r.get("ipc", 0) for r in reps]
+    print(f"Written: {args.out_path}")
 
-    runs.append({
-        "variant":                variant,
-        "n":                      n,
-        "iterations":             reps[0].get("iterations", 0),
-        "ns_per_op":              stats(times),
-        "ops_per_sec":            round(sorted(ops_s)[len(ops_s) // 2]),
-        "branch_misses_per_op":   round(sorted(bm)[len(bm) // 2], 4),
-        "instructions_per_cycle": round(sorted(ipc)[len(ipc) // 2], 3),
-    })
 
-output = {
-    "demo":        slug,
-    "title":       "Sorted vs unsorted branch prediction",
-    "machine":     machine,
-    "captured_at": captured_at,
-    "runs":        runs,
-    "notes":       "Branch predictor learns sorted patterns; unsorted forces ~50% mispredicts.",
-}
-
-os.makedirs(os.path.dirname(out_path), exist_ok=True)
-with open(out_path, "w") as f:
-    json.dump(output, f, indent=2)
-
-print(f"Written: {out_path}")
+if __name__ == "__main__":
+    main()

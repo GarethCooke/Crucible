@@ -104,6 +104,7 @@ static void pin_thread(std::thread& t, int cpu) {
 // Reference machine: SMT off → 8 logical CPUs (0–7), one per physical core.
 // CCX0 = cores 0–3, CCX1 = cores 4–7 (verified via lscpu --extended L3 groups).
 // intra-CCX runs use CCX1 by convention (the typical shielded set).
+// SYNC: tools/parse_perf.py cores_map must match these assignments.
 
 static std::vector<int> intra_ccx_cores(int n) {
     switch (n) {
@@ -208,37 +209,23 @@ int main(int argc, char** argv) {
     benchmark::Initialize(&argc, argv);
     if (benchmark::ReportUnrecognizedArguments(argc, argv)) return 1;
 
-    // intra-CCX: 1, 2, 4 threads × unpadded/padded
-    for (bool padded : {false, true}) {
-        for (int t : {1, 2, 4}) {
-            const std::string name =
-                std::string("IntraCCX/") + std::to_string(t) + "t/"
-                + (padded ? "padded" : "unpadded");
-            auto cores = intra_ccx_cores(t);
-            benchmark::RegisterBenchmark(name.c_str(),
-                [padded, cores](benchmark::State& s) {
-                    run_benchmark(s, static_cast<int>(cores.size()), padded, cores);
-                })
-                ->Repetitions(11)
-                ->Unit(benchmark::kNanosecond);
-        }
-    }
+    auto register_group = [](const char* prefix,
+                              std::initializer_list<int> thread_counts,
+                              std::vector<int> (*core_fn)(int)) {
+        for (bool padded : {false, true})
+            for (int t : thread_counts) {
+                auto cores = core_fn(t);
+                std::string name = std::string(prefix) + "/" + std::to_string(t)
+                                 + "t/" + (padded ? "padded" : "unpadded");
+                benchmark::RegisterBenchmark(name.c_str(),
+                    [padded, cores](benchmark::State& s) {
+                        run_benchmark(s, static_cast<int>(cores.size()), padded, cores);
+                    })->Repetitions(11)->Unit(benchmark::kNanosecond);
+            }
+    };
 
-    // cross-CCX: 2, 4, 8 threads × unpadded/padded
-    for (bool padded : {false, true}) {
-        for (int t : {2, 4, 8}) {
-            const std::string name =
-                std::string("CrossCCX/") + std::to_string(t) + "t/"
-                + (padded ? "padded" : "unpadded");
-            auto cores = cross_ccx_cores(t);
-            benchmark::RegisterBenchmark(name.c_str(),
-                [padded, cores](benchmark::State& s) {
-                    run_benchmark(s, static_cast<int>(cores.size()), padded, cores);
-                })
-                ->Repetitions(11)
-                ->Unit(benchmark::kNanosecond);
-        }
-    }
+    register_group("IntraCCX", {1, 2, 4}, intra_ccx_cores);
+    register_group("CrossCCX", {2, 4, 8}, cross_ccx_cores);
 
     benchmark::RunSpecifiedBenchmarks();
     benchmark::Shutdown();
