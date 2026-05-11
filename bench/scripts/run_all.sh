@@ -16,6 +16,7 @@ SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEMOS=(
     01-branch-prediction
     02-false-sharing
+    03-simd-blackscholes
 )
 
 for slug in "${DEMOS[@]}"; do
