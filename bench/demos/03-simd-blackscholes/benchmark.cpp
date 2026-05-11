@@ -26,12 +26,12 @@ extern void price_options_avx2_fma(
 // alignas(32): SIMD loads require 32-byte alignment; harness aborts on violation.
 static constexpr int64_t MAX_N = 1 << 20; // 1M options
 
-static alignas(32) float gS    [MAX_N];
-static alignas(32) float gK    [MAX_N];
-static alignas(32) float gT    [MAX_N];
-static alignas(32) float gR    [MAX_N];
-static alignas(32) float gSigma[MAX_N];
-static alignas(32) float gC    [MAX_N]; // shared output scratch
+alignas(32) static float gS    [MAX_N];
+alignas(32) static float gK    [MAX_N];
+alignas(32) static float gT    [MAX_N];
+alignas(32) static float gR    [MAX_N];
+alignas(32) static float gSigma[MAX_N];
+alignas(32) static float gC    [MAX_N]; // shared output scratch
 
 // Per-variant max absolute error against scalar_libm (computed once at start).
 static float g_max_abs_err[4] = {};
@@ -76,7 +76,7 @@ static void check_alignment() {
 // ─── Correctness check ───────────────────────────────────────────────────────
 // Computes per-variant max|C_variant - C_libm| over the full 1M input set.
 // Results cached in g_max_abs_err[].
-static alignas(32) float gC_ref[MAX_N];
+alignas(32) static float gC_ref[MAX_N];
 
 static void compute_errors() {
     price_options_scalar_libm(gS, gK, gT, gR, gSigma, gC_ref, MAX_N);

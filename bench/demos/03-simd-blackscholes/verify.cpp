@@ -29,13 +29,13 @@ extern void price_options_avx2_fma(
 
 static constexpr int64_t N = 1 << 20;
 
-static alignas(32) float gS    [N];
-static alignas(32) float gK    [N];
-static alignas(32) float gT    [N];
-static alignas(32) float gR    [N];
-static alignas(32) float gSigma[N];
-static alignas(32) float gRef  [N];
-static alignas(32) float gOut  [N];
+alignas(32) static float gS    [N];
+alignas(32) static float gK    [N];
+alignas(32) static float gT    [N];
+alignas(32) static float gR    [N];
+alignas(32) static float gSigma[N];
+alignas(32) static float gRef  [N];
+alignas(32) static float gOut  [N];
 
 static void gen_inputs() {
     std::mt19937 rng(0xCAFEBABE);
