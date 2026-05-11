@@ -51,20 +51,19 @@ add_executable(verify_03_simd_blackscholes verify.cpp
 target_link_libraries(verify_03_simd_blackscholes PRIVATE crucible_common)
 target_include_directories(verify_03_simd_blackscholes PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
-# ─── ASM dump: post-build step on each OBJECT library ────────────────────────
-# Writes asm/*.s into the source tree after each recompile.
-# dump_asm.sh is a no-op if objdump is not found (non-Linux builds).
-foreach(variant bs_scalar_libm bs_scalar_poly bs_sse2 bs_avx2_fma)
-    add_custom_command(TARGET ${variant} POST_BUILD
-        COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/dump_asm.sh" "${CMAKE_BINARY_DIR}"
-        COMMENT "Dumping asm/${variant} disassembly"
-        VERBATIM)
-endforeach()
-
-# ─── Correctness check: post-build on Linux only ─────────────────────────────
-# Runs verify_03_simd_blackscholes automatically after each rebuild on Linux.
-# Skipped on macOS/Windows where AVX2 binaries may not execute.
+# ─── Post-build steps on the benchmark executable (Linux only) ───────────────
+# OBJECT libraries cannot have POST_BUILD commands in CMake; attach to the
+# executable instead. By link time all four .o files are already on disk.
+#
+# Order: asm dump first, then correctness check (so a failed verify still
+# leaves fresh .s files for inspection).
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    # 1. Dump disassembly for all four variants into asm/*.s
+    add_custom_command(TARGET bench_03_simd_blackscholes POST_BUILD
+        COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/dump_asm.sh" "${CMAKE_BINARY_DIR}"
+        COMMENT "Dumping asm/*.s disassembly"
+        VERBATIM)
+    # 2. Run correctness check — build fails loudly if error > 1e-4
     add_dependencies(bench_03_simd_blackscholes verify_03_simd_blackscholes)
     add_custom_command(TARGET bench_03_simd_blackscholes POST_BUILD
         COMMAND $<TARGET_FILE:verify_03_simd_blackscholes>
