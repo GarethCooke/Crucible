@@ -61,6 +61,17 @@ foreach(variant bs_scalar_libm bs_scalar_poly bs_sse2 bs_avx2_fma)
         VERBATIM)
 endforeach()
 
+# ─── Correctness check: post-build on Linux only ─────────────────────────────
+# Runs verify_03_simd_blackscholes automatically after each rebuild on Linux.
+# Skipped on macOS/Windows where AVX2 binaries may not execute.
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    add_dependencies(bench_03_simd_blackscholes verify_03_simd_blackscholes)
+    add_custom_command(TARGET bench_03_simd_blackscholes POST_BUILD
+        COMMAND $<TARGET_FILE:verify_03_simd_blackscholes>
+        COMMENT "Running correctness check (verify_03_simd_blackscholes)..."
+        VERBATIM)
+endif()
+
 # ─── Convenience target matching acceptance-criteria name ─────────────────────
 add_custom_target(03-simd-blackscholes
     DEPENDS bench_03_simd_blackscholes verify_03_simd_blackscholes)

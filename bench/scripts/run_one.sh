@@ -6,7 +6,7 @@
 # Prerequisites:
 #   - One-time machine setup complete (see README.md)
 #   - jq and cpuset (provides cset) installed
-#   - Sudo cached: run `sudo -v` before invocation to avoid mid-script prompts
+#   - Sudo available: script calls `sudo -v` at startup to refresh the cache
 #   - Run from the repo root
 
 set -euo pipefail
@@ -34,6 +34,8 @@ cleanup() {
     fi
 }
 trap cleanup EXIT
+
+sudo -v  # refresh sudo cache — cset/perf calls throughout this script need it
 
 set_governor_performance
 
