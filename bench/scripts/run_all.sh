@@ -15,9 +15,7 @@ SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 DEMOS=(
     01-branch-prediction
-    # 02-false-sharing uses a separate perf-stat pipeline (tools/perf_capture.sh +
-    # tools/parse_perf.py) that captures cache-miss counters alongside timing.
-    # It is not run here; see tools/perf_capture.sh for usage.
+    02-false-sharing
 )
 
 for slug in "${DEMOS[@]}"; do

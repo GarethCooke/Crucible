@@ -24,9 +24,11 @@ source "${BENCH_ROOT}/scripts/lib.sh"
 
 # Cleanup runs on any exit path (success, error, or interrupt)
 TMPFILE=""
+WDIR=""
 SHIELD_ACTIVE=0
 cleanup() {
     [[ -n "${TMPFILE}" ]] && rm -f "${TMPFILE}"
+    [[ -n "${WDIR}"    ]] && rm -rf "${WDIR}"
     if [[ "${SHIELD_ACTIVE}" -eq 1 ]]; then
         sudo cset shield --reset > /dev/null 2>&1 || true
     fi
@@ -38,6 +40,59 @@ set_governor_performance
 echo "==> Building ${SLUG}..."
 cmake -B "${BENCH_ROOT}/build" -S "${BENCH_ROOT}" -DCMAKE_BUILD_TYPE=Release -Wno-dev --log-level=ERROR
 cmake --build "${BENCH_ROOT}/build" --parallel > /dev/null
+
+# ─── Demo 02: false-sharing — separate perf-stat pipeline ────────────────────
+# Uses tools/perf_capture.sh (handles its own cset shield per variant) and
+# tools/parse_perf.py to fold perf stat + Google Benchmark JSON into the site
+# data file. Does not use the cset / assemble_results.py path below.
+if [[ "${SLUG}" == "02-false-sharing" ]]; then
+    FS_BINARY="${BENCH_ROOT}/build/demos/02-false-sharing/bench_02_false_sharing_pnl"
+    OUT_JSON="${REPO_ROOT}/site/src/data/perf/false-sharing-pnl.json"
+
+    if [[ ! -x "${FS_BINARY}" ]]; then
+        echo "ERROR: binary not found: ${FS_BINARY}" >&2; exit 1
+    fi
+
+    echo "==> Verifying disassembly (movsd load+store pair in worker_fn)..."
+    DISASM_OUT=$(objdump -d "${FS_BINARY}" | grep -A 40 '<_ZL9worker_fn' || true)
+    MOVSD_COUNT=$(echo "${DISASM_OUT}" | grep -c 'movsd' || true)
+    if [[ "${MOVSD_COUNT}" -lt 2 ]]; then
+        echo "ERROR: expected ≥2 movsd in worker_fn (volatile load + store); found ${MOVSD_COUNT}." >&2
+        echo "       See escalation options in false_sharing_pnl.cpp header." >&2
+        exit 1
+    fi
+    echo "    OK — ${MOVSD_COUNT} movsd confirmed."
+
+    WDIR=$(mktemp -d /tmp/crucible_fs_XXXXXX)
+
+    run_variant() {
+        local placement="$1" threads="$2" padded="$3"
+        local padded_str="unpadded"; [[ "$padded" -eq 1 ]] && padded_str="padded"
+        local slug_v="${placement}_${threads}t_${padded_str}"
+        echo "==> ${placement}/${threads}t/${padded_str}"
+        (cd "${WDIR}" && "${REPO_ROOT}/tools/perf_capture.sh" \
+            "${FS_BINARY}" "${placement}" "${threads}" "${padded}")
+        python3 "${REPO_ROOT}/tools/parse_perf.py" \
+            --perf  "${WDIR}/${slug_v}.perf.json" \
+            --bench "${WDIR}/${slug_v}.bench.json" \
+            --out   "${OUT_JSON}" \
+            --placement "${placement}" --threads "${threads}" --padded "${padded}"
+    }
+
+    for t in 1 2 4; do
+        for p in 0 1; do run_variant "intra-ccx" "${t}" "${p}"; done
+    done
+    for t in 2 4 8; do
+        for p in 0 1; do run_variant "cross-ccx" "${t}" "${p}"; done
+    done
+
+    echo "==> Running sanity checks..."
+    python3 "${REPO_ROOT}/tools/sanity_check.py" "${OUT_JSON}"
+
+    echo "==> Done: ${OUT_JSON}"
+    exit 0
+fi
+# ─────────────────────────────────────────────────────────────────────────────
 
 if [[ ! -x "${BINARY}" ]]; then
     echo "ERROR: binary not found at ${BINARY}" >&2

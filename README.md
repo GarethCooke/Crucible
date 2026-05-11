@@ -164,6 +164,7 @@ Run a single demo and emit JSON to `site/src/data/perf/`:
 
 ```bash
 ./bench/scripts/run_one.sh 01-branch-prediction
+./bench/scripts/run_one.sh 02-false-sharing
 ```
 
 Run all demos:
@@ -172,7 +173,17 @@ Run all demos:
 ./bench/scripts/run_all.sh
 ```
 
-Both scripts require per-boot setup applied and (on Desktop edition) the runtime discipline above. The wrappers handle `cset shield` setup, IRQ affinity steering (`/proc/irq/*/smp_affinity`), `perf stat` capture, and JSON emission; the shielded core set used per run is recorded in `machine.isolated_cores` of the demo's JSON. JSON output is committed to the repo alongside the site so deploys are purely static.
+Both scripts require per-boot setup applied and (on Desktop edition) the runtime discipline above.
+
+### Demo-specific notes
+
+**Demo 01 — branch prediction** uses `cset shield` + a single benchmark run + `assemble_results.py`. IRQ affinity is steered by the wrapper; the shielded core set is recorded in `machine.isolated_cores` of the output JSON.
+
+**Demo 02 — false sharing** uses a different pipeline: `tools/perf_capture.sh` + `tools/parse_perf.py`, invoked per variant (12 total: 2 topologies × 3 thread counts × 2 padding options). `perf_capture.sh` handles its own `cset shield` setup and IRQ steering per invocation; `parse_perf.py` upserts each variant into `site/src/data/perf/false-sharing-pnl.json`. A post-run sanity check (`tools/sanity_check.py`) asserts the expected false-sharing effect ratios before exit.
+
+This demo requires `kernel.perf_event_paranoid ≤ 1` (set in [Persistent setup](#persistent-setup-one-time) above) and `linux-tools-$(uname -r)` for `perf stat`.
+
+JSON output is committed to the repo alongside the site so deploys are purely static.
 
 ---
 
