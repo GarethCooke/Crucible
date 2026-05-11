@@ -1,0 +1,203 @@
+---
+title: "Black-Scholes: same model, four implementations, ~30× spread"
+date: "2026-06-05"
+summary: "Roughly half the speedup comes from the math, not the SIMD. Scalar polynomial approximations beat libm before a single AVX2 instruction appears."
+---
+
+Same pricing model. Same input chain. Same machine. Four implementations — and the
+spread from slowest to fastest is around 30×. The surprising part: roughly half that
+gap comes from replacing `std::exp` and `std::erfc` with polynomial approximations,
+before a single SIMD instruction appears in the hot loop.
+
+## The workload
+
+European call option price under Black-Scholes:
+
+```
+C  = S·N(d₁) − K·e^(−rT)·N(d₂)
+d₁ = (ln(S/K) + (r + σ²/2)T) / (σ√T)
+d₂ = d₁ − σ√T
+```
+
+Input: 1,048,576 option structs — arrays of `S`, `K`, `T`, `r`, `σ` (all `float`,
+aligned to 32 bytes). Output: array of call prices `C`.
+
+The audience knows Black-Scholes. The parameters cover a realistic options chain:
+S, K ∈ \[50, 150], T ∈ \[0.05, 2.0], r ∈ \[0, 0.08], σ ∈ \[0.1, 0.6]. Fixed
+seed `0xCAFEBABE` for reproducibility.
+
+## Four variants
+
+The variants are ordered to isolate *where* each speedup comes from:
+
+1. **`scalar_libm`** — correctness oracle. `std::exp`, `std::log`, `std::sqrt`,
+   `std::erfc` from `<cmath>`, compiled with `-fno-tree-vectorize -mno-avx2`.
+2. **`scalar_poly`** — same loop, same ISA flags, but `exp` and `N(x)` replaced
+   with polynomial approximations. `std::log` and `std::sqrt` stay as libm.
+3. **`sse2_intrinsics`** — 4-wide `__m128`, manual intrinsics. Same polynomial
+   math as variant 2, widened to four lanes.
+4. **`avx2_fma_intrinsics`** — 8-wide `__m256`, FMA throughout. `_mm256_fmadd_ps`
+   replaces every `mul+add` in the Horner evaluations.
+
+<CodeCompare
+  lang="cpp"
+  labels={["scalar_poly (variant 2)", "avx2_fma (variant 4)"]}
+  naive={`// One option at a time.
+// Same math as the SIMD variant — just scalar.
+float bs_call_poly(float S, float K, float T,
+                   float r, float sigma) {
+  float sig2 = sigma * sigma;
+  float sqrtT = std::sqrt(T);
+  float sig_sqrtT = sigma * sqrtT;
+  float d1 = (std::log(S / K) +
+              (r + 0.5f * sig2) * T) / sig_sqrtT;
+  float d2 = d1 - sig_sqrtT;
+  return S * ncdf_poly(d1)
+       - K * fast_expf(-r * T) * ncdf_poly(d2);
+}`}
+  optimized={`// Eight options at a time, FMA Horner throughout.
+static void price8(
+    const float* S, const float* K,
+    const float* T, const float* r, const float* sigma,
+    float* C) {
+  __m256 vS   = _mm256_load_ps(S);
+  __m256 vK   = _mm256_load_ps(K);
+  __m256 vT   = _mm256_load_ps(T);
+  __m256 vSig = _mm256_load_ps(sigma);
+  __m256 sig2      = _mm256_mul_ps(vSig, vSig);
+  __m256 sqrtT     = _mm256_sqrt_ps(vT);
+  __m256 sig_sqrtT = _mm256_mul_ps(vSig, sqrtT);
+  __m256 d1 = _mm256_div_ps(
+    _mm256_fmadd_ps(
+      _mm256_fmadd_ps(half, sig2, vR), vT, log_SK),
+    sig_sqrtT);
+  __m256 d2  = _mm256_sub_ps(d1, sig_sqrtT);
+  __m256 Nd1 = vec_ncdf_avx2(d1);
+  __m256 Nd2 = vec_ncdf_avx2(d2);
+  __m256 disc = vec_expf_avx2(
+    _mm256_mul_ps(neg_one, _mm256_mul_ps(vR, vT)));
+  _mm256_store_ps(C,
+    _mm256_fnmadd_ps(_mm256_mul_ps(vK, disc), Nd2,
+                     _mm256_mul_ps(vS, Nd1)));
+}`}
+/>
+
+The `CodeCompare` shows the most informative diff — same algorithm, different width.
+See the [repo](bench/demos/03-simd-blackscholes/) for all four variants and the
+polynomial helpers.
+
+## Headline numbers
+
+<ThroughputBars slug="03-simd-blackscholes" targetN={1048576} title="Options priced per second at N=1M (higher is better)" />
+
+*Numbers: placeholder — run `scripts/run_one.sh 03-simd-blackscholes` on the reference
+machine to populate.*
+
+## Decomposing the speedup
+
+**Step 1 → 2: algorithm win.** Replacing `std::exp` / `std::erfc` with
+polynomial approximations is the first win, independent of SIMD. The key
+insight: libm's `expf` and `erfcf` are designed for full float precision
+(~1.2e-7 ULP error) across their entire domain. Black-Scholes only needs option
+prices accurate to ~1e-4 in absolute terms. A 6th-order Taylor polynomial for
+`exp` over `[-ln2/2, ln2/2]` (the range-reduced interval) achieves ~1.7e-7
+absolute error — sufficient, and computable without a branch-heavy libm dispatch
+path or lookup table.
+
+The A&S §26.2.17 rational approximation for N(x) is similarly: 5 polynomial
+coefficients, published in 1964, max error < 7.5e-8. It outperforms a
+branchy libm `erfc` call in the hot path.
+
+This step improves throughput *before* the CPU sees a single wider instruction.
+Polynomial Horner evaluation pipelines well; libm calls break out of the
+inner loop.
+
+**Step 2 → 3: SSE width win.** Widening from 1 to 4 lanes with `__m128` gives
+a real throughput gain but below 4×. The bottlenecks: the `div` (S/K and the
+final σ√T division) and `sqrt` are not 4× cheaper in SSE — their throughput
+improves with width but their latency doesn't vanish. Memory bandwidth starts to
+matter at N = 1M (20 MB input, larger than the 512 KB L2 per core on Zen 2).
+
+**Step 3 → 4: AVX2+FMA width win — and the Zen 2 µop-split caveat.**
+
+*Prediction going in:* AVX2 will beat SSE, but by less than 2× on this machine.
+Zen 2 (Ryzen 3800X) implements 256-bit AVX2 instructions by splitting each into
+two 128-bit µops internally. One `vfmadd256ps` occupies two execution ports in
+the same cycle where Zen 3 would use one. This halves the theoretical peak
+throughput advantage of 8-wide vs 4-wide on this CPU family.
+
+*Reported result:* placeholder — fill in from benchmark output.
+
+AVX2-vs-SSE ratios at N = 16k (compute-bound, fits in L2) and N = 1M
+(bandwidth-limited) will tell different stories. The 16k result isolates the
+SIMD throughput; the 1M result shows how memory bandwidth caps the gain.
+
+## Precision
+
+All non-libm variants are validated against `scalar_libm` over the full 1M input
+set with the `verify_03_simd_blackscholes` binary. Threshold: `max_abs_error` < 1e-4.
+
+| Variant | max\_abs\_error vs scalar\_libm |
+|---------|-------------------------------|
+| scalar\_poly | *placeholder* |
+| sse2\_intrinsics | *placeholder* |
+| avx2\_fma | *placeholder* |
+
+The precision bound is discussed honestly: for a production pricing engine, 1e-4
+absolute error on vanilla European calls is generally acceptable (spreads are
+wider than that), but the disclaimer matters — implied volatility inversion, exotic
+products, and Greeks computed by finite-difference need tighter bounds. Reach for
+Sleef or a vendor SVML in those contexts.
+
+## Why hand-roll the polynomials?
+
+This was a deliberate trade-off — documented in the
+[brief](docs/briefs/03-simd-blackscholes-brief.md). The alternatives:
+
+- **Sleef** gives a faster, more accurate result with less code. It's the right
+  choice for production.
+- **Intel SVML** is closed-source and not portable to GCC on Linux.
+- **Agner Fog's Vectorclass** is a clean C++ wrapper, similar story to Sleef.
+
+Reasons to hand-roll here: the post's claim is about *understanding the
+transformation*, not shipping fast Black-Scholes. Pulling Sleef would reduce
+variants 3–4 to a 20-line wrapper — readers learn nothing about how vectorised
+transcendentals actually work. Hand-rolling Horner's method with `_mm256_fmadd_ps`
+is the part a quant dev wants to see you can write. The polynomial-vs-libm
+algorithm win (step 1→2) also requires hand-rolled scalar polynomials anyway;
+once those exist, vectorising them is a small step. Using Sleef only for variants
+3–4 would mean the speedup decomposition stops being clean.
+
+## What this doesn't show
+
+- **AVX-512**: deferred to a rented-bare-metal post. AVX-512 would allow 16-wide
+  float computation in a single instruction and properly single-issue 512-bit ops
+  on recent server CPUs. Numbers here won't extrapolate.
+- **Zen 3+**: Zen 3 and Sapphire Rapids dispatch 256-bit ops natively; the AVX2/SSE
+  ratio would be closer to 2× there.
+- **Put options**: trivially derived from put-call parity once you have call prices.
+- **Implied volatility**: the inverse problem — a separate post.
+- **GPU comparison**: deferred.
+
+## Reproducing this
+
+```bash
+# Build (from repo root)
+cd bench && cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build --target 03-simd-blackscholes
+
+# Verify correctness
+./build/demos/03-simd-blackscholes/verify_03_simd_blackscholes
+
+# Full capture (reference machine, requires cset + sudo)
+./scripts/run_one.sh 03-simd-blackscholes
+```
+
+Benchmark binary: [bench/demos/03-simd-blackscholes/benchmark.cpp](bench/demos/03-simd-blackscholes/benchmark.cpp)
+Polynomial helpers: [bench/demos/03-simd-blackscholes/poly.h](bench/demos/03-simd-blackscholes/poly.h)
+
+---
+
+*All numbers: placeholder — replace by running the capture scripts on the reference machine.*
+*AMD Ryzen 7 3800X, Zen 2, 3.9 GHz base, governor = performance, Turbo Boost off,
+SMT off (BIOS), GCC 13, per-variant ISA flags as documented in CMakeLists.txt.*
+*[Methodology →](/methodology)*

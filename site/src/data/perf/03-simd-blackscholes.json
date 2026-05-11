@@ -1,0 +1,71 @@
+{
+  "demo": "03-simd-blackscholes",
+  "title": "Black-Scholes: scalar libm vs polynomial vs SSE vs AVX2+FMA",
+  "machine": {
+    "cpu": "AMD Ryzen 7 3800X 8-Core Processor",
+    "cores_physical": 8,
+    "cores_logical": 8,
+    "smt_enabled": false,
+    "ram_gb": 31,
+    "ram_speed_mhz": null,
+    "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+    "compiler_flags": "per-variant (see compile_flags field)",
+    "kernel": "6.8.0-111-generic",
+    "governor": "performance",
+    "turbo": false,
+    "isolated_cpus": "",
+    "cpu_affinity": "4-7"
+  },
+  "captured_at": "placeholder",
+  "runs": [
+    {
+      "variant": "scalarlibm",
+      "n": 1048576,
+      "iterations": 0,
+      "ns_per_op": { "median": 0, "min": 0, "p99": 0, "iqr": 0 },
+      "ops_per_sec": 0,
+      "instructions_per_cycle": 0,
+      "gflops": 0,
+      "max_abs_error_vs_scalar_libm": 0.0,
+      "variant_isa": "sse4.2",
+      "compile_flags": "-O3 -fno-tree-vectorize -mno-avx -mno-avx2 -mno-fma -msse4.2"
+    },
+    {
+      "variant": "scalarpoly",
+      "n": 1048576,
+      "iterations": 0,
+      "ns_per_op": { "median": 0, "min": 0, "p99": 0, "iqr": 0 },
+      "ops_per_sec": 0,
+      "instructions_per_cycle": 0,
+      "gflops": 0,
+      "max_abs_error_vs_scalar_libm": 0.0,
+      "variant_isa": "sse4.2",
+      "compile_flags": "-O3 -fno-tree-vectorize -mno-avx -mno-avx2 -mno-fma -msse4.2"
+    },
+    {
+      "variant": "sse2",
+      "n": 1048576,
+      "iterations": 0,
+      "ns_per_op": { "median": 0, "min": 0, "p99": 0, "iqr": 0 },
+      "ops_per_sec": 0,
+      "instructions_per_cycle": 0,
+      "gflops": 0,
+      "max_abs_error_vs_scalar_libm": 0.0,
+      "variant_isa": "sse4.2",
+      "compile_flags": "-O3 -msse4.2 -mno-avx -mno-avx2 -mno-fma"
+    },
+    {
+      "variant": "avx2fma",
+      "n": 1048576,
+      "iterations": 0,
+      "ns_per_op": { "median": 0, "min": 0, "p99": 0, "iqr": 0 },
+      "ops_per_sec": 0,
+      "instructions_per_cycle": 0,
+      "gflops": 0,
+      "max_abs_error_vs_scalar_libm": 0.0,
+      "variant_isa": "avx2+fma",
+      "compile_flags": "-O3 -mavx -mavx2 -mfma"
+    }
+  ],
+  "notes": "Placeholder — run scripts/run_one.sh 03-simd-blackscholes on the reference machine to populate."
+}

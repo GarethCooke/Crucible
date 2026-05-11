@@ -41,6 +41,58 @@ echo "==> Building ${SLUG}..."
 cmake -B "${BENCH_ROOT}/build" -S "${BENCH_ROOT}" -DCMAKE_BUILD_TYPE=Release -Wno-dev --log-level=ERROR
 cmake --build "${BENCH_ROOT}/build" --parallel > /dev/null
 
+# ─── Demo 03: SIMD Black-Scholes — verify then benchmark ─────────────────────
+# Runs correctness check first (exits non-zero on failure), then benchmarks.
+# Uses assemble_results_03.py for the extended schema (gflops, max_abs_error,
+# variant_isa, compile_flags).
+if [[ "${SLUG}" == "03-simd-blackscholes" ]]; then
+    VERIFY_BIN="${BENCH_ROOT}/build/demos/03-simd-blackscholes/verify_03_simd_blackscholes"
+    BS_BINARY="${BENCH_ROOT}/build/demos/03-simd-blackscholes/bench_03_simd_blackscholes"
+
+    if [[ ! -x "${VERIFY_BIN}" ]]; then
+        echo "ERROR: verify binary not found: ${VERIFY_BIN}" >&2; exit 1
+    fi
+    if [[ ! -x "${BS_BINARY}" ]]; then
+        echo "ERROR: benchmark binary not found: ${BS_BINARY}" >&2; exit 1
+    fi
+
+    echo "==> Running correctness check..."
+    sudo cset shield --cpu=4-7 --kthread=on > /dev/null
+    SHIELD_ACTIVE=1
+    sudo cset shield --exec -- "${VERIFY_BIN}" | grep -v '^cset:'
+    sudo cset shield --reset > /dev/null
+    SHIELD_ACTIVE=0
+
+    echo "==> Collecting machine info..."
+    sudo cset shield --cpu=4-7 --kthread=on > /dev/null
+    SHIELD_ACTIVE=1
+    MACHINE_JSON=$(sudo cset shield --exec -- "${BS_BINARY}" --machine-info \
+        | grep -v '^cset:' | tr -d '\000-\010\013-\037\177')
+
+    TMPFILE=$(mktemp /tmp/crucible_bench_XXXXXX.json)
+    sudo chmod 666 "${TMPFILE}"
+
+    echo "==> Running benchmarks (20 repetitions per variant×size)..."
+    sudo cset shield --exec -- "${BS_BINARY}" \
+        --benchmark_format=json \
+        --benchmark_repetitions=20 \
+        --benchmark_report_aggregates_only=false \
+        | grep -v '^cset:' > "${TMPFILE}"
+
+    sudo cset shield --reset > /dev/null
+    SHIELD_ACTIVE=0
+
+    echo "==> Assembling output JSON (extended schema)..."
+    CAPTURED_AT=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    python3 "${BENCH_ROOT}/scripts/assemble_results_03.py" \
+        "${TMPFILE}" "${SLUG}" "${CAPTURED_AT}" "${MACHINE_JSON}" \
+        "${REPO_ROOT}/site/src/data/perf/03-simd-blackscholes.json"
+
+    echo "==> Done: ${REPO_ROOT}/site/src/data/perf/03-simd-blackscholes.json"
+    exit 0
+fi
+# ─────────────────────────────────────────────────────────────────────────────
+
 # ─── Demo 02: false-sharing — separate perf-stat pipeline ────────────────────
 # Uses tools/perf_capture.sh (handles its own cset shield per variant) and
 # tools/parse_perf.py to fold perf stat + Google Benchmark JSON into the site
