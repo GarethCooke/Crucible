@@ -17,6 +17,7 @@
 #include <barrier>
 #include <cassert>
 #include <cstdio>
+#include <cstdlib>
 #include <fstream>
 #include <sched.h>
 #include <sys/syscall.h>
@@ -139,8 +140,11 @@ struct WorkerCtx {
 };
 
 static void worker_fn(WorkerCtx ctx) {
+    if (std::getenv("CRUCIBLE_PRINT_AFFINITY") != nullptr) {
+        fprintf(stderr, "[bench] slot=%d tid=%ld cpu=%d\n",
+                ctx.slot, (long)syscall(SYS_gettid), sched_getcpu());
+    }
     while (true) {
-        fprintf(stderr, "[bench] slot=%d tid=%ld cpu=%d\n", ctx.slot, (long)syscall(SYS_gettid), sched_getcpu());
         ctx.go_bar->arrive_and_wait();
         if (ctx.stop->load(std::memory_order_relaxed)) break;
 
