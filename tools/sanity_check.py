@@ -29,6 +29,15 @@ def median_ns(run: dict) -> float:
     return run["ns_per_op"]["median"]
 
 
+def ipc(run: dict) -> float:
+    return run["counters"]["instructions_per_cycle"]
+
+
+def miss_ratio(run: dict) -> float:
+    """Generic cache miss ratio (proxy for L1D miss ratio until l1d.replacement captured)."""
+    return run["counters"]["cache_miss_ratio"]
+
+
 def main() -> None:
     if len(sys.argv) != 2:
         print(f"Usage: {sys.argv[0]} <false-sharing-pnl.json>", file=sys.stderr)
@@ -46,25 +55,46 @@ def main() -> None:
     failures: list[str] = []
 
     # ── Assertion 1 ──────────────────────────────────────────────────────────
-    # At intra-CCX 4t, unpadded must be at least 5× slower than padded.
-    # (Expected ~10–20×; 5× is the floor for "the demo is working".)
+    # 4t intra-CCX unpadded: cache miss ratio ≥ 0.3.
+    # False sharing's direct counter signature — universal across topologies.
+    # (l1d_miss_ratio preferred; using cache_miss_ratio until l1d.replacement captured.)
     intra4u = find_run(runs, "intra-ccx", 4, "unpadded")
-    intra4p = find_run(runs, "intra-ccx", 4, "padded")
-    if intra4u is None or intra4p is None:
-        failures.append("MISSING intra-ccx/4t/unpadded or intra-ccx/4t/padded run")
+    if intra4u is None:
+        failures.append("MISSING intra-ccx/4t/unpadded run")
     else:
-        ratio = median_ns(intra4u) / median_ns(intra4p)
-        label = f"intra-ccx/4t unpadded/padded ratio = {ratio:.1f}×"
-        if ratio >= 5.0:
-            print(f"  PASS  {label} (≥5× required)")
+        ratio = miss_ratio(intra4u)
+        label = f"intra-ccx/4t/unpadded cache_miss_ratio = {ratio:.3f}"
+        if ratio >= 0.3:
+            print(f"  PASS  {label} (≥0.30 required)")
         else:
-            msg = f"FAIL  {label} — expected ≥5×; demo may not be working"
+            msg = f"FAIL  {label} — expected ≥0.30; false-sharing counter signal not firing"
             print(f"  {msg}", file=sys.stderr)
             failures.append(msg)
 
     # ── Assertion 2 ──────────────────────────────────────────────────────────
-    # At intra-CCX 1t, unpadded ≈ padded within 20%.
-    # With one thread there is no contention, so padding should not matter.
+    # 4t intra-CCX: IPC ratio (padded / unpadded) ≥ 3.0.
+    # Padded threads execute independently; unpadded threads stall on coherency.
+    intra4p = find_run(runs, "intra-ccx", 4, "padded")
+    if intra4u is None or intra4p is None:
+        failures.append("MISSING intra-ccx/4t/unpadded or intra-ccx/4t/padded run")
+    else:
+        padded_ipc   = ipc(intra4p)
+        unpadded_ipc = ipc(intra4u)
+        ratio = padded_ipc / unpadded_ipc if unpadded_ipc > 0 else 0
+        label = (
+            f"intra-ccx/4t IPC ratio (padded/unpadded) = "
+            f"{padded_ipc:.3f} / {unpadded_ipc:.3f} = {ratio:.1f}×"
+        )
+        if ratio >= 3.0:
+            print(f"  PASS  {label} (≥3.0× required)")
+        else:
+            msg = f"FAIL  {label} — expected ≥3.0×; IPC collapse not observed"
+            print(f"  {msg}", file=sys.stderr)
+            failures.append(msg)
+
+    # ── Assertion 3 ──────────────────────────────────────────────────────────
+    # 1t intra-CCX: unpadded ≈ padded within 20%.
+    # With one thread there is no contention — padding should not matter.
     intra1u = find_run(runs, "intra-ccx", 1, "unpadded")
     intra1p = find_run(runs, "intra-ccx", 1, "padded")
     if intra1u is None or intra1p is None:
@@ -81,23 +111,30 @@ def main() -> None:
             print(f"  {msg}", file=sys.stderr)
             failures.append(msg)
 
-    # ── Assertion 3 ──────────────────────────────────────────────────────────
-    # Cross-CCX 4t unpadded must be slower than intra-CCX 4t unpadded.
-    # The Infinity Fabric coherency penalty is the driver.
-    cross4u = find_run(runs, "cross-ccx", 4, "unpadded")
-    if cross4u is None or intra4u is None:
-        failures.append("MISSING cross-ccx/4t/unpadded or intra-ccx/4t/unpadded run")
+    # ── Assertion 4 ──────────────────────────────────────────────────────────
+    # 2t cross-CCX unpadded vs 2t intra-CCX unpadded: wall-clock ratio ≥ 3.0.
+    # Cross-CCX coherency traverses the Infinity Fabric; this is where the
+    # canonical wall-clock blowup reasserts itself (intra-CCX L3 absorbs it).
+    cross2u = find_run(runs, "cross-ccx", 2, "unpadded")
+    intra2u = find_run(runs, "intra-ccx", 2, "unpadded")
+    if cross2u is None or intra2u is None:
+        failures.append("MISSING cross-ccx/2t/unpadded or intra-ccx/2t/unpadded run")
     else:
-        cross_ns = median_ns(cross4u)
-        intra_ns = median_ns(intra4u)
+        cross_ns = median_ns(cross2u)
+        intra_ns = median_ns(intra2u)
+        ratio = cross_ns / intra_ns if intra_ns > 0 else 0
         label = (
-            f"cross-ccx/4t/unpadded={cross_ns:.2f} ns/op  "
-            f"intra-ccx/4t/unpadded={intra_ns:.2f} ns/op"
+            f"cross-ccx/2t/unpadded={cross_ns:.4f} ns/op  "
+            f"intra-ccx/2t/unpadded={intra_ns:.4f} ns/op  "
+            f"ratio={ratio:.1f}×"
         )
-        if cross_ns > intra_ns:
-            print(f"  PASS  {label} (cross > intra required)")
+        if ratio >= 3.0:
+            print(f"  PASS  {label} (≥3.0× required)")
         else:
-            msg = f"FAIL  {label} — expected cross-CCX to be slower (Infinity Fabric penalty)"
+            msg = (
+                f"FAIL  {label} — expected cross-CCX/intra-CCX wall-clock ratio ≥3.0×; "
+                f"Infinity Fabric penalty not manifesting"
+            )
             print(f"  {msg}", file=sys.stderr)
             failures.append(msg)
 

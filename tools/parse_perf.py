@@ -113,10 +113,18 @@ def derive_counters(perf: dict[str, int], ops: int) -> dict:
     instructions   = perf.get("instructions",     0)
     cycles         = perf.get("cycles",           1)
 
+    # L1D replacement event — AMD Zen 2 name confirmed by:
+    #   perf list | grep -i l1d   (look for l1d.replacement or l1-dcache-load-misses)
+    l1d_raw = perf.get("l1d.replacement", perf.get("L1-dcache-load-misses", None))
+    l1d_misses_per_op = (
+        round(l1d_raw / ops, 6) if (l1d_raw is not None and ops > 0) else None
+    )
+
     return {
         "cache_misses_per_op":     round(cache_misses / ops, 6) if ops > 0 else 0,
         "cache_miss_ratio":        round(cache_misses / cache_refs, 6),
         "instructions_per_cycle":  round(instructions / cycles, 4),
+        "l1d_misses_per_op":       l1d_misses_per_op,
     }
 
 
@@ -146,9 +154,9 @@ def main():
     print(f"Parsing bench: {args.bench} (filter: {filter_name})")
     timing = parse_bench_json(args.bench, filter_name)
 
-    # total ops used to normalise perf counters: use ops_per_sec × ~100ms
-    # (approximate; adjust if you have exact iteration counts)
-    ops_approx = timing["ops_per_sec"] // 10  # ~100ms worth
+    # Approximate total ops for one GB outer iteration (≈ N_ITERS × N_FILLS × nthreads).
+    # Using ops_per_sec / 10 gives roughly one iteration's worth at current N_ITERS=1000.
+    ops_approx = timing["ops_per_sec"] // 10
     counters = derive_counters(perf_counts, ops_approx)
 
     # Core assignments — SYNC: must match intra_ccx_cores/cross_ccx_cores in
@@ -170,7 +178,8 @@ def main():
         "counters":   counters,
         "notes": (
             f"cores: {cores_used}; fill seed: 42; "
-            f"AMD PMU generic counters (cache-misses, cache-references, instructions, cycles)"
+            f"AMD PMU generic counters (cache-misses, cache-references, instructions, cycles); "
+            f"l1d event: l1d.replacement (verify with perf list | grep -i l1d on reference machine)"
         ),
     }
 

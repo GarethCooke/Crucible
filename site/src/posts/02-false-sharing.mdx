@@ -6,8 +6,9 @@ summary: "Same algorithm. Same fill stream. Same machine. One struct layout coll
 
 Same algorithm. Same fill stream. Same machine. Two versions of a single struct — the
 only difference is 56 bytes of padding. One collapses as thread count grows; the other
-scales near-linearly. The cause is visible in the cache-miss counter rising in lockstep
-with the throughput drop.
+scales near-linearly. The IPC counter drops in lockstep with the throughput collapse,
+and the cache-miss counter rises to match. Whether that collapse costs you wall-clock
+time depends on where the coherency traffic has to travel.
 
 ## The setup
 
@@ -41,78 +42,99 @@ cache. It is generated once at startup with a fixed seed and shared read-only ac
 all threads, so every thread reads identical data — the only writes are the per-slot
 `pnl` accumulations.
 
-## What happens at scale — intra-CCX
+## The counter signal — intra-CCX
 
-With all threads pinned to one CCX (cores 4–7 on this machine), the shared L3 cache
-handles coherency without crossing the Infinity Fabric. Even so, the unpadded variant
-degrades badly as thread count climbs.
+The clearest evidence of false sharing is in the performance counters. With all threads
+pinned to one CCX (cores 4–7), watch IPC and cache miss rate as thread count grows:
+
+<CounterOverlay slug="false-sharing-pnl" placement="intra-ccx" metric="instructions_per_cycle" />
+
+<CounterOverlay slug="false-sharing-pnl" placement="intra-ccx" metric="cache_miss_ratio" />
+
+At 1 thread, both layouts are identical — no contention, near-zero miss rate, similar
+IPC. At 4 threads, the unpadded variant's IPC falls to **0.11** while the padded
+variant holds at **0.56** — a **5× IPC collapse**. The cache miss rate tracks the same
+story: unpadded goes from ~2.5% at 1 thread to **~80% at 4 threads**; padded stays
+near 2.8% throughout.
+
+What is happening: every write to an unpadded slot invalidates the entire cache line,
+which holds seven neighbouring slots belonging to other threads. Each thread must
+re-fetch the line from the L3 before it can write. The accesses that previously
+resolved in the L1d (~4 cycles) now require L3 round-trips (~35 cycles on Zen 2), and
+with four threads simultaneously invalidating each other, the CPU spends most of its
+time waiting rather than executing.
+
+## Wall-clock impact — intra-CCX
+
+The counter signal is the reliable part. The wall-clock impact within one CCX is muted
+on Zen 2:
 
 <ThroughputBars slug="false-sharing-pnl" placement="intra-ccx" />
 
-<CounterOverlay slug="false-sharing-pnl" placement="intra-ccx" metric="cache_misses_per_op" />
+At 4 threads, the unpadded variant is noticeably slower than the padded variant — but
+the ratio is around 1.2×, far below the ~5× the counter collapse would suggest. The
+reason: all four cores share the same 16 MB L3 cache. Coherency traffic between cores
+in the same CCX resolves within that shared cache at tens-of-nanoseconds per hop,
+without touching DRAM. The hardware absorbs the penalty; the counters see it; the
+wall clock mostly doesn't.
 
-At 4 threads, the unpadded variant is **~21× slower** than the padded variant
-(7.84 ns/op vs 0.38 ns/op). The padded variant sustains near-linear throughput scaling:
-1 thread → 4 threads gives ~4× more ops/sec, as expected when each thread operates
-independently. Note that intra-CCX caps at 4 threads on this hardware — one CCX holds
-4 physical cores with SMT disabled.
+## Where wall-clock magnification reasserts itself
 
-The cache-miss counter tells the story directly. At 1 thread there is essentially no
-false sharing; both struct layouts produce the same near-zero miss rate. At 4 threads,
-the unpadded variant accumulates **0.32 misses per fill**, while the padded variant
-stays at **0.003**. Cache references that previously resolved in L1 (~4 cycles) now
-require full L3 round-trips (~35 cycles on Zen 2), and with four threads fighting for
-ownership of the same cache line those round-trips pile up.
+Zen 2 is a chiplet architecture: two 4-core CCXs on a shared memory controller die,
+connected via AMD's Infinity Fabric. Coherency traffic between two cores on the same
+CCX travels through the shared 16 MB L3. Coherency traffic between CCX0 and CCX1 must
+cross the Infinity Fabric — higher latency, no shared cache to absorb the round-trips.
 
-## The Zen 2 CCX caveat
+With threads distributed across both CCXs, the counter collapse looks the same — false
+sharing is firing identically — but the wall-clock penalty now has nowhere to hide:
 
-Zen 2 is a chiplet architecture: two 4-core CCXs sit on a shared memory controller
-die, connected via AMD's Infinity Fabric. Coherency traffic between two cores on the
-same CCX travels through the shared 16 MB L3 cache. Coherency traffic between CCX0
-and CCX1 must traverse the Infinity Fabric — an on-die interconnect with meaningfully
-higher latency than an intra-CCX L3 hop.
-
-With threads distributed across both CCXs, false-sharing penalties are substantially
-worse:
+<CounterOverlay slug="false-sharing-pnl" placement="cross-ccx" metric="instructions_per_cycle" />
 
 <ThroughputBars slug="false-sharing-pnl" placement="cross-ccx" />
 
-<CounterOverlay slug="false-sharing-pnl" placement="cross-ccx" metric="cache_misses_per_op" />
+The counter signal at 2t cross-CCX is nearly identical to 2t intra-CCX: IPC ~0.17 in
+both cases, miss rate ~68% vs ~80%. The mechanism is the same. The wall-clock
+difference is not: cross-CCX 2t unpadded is substantially slower than intra-CCX 2t
+unpadded, because each coherency round-trip now crosses the Infinity Fabric instead of
+resolving in a shared L3 cache a few nanoseconds away.
 
-At 4 threads cross-CCX, the unpadded variant is **31.4 ns/op** — versus **7.84 ns/op**
-intra-CCX at the same thread count, a 4× additional penalty just from the CCX boundary.
-At 8 threads cross-CCX, unpadded reaches **68.2 ns/op** against the padded variant's
-**0.20 ns/op** — a **341× gap**. The padded 8-thread variant shows near-perfect linear
-scaling (8× throughput vs 1 thread), demonstrating that there is no Infinity Fabric
-overhead when each thread's writes stay on its own cache line.
+At 8 threads cross-CCX, the unpadded variant reaches **68.2 ns/op** against the padded
+variant's **0.20 ns/op** — a **341× gap**. The padded 8-thread variant shows near-perfect
+linear throughput scaling (8× vs 1 thread), demonstrating that Infinity Fabric adds
+no overhead when threads don't fight over cache lines.
 
-## Reading the numbers
+## The regime question
 
-Quantifying the two claims from the introduction:
+False sharing has two separable effects:
 
-**False sharing is not a small effect.** Even with all threads on the same CCX, four
-threads fighting for a shared cache line produce a 21× throughput gap. The penalty grows
-super-linearly with thread count because each additional writer increases the frequency
-of invalidation events — more threads, more fights per cache line per unit time.
+**Counter collapse is universal.** Wherever threads share a cache line, the
+invalidation/refetch cycle fires. IPC drops. Miss rate climbs. This is visible
+regardless of topology and regardless of whether wall-clock time degrades. If your
+profiler shows an unexplained IPC collapse under thread scale, false sharing is on the
+list of suspects.
 
-**On Zen 2, CCX topology matters.** The 4× intra-vs-cross-CCX difference at the same
-thread count is a real hardware effect, not noise. Infinity Fabric coherency latency is
-documented by AMD as significantly higher than L3 latency. This result would look
-different on Zen 3 and later (larger unified L3 cache, reduced IF penalty) and on Intel
-designs without discrete CCX partitioning. This is precisely why machine configuration
-is reported alongside every measurement — hardware topology changes the magnitude, and
-sometimes the shape, of the effect.
+**Wall-clock penalty depends on coherency-domain topology.** Modern shared-LLC
+architectures — Zen 2 within a CCX, Intel within a socket — absorb much of the cost
+in the shared cache. The round-trip happens, but it stays in silicon at tens-of-ns.
+Cross-coherency-domain transfers — cross-CCX on Zen 2, cross-socket, NUMA — remove
+that cushion. The same false-sharing pattern that causes a 1.2× wall-clock regression
+intra-CCX causes a 3–341× regression cross-CCX, depending on thread count.
+
+This has a practical implication for measurement: benchmarking false sharing on a
+single socket may understate the production penalty if the production system spans NUMA
+nodes, or runs on a processor with discrete CCX/CCD partitioning.
 
 ## What this means in practice
 
 False sharing is easy to introduce accidentally in systems with per-thread state:
+
 - **Per-strategy accumulators in trading engines** — exactly the pattern modelled here.
   A common layout mistake is `double pnl[N_STRATEGIES]` with one thread per strategy.
 - **Per-worker statistics counters** — hit counts, error rates, queue depths. If each
   counter is a single `int64_t` in a contiguous array, adjacent counters share lines.
-- **Market-data fan-out structs** — if writers update sequence numbers or sequence fields
-  that happen to be on the same cache line as fields read by consuming threads, readers
-  stall on coherency traffic that has nothing to do with their data.
+- **Market-data fan-out structs** — if writers update sequence numbers on the same
+  cache line as fields read by consuming threads, readers stall on coherency traffic
+  that has nothing to do with their data.
 
 The fix is straightforward: align each per-thread slot to the cache-line size.
 `alignas(64)` is sufficient on x86-64 (and most ARM64 deployments). The trade-off is
@@ -156,14 +178,22 @@ python3 tools/parse_perf.py \
   --placement intra-ccx --threads 4 --padded 0
 ```
 
+For the L1D-specific miss counter, confirm the event name on Zen 2 before capture:
+
+```bash
+perf list | grep -i l1d   # look for l1d.replacement or L1-dcache-load-misses
+```
+
 Pre-flight: SMT must be off (`cat /sys/devices/system/cpu/smt/active` → `0`),
 governor = performance, turbo off, `cpuset` package installed.
 The benchmark binary aborts with a clear error message if SMT is active.
+Cross-CCX runs use non-isolated cores (cores 0 and 4); see the `notes` field in the
+JSON for the caveat.
 See the [methodology page](/methodology) for the full per-boot setup checklist.
 
 ---
 
 *All numbers: placeholder — replace by running the capture scripts on the reference machine.
 AMD Ryzen 7 3800X, Zen 2, 3.9 GHz base, governor = performance, Turbo Boost off,
-SMT off (BIOS), GCC 13, -O2 -march=native.*
+SMT off (BIOS), GCC 13, -O3 -march=native.*
 *[Methodology →](/methodology)*

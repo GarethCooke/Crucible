@@ -55,7 +55,7 @@ static PaddedStrategy g_padded[8];
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 static constexpr size_t  N_FILLS   = 1024;   // fill stream: 8 KB, fits in L1d
-static constexpr size_t  N_ITERS   = 100;    // inner iterations per barrier epoch
+static constexpr size_t  N_ITERS   = 1000;   // inner iterations per barrier epoch (≥10 ms/burst)
 static constexpr uint32_t FILL_SEED = 42;    // documented in JSON notes
 
 // ─── Fill stream ─────────────────────────────────────────────────────────────
@@ -185,8 +185,10 @@ static void run_benchmark(
     }
 
     for (auto _ : state) {
-        go_bar.arrive_and_wait();    // release workers
-        done_bar.arrive_and_wait();  // wait for all to finish
+        state.PauseTiming();
+        go_bar.arrive_and_wait();    // release workers — barrier cost excluded from timing
+        state.ResumeTiming();
+        done_bar.arrive_and_wait();  // wait for burst to complete (dominated by work)
     }
 
     stop.store(true, std::memory_order_relaxed);

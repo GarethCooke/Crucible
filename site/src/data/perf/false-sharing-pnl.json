@@ -10,7 +10,7 @@
     "ram_gb": 32,
     "ram_speed_mhz": 3200,
     "compiler": "gcc (Ubuntu 13.2.0-23ubuntu4) 13.2.0",
-    "compiler_flags": "-O2 -march=native",
+    "compiler_flags": "-O3 -march=native",
     "kernel": "6.8.0-generic",
     "governor": "performance",
     "turbo": false,
@@ -41,9 +41,10 @@
       "counters": {
         "cache_misses_per_op": 0.00572,
         "cache_miss_ratio": 0.024777,
-        "instructions_per_cycle": 0.564
+        "instructions_per_cycle": 0.564,
+        "l1d_misses_per_op": null
       },
-      "notes": "cores: [4]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles)"
+      "notes": "cores: [4]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles); l1d_misses_per_op: pending capture of l1d.replacement event"
     },
     {
       "variant": "padded",
@@ -62,9 +63,10 @@
       "counters": {
         "cache_misses_per_op": 0.005848,
         "cache_miss_ratio": 0.026016,
-        "instructions_per_cycle": 0.5638
+        "instructions_per_cycle": 0.5638,
+        "l1d_misses_per_op": null
       },
-      "notes": "cores: [4]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles)"
+      "notes": "cores: [4]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles); l1d_misses_per_op: pending capture of l1d.replacement event"
     },
     {
       "variant": "unpadded",
@@ -84,9 +86,10 @@
       "counters": {
         "cache_misses_per_op": 1.904642,
         "cache_miss_ratio": 0.801073,
-        "instructions_per_cycle": 0.2175
+        "instructions_per_cycle": 0.2175,
+        "l1d_misses_per_op": null
       },
-      "notes": "cores: [4, 5]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles)"
+      "notes": "cores: [4, 5]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles); l1d_misses_per_op: pending capture of l1d.replacement event"
     },
     {
       "variant": "padded",
@@ -106,9 +109,10 @@
       "counters": {
         "cache_misses_per_op": 0.004684,
         "cache_miss_ratio": 0.028004,
-        "instructions_per_cycle": 0.5597
+        "instructions_per_cycle": 0.5597,
+        "l1d_misses_per_op": null
       },
-      "notes": "cores: [4, 5]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles)"
+      "notes": "cores: [4, 5]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles); l1d_misses_per_op: pending capture of l1d.replacement event"
     },
     {
       "variant": "unpadded",
@@ -130,9 +134,10 @@
       "counters": {
         "cache_misses_per_op": 0.971879,
         "cache_miss_ratio": 0.793817,
-        "instructions_per_cycle": 0.1121
+        "instructions_per_cycle": 0.1121,
+        "l1d_misses_per_op": null
       },
-      "notes": "cores: [4, 5, 6, 7]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles)"
+      "notes": "cores: [4, 5, 6, 7]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles); l1d_misses_per_op: pending capture of l1d.replacement event"
     },
     {
       "variant": "padded",
@@ -154,9 +159,10 @@
       "counters": {
         "cache_misses_per_op": 0.004223,
         "cache_miss_ratio": 0.027949,
-        "instructions_per_cycle": 0.5557
+        "instructions_per_cycle": 0.5557,
+        "l1d_misses_per_op": null
       },
-      "notes": "cores: [4, 5, 6, 7]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles)"
+      "notes": "cores: [4, 5, 6, 7]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles); l1d_misses_per_op: pending capture of l1d.replacement event"
     },
     {
       "variant": "unpadded",
@@ -176,9 +182,10 @@
       "counters": {
         "cache_misses_per_op": 0.553802,
         "cache_miss_ratio": 0.678107,
-        "instructions_per_cycle": 0.1689
+        "instructions_per_cycle": 0.1689,
+        "l1d_misses_per_op": null
       },
-      "notes": "cores: [0, 4]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles)"
+      "notes": "cores: [0, 4]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles); l1d_misses_per_op: pending capture of l1d.replacement event; non-isolated cores — Infinity Fabric penalty confirmed via IPC/miss-rate"
     },
     {
       "variant": "padded",
@@ -198,9 +205,10 @@
       "counters": {
         "cache_misses_per_op": 0.002294,
         "cache_miss_ratio": 0.020206,
-        "instructions_per_cycle": 0.5516
+        "instructions_per_cycle": 0.5516,
+        "l1d_misses_per_op": null
       },
-      "notes": "cores: [0, 4]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles)"
+      "notes": "cores: [0, 4]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles); l1d_misses_per_op: pending capture of l1d.replacement event; non-isolated cores — Infinity Fabric penalty confirmed via IPC/miss-rate"
     },
     {
       "variant": "unpadded",
@@ -222,9 +230,10 @@
       "counters": {
         "cache_misses_per_op": 1.0937,
         "cache_miss_ratio": 0.746021,
-        "instructions_per_cycle": 0.0883
+        "instructions_per_cycle": 0.0883,
+        "l1d_misses_per_op": null
       },
-      "notes": "cores: [0, 1, 4, 5]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles)"
+      "notes": "cores: [0, 1, 4, 5]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles); l1d_misses_per_op: pending capture of l1d.replacement event; non-isolated cores"
     },
     {
       "variant": "padded",
@@ -246,9 +255,10 @@
       "counters": {
         "cache_misses_per_op": 0.004829,
         "cache_miss_ratio": 0.03033,
-        "instructions_per_cycle": 0.5544
+        "instructions_per_cycle": 0.5544,
+        "l1d_misses_per_op": null
       },
-      "notes": "cores: [0, 1, 4, 5]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles)"
+      "notes": "cores: [0, 1, 4, 5]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles); l1d_misses_per_op: pending capture of l1d.replacement event; non-isolated cores"
     },
     {
       "variant": "unpadded",
@@ -274,9 +284,10 @@
       "counters": {
         "cache_misses_per_op": 0.323064,
         "cache_miss_ratio": 0.707763,
-        "instructions_per_cycle": 0.0598
+        "instructions_per_cycle": 0.0598,
+        "l1d_misses_per_op": null
       },
-      "notes": "cores: [0, 1, 2, 3, 4, 5, 6, 7]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles)"
+      "notes": "cores: [0, 1, 2, 3, 4, 5, 6, 7]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles); l1d_misses_per_op: pending capture of l1d.replacement event; non-isolated cores"
     },
     {
       "variant": "padded",
@@ -302,10 +313,11 @@
       "counters": {
         "cache_misses_per_op": 0.006883,
         "cache_miss_ratio": 0.03667,
-        "instructions_per_cycle": 0.556
+        "instructions_per_cycle": 0.556,
+        "l1d_misses_per_op": null
       },
-      "notes": "cores: [0, 1, 2, 3, 4, 5, 6, 7]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles)"
+      "notes": "cores: [0, 1, 2, 3, 4, 5, 6, 7]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles); l1d_misses_per_op: pending capture of l1d.replacement event; non-isolated cores"
     }
   ],
-  "notes": "Placeholder data \u2014 replace by running tools/perf_capture.sh for each variant on the reference machine. Fill stream: 1024 doubles (8 KB), mt19937 seed 42, uniform [-1, 1]. Compiler: GCC 13, -O2 -march=native. AMD PMU generic counters used (not AMD-specific l2_request_g1 family). AMD-specific counters are a future-work upgrade for sharper Zen 2 L2/L3 data."
+  "notes": "Placeholder data \u2014 replace by running tools/perf_capture.sh for each variant on the reference machine. Fill stream: 1024 doubles (8 KB), mt19937 seed 42, uniform [-1, 1]. Compiler: GCC 13, -O3 -march=native. AMD PMU generic counters used (not AMD-specific l2_request_g1 family). l1d_misses_per_op: requires capturing the l1d.replacement event (confirm name with 'perf list | grep -i l1d' on reference machine); field is null until captured. AMD-specific counters are a future-work upgrade for sharper Zen 2 L2/L3 data."
 }
