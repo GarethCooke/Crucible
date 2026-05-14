@@ -19,6 +19,9 @@ Thumbs.db
 # Python
 __pycache__/
 
+# TypeScript
+*.tsbuildinfo
+
 # Benchmark artifacts
 *.json.tmp
 perf.data
