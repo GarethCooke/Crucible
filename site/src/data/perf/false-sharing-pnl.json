@@ -33,14 +33,14 @@
         4
       ],
       "ns_per_op": {
-        "median": 0.0148,
-        "min": 0.0148,
+        "median": 0.0147,
+        "min": 0.0147,
         "iqr": 0.0
       },
-      "ops_per_sec": 67342976926,
+      "ops_per_sec": 68096588626,
       "counters": {
-        "cache_misses_per_op": 0.003381,
-        "cache_miss_ratio": 0.279424,
+        "cache_misses_per_op": 0.003361,
+        "cache_miss_ratio": 0.269117,
         "instructions_per_cycle": 0.548,
         "l1d_misses_per_op": null
       },
@@ -55,14 +55,14 @@
         4
       ],
       "ns_per_op": {
-        "median": 0.0149,
-        "min": 0.0149,
+        "median": 0.0146,
+        "min": 0.0146,
         "iqr": 0.0
       },
-      "ops_per_sec": 66962194021,
+      "ops_per_sec": 68363656464,
       "counters": {
-        "cache_misses_per_op": 0.003404,
-        "cache_miss_ratio": 0.273943,
+        "cache_misses_per_op": 0.00336,
+        "cache_miss_ratio": 0.274364,
         "instructions_per_cycle": 0.548,
         "l1d_misses_per_op": null
       },
@@ -78,15 +78,15 @@
         5
       ],
       "ns_per_op": {
-        "median": 0.0077,
-        "min": 0.0077,
-        "iqr": 0.0
+        "median": 0.0076,
+        "min": 0.0076,
+        "iqr": 0.0001
       },
-      "ops_per_sec": 130622599737,
+      "ops_per_sec": 131137656952,
       "counters": {
-        "cache_misses_per_op": 0.17992,
-        "cache_miss_ratio": 0.948536,
-        "instructions_per_cycle": 0.2077,
+        "cache_misses_per_op": 0.188329,
+        "cache_miss_ratio": 0.949085,
+        "instructions_per_cycle": 0.1976,
         "l1d_misses_per_op": null
       },
       "notes": "cores: [4, 5]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles); l1d event: l1d.replacement (verify with perf list | grep -i l1d on reference machine)"
@@ -101,14 +101,14 @@
         5
       ],
       "ns_per_op": {
-        "median": 0.0076,
-        "min": 0.0076,
+        "median": 0.0075,
+        "min": 0.0075,
         "iqr": 0.0
       },
-      "ops_per_sec": 131347607209,
+      "ops_per_sec": 132609858494,
       "counters": {
-        "cache_misses_per_op": 0.001888,
-        "cache_miss_ratio": 0.212718,
+        "cache_misses_per_op": 0.001857,
+        "cache_miss_ratio": 0.206086,
         "instructions_per_cycle": 0.5477,
         "l1d_misses_per_op": null
       },
@@ -126,14 +126,14 @@
         7
       ],
       "ns_per_op": {
-        "median": 0.0051,
-        "min": 0.0051,
+        "median": 0.005,
+        "min": 0.005,
         "iqr": 0.0
       },
-      "ops_per_sec": 197981774946,
+      "ops_per_sec": 199254701798,
       "counters": {
-        "cache_misses_per_op": 0.230322,
-        "cache_miss_ratio": 0.921675,
+        "cache_misses_per_op": 0.228852,
+        "cache_miss_ratio": 0.919115,
         "instructions_per_cycle": 0.1091,
         "l1d_misses_per_op": null
       },
@@ -155,10 +155,10 @@
         "min": 0.0012,
         "iqr": 0.0
       },
-      "ops_per_sec": 858927618383,
+      "ops_per_sec": 841266988340,
       "counters": {
-        "cache_misses_per_op": 0.000554,
-        "cache_miss_ratio": 0.02857,
+        "cache_misses_per_op": 0.000591,
+        "cache_miss_ratio": 0.029282,
         "instructions_per_cycle": 0.5477,
         "l1d_misses_per_op": null
       },
@@ -174,15 +174,15 @@
         4
       ],
       "ns_per_op": {
-        "median": 0.01,
-        "min": 0.01,
-        "iqr": 0.0002
+        "median": 0.0098,
+        "min": 0.0098,
+        "iqr": 0.0003
       },
-      "ops_per_sec": 99580139402,
+      "ops_per_sec": 101877130907,
       "counters": {
-        "cache_misses_per_op": 0.122127,
-        "cache_miss_ratio": 0.865141,
-        "instructions_per_cycle": 0.165,
+        "cache_misses_per_op": 0.121622,
+        "cache_miss_ratio": 0.86887,
+        "instructions_per_cycle": 0.1622,
         "l1d_misses_per_op": null
       },
       "notes": "cores: [0, 4]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles); l1d event: l1d.replacement (verify with perf list | grep -i l1d on reference machine)"
@@ -197,14 +197,14 @@
         4
       ],
       "ns_per_op": {
-        "median": 0.0027,
-        "min": 0.0027,
+        "median": 0.0026,
+        "min": 0.0026,
         "iqr": 0.0001
       },
-      "ops_per_sec": 371134183527,
+      "ops_per_sec": 391524339221,
       "counters": {
-        "cache_misses_per_op": 0.000626,
-        "cache_miss_ratio": 0.027009,
+        "cache_misses_per_op": 0.000531,
+        "cache_miss_ratio": 0.02472,
         "instructions_per_cycle": 0.5471,
         "l1d_misses_per_op": null
       },
@@ -222,15 +222,15 @@
         5
       ],
       "ns_per_op": {
-        "median": 0.0053,
-        "min": 0.0053,
+        "median": 0.0054,
+        "min": 0.0054,
         "iqr": 0.0
       },
-      "ops_per_sec": 189172139580,
+      "ops_per_sec": 186683377016,
       "counters": {
-        "cache_misses_per_op": 0.216806,
-        "cache_miss_ratio": 0.90306,
-        "instructions_per_cycle": 0.0863,
+        "cache_misses_per_op": 0.219241,
+        "cache_miss_ratio": 0.905121,
+        "instructions_per_cycle": 0.0889,
         "l1d_misses_per_op": null
       },
       "notes": "cores: [0, 1, 4, 5]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles); l1d event: l1d.replacement (verify with perf list | grep -i l1d on reference machine)"
@@ -251,10 +251,10 @@
         "min": 0.0013,
         "iqr": 0.0
       },
-      "ops_per_sec": 794383214186,
+      "ops_per_sec": 786640705218,
       "counters": {
-        "cache_misses_per_op": 0.000698,
-        "cache_miss_ratio": 0.032233,
+        "cache_misses_per_op": 0.000636,
+        "cache_miss_ratio": 0.029661,
         "instructions_per_cycle": 0.5474,
         "l1d_misses_per_op": null
       },
@@ -280,11 +280,11 @@
         "min": 0.0027,
         "iqr": 0.0
       },
-      "ops_per_sec": 373564135654,
+      "ops_per_sec": 371096342354,
       "counters": {
-        "cache_misses_per_op": 0.024409,
-        "cache_miss_ratio": 0.898328,
-        "instructions_per_cycle": 0.0567,
+        "cache_misses_per_op": 0.024569,
+        "cache_miss_ratio": 0.898489,
+        "instructions_per_cycle": 0.0579,
         "l1d_misses_per_op": null
       },
       "notes": "cores: [0, 1, 2, 3, 4, 5, 6, 7]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles); l1d event: l1d.replacement (verify with perf list | grep -i l1d on reference machine)"
@@ -309,10 +309,10 @@
         "min": 0.0009,
         "iqr": 0.0
       },
-      "ops_per_sec": 1054829773497,
+      "ops_per_sec": 1090808996788,
       "counters": {
-        "cache_misses_per_op": 0.001434,
-        "cache_miss_ratio": 0.041702,
+        "cache_misses_per_op": 0.001351,
+        "cache_miss_ratio": 0.040987,
         "instructions_per_cycle": 0.5476,
         "l1d_misses_per_op": null
       },
