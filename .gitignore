@@ -3,6 +3,7 @@ bench/build/
 site/.next/
 site/out/
 site/node_modules/
+node_modules/
 
 # OS
 .DS_Store

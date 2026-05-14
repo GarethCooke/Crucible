@@ -117,6 +117,8 @@ Back-of-envelope: with around 200 ns of local work per iteration,
 | IntraCCX/4t/unpadded | 14,792,861  | 415.50 G/s |
 | CrossCCX/4t/unpadded | 18,862,904  | 368.12 G/s |
 
+Two thread counts are reported because they carry different signals. At 4 threads the cache line is hot enough that Infinity Fabric latency dominates any ambient noise, and the measured 1.31× ratio is reproducible across separate runs to within 1%. At 2 threads the same physical effect is present at a similar magnitude, but the measurement is more sensitive to whatever else cpu 0 happens to be doing during the run — the reference machine uses `cset shield` for isolation rather than `isolcpus=` boot params (see [methodology](/methodology)), and `cset` is best-effort. We treat the 4t number as the definitive cross-CCX result; 2t is reported for completeness but is not used as a regression sanity check.
+
 At 8 threads cross-CCX, the unpadded variant reaches **68.2 ns/op** against the padded
 variant's **0.20 ns/op** — a **341× gap**. The padded 8-thread variant shows near-perfect
 linear throughput scaling (8× vs 1 thread).
@@ -188,11 +190,14 @@ are identical.
 
 ## A note on measurement conditions
 
-The reference machine boot params (`isolcpus=4-7 nohz_full=4-7 rcu_nocbs=4-7`) isolate
-only CCX1 (cpus 4–7). The cross-CCX tests pin one thread to cpu 0, which sits on the
-un-isolated CCX0 and sees normal kernel activity. CV across 11 reps was nonetheless
-0.02–0.22%, so background noise on cpu 0 isn't materially affecting the measurement.
-See the [methodology page](/methodology) for the full per-boot setup checklist.
+Core isolation uses `cset shield --cpu=0-7`, invoked by the wrapper script immediately
+before each benchmark run and reset after (see [methodology](/methodology)). `cset` shields
+all 8 cores, but cpu 0 sits on CCX0 alongside the system timer and other unmovable kernel
+threads — it sees more ambient noise than the CCX1 cores. CV across 11 reps was
+0.02–0.22% intra-run, which confirms that background noise isn't materially affecting
+single-run measurements. Across separate runs, the CrossCCX/2t result is more variable
+than 4t for exactly this reason — which is why we treat the 4t number as the definitive
+cross-CCX result.
 
 ## Reproducing this
 

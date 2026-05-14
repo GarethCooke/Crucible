@@ -68,7 +68,7 @@ export default function MethodologyPage() {
         <div><span style={{ color: 'var(--text-muted)' }}>RAM</span>       <span className="ml-4">32 GB DDR4-3200</span></div>
         <div><span style={{ color: 'var(--text-muted)' }}>Board</span>     <span className="ml-4">ASUS ROG STRIX B550-F GAMING</span></div>
         <div><span style={{ color: 'var(--text-muted)' }}>OS</span>        <span className="ml-4">Ubuntu Server LTS (dual-boot)</span></div>
-        <div><span style={{ color: 'var(--text-muted)' }}>Boot</span>      <span className="ml-4">isolcpus=4-7 nohz_full=4-7 rcu_nocbs=4-7</span></div>
+        <div><span style={{ color: 'var(--text-muted)' }}>Boot</span>      <span className="ml-4">No core-isolation params — cset shield applied per-benchmark</span></div>
         <div><span style={{ color: 'var(--text-muted)' }}>BIOS</span>      <span className="ml-4">Core Performance Boost disabled, SMT disabled</span></div>
         <div className="pt-2 border-t" style={{ borderColor: 'var(--border-color)' }}>
           <span style={{ color: 'var(--text-muted)' }}>ISA</span>
@@ -106,14 +106,32 @@ export default function MethodologyPage() {
           deliver at nominal frequency.
         </Commitment>
         <Commitment n={3} title="Core isolation">
-          Per-benchmark <code>cpuset</code> shielding via <code>cset shield</code>, configured
-          immediately before each benchmark run and reset after. Exact shielded core IDs are
-          recorded in each demo&rsquo;s JSON <code>machine.isolated_cores</code> field. IRQ
-          affinity is steered to non-shielded cores via{' '}
-          <code>/proc/irq/*/smp_affinity</code> by the wrapper script. SMT is disabled at the
-          BIOS level — verified via <code>/sys/devices/system/cpu/smt/active</code> returning{' '}
-          <code>0</code> and <code>lscpu</code> reporting 8 CPUs — to remove SMT-sibling resource
-          sharing (L1, L2, execution ports, frontend) from all measurements.
+          Core isolation is applied per-benchmark via <code>cset shield</code>, not via
+          persistent <code>isolcpus=</code> boot parameters. The reference machine is
+          dual-purpose — it dual-boots Windows, and the Ubuntu install is used for things
+          other than benchmarking — so permanent kernel-level isolation would penalise normal
+          use and is the kind of configuration that&rsquo;s easy to forget about and hard to
+          debug six months later. <code>cset shield --cpu=0-7</code> is invoked by the
+          per-demo wrapper scripts immediately before the benchmark binary runs and reset
+          (<code>cset shield --reset</code>) immediately after, providing isolation during the
+          measurement window and nothing more.
+          <br /><br />
+          The tradeoff: <code>cset shield</code> is a best-effort migration at shield time,
+          not a kernel-enforced exclusion. Tasks already pinned to a shielded cpu, kernel
+          threads that can&rsquo;t be moved, and tasks that spawn during the run can still
+          appear on benchmark cores. Within a single run this is negligible — CV across 11
+          repetitions is typically under 0.3%. Across separate runs, cpus that pick up
+          ambient kernel activity (notably cpu 0, which holds the system timer and other
+          unmovable work) can drift by a few percent. Where this matters for sanity
+          assertions we use measurements that are robust to that drift, typically by running
+          enough contending threads that the silicon-level signal dominates over background
+          noise. IRQ affinity is steered to non-shielded cores via{' '}
+          <code>/proc/irq/*/smp_affinity</code> by the wrapper script. SMT is disabled at
+          the BIOS level — verified via <code>/sys/devices/system/cpu/smt/active</code>{' '}
+          returning <code>0</code> and <code>lscpu</code> reporting 8 CPUs — to remove
+          SMT-sibling resource sharing (L1, L2, execution ports, frontend) from all
+          measurements. Exact shielded core IDs are recorded in each demo&rsquo;s JSON{' '}
+          <code>machine.isolated_cores</code> field.
         </Commitment>
         <Commitment n={4} title="Statistical reporting">
           Each benchmark runs ≥20 repetitions after warmup. Every chart states which statistic
