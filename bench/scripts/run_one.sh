@@ -95,6 +95,50 @@ if [[ "${SLUG}" == "03-simd-blackscholes" ]]; then
 fi
 # ─────────────────────────────────────────────────────────────────────────────
 
+# ─── Demo 04: SPSC queue — custom latency pipeline ───────────────────────────
+# Standalone binary (not Google Benchmark). Runs each variant once (binary
+# handles 5 internal iterations + histogram merge). Assembles via assemble_results_04.py.
+if [[ "${SLUG}" == "04-spsc-queue" ]]; then
+    SPSC_BINARY="${BENCH_ROOT}/build/demos/04-spsc-queue/bench_04_spsc_queue"
+
+    if [[ ! -x "${SPSC_BINARY}" ]]; then
+        echo "ERROR: binary not found: ${SPSC_BINARY}" >&2; exit 1
+    fi
+
+    echo "==> Running stress test (10M items per variant, zero-loss check)..."
+    sudo cset shield --cpu=4-7 --kthread=on > /dev/null
+    SHIELD_ACTIVE=1
+    sudo cset shield --exec -- "${SPSC_BINARY}" --stress-test | grep -v '^cset:'
+    sudo cset shield --reset > /dev/null
+    SHIELD_ACTIVE=0
+
+    echo "==> Collecting machine info..."
+    sudo cset shield --cpu=4-7 --kthread=on > /dev/null
+    SHIELD_ACTIVE=1
+    MACHINE_JSON=$(sudo cset shield --exec -- "${SPSC_BINARY}" --machine-info \
+        | grep -v '^cset:' | tr -d '\000-\010\013-\037\177')
+
+    WDIR=$(mktemp -d /tmp/crucible_spsc_XXXXXX)
+
+    for VARIANT in lockfree-handrolled lockfree-boost mutex-condvar; do
+        echo "==> Running variant: ${VARIANT} (5 × 1M items)..."
+        sudo cset shield --exec -- "${SPSC_BINARY}" "${VARIANT}" \
+            | grep -v '^cset:' > "${WDIR}/${VARIANT}.json"
+    done
+
+    sudo cset shield --reset > /dev/null
+    SHIELD_ACTIVE=0
+
+    echo "==> Assembling output JSON..."
+    CAPTURED_AT=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    python3 "${BENCH_ROOT}/scripts/assemble_results_04.py" \
+        "${WDIR}" "${CAPTURED_AT}" "${MACHINE_JSON}" "${OUT_JSON}"
+
+    echo "==> Done: ${OUT_JSON}"
+    exit 0
+fi
+# ─────────────────────────────────────────────────────────────────────────────
+
 # ─── Demo 02: false-sharing — separate perf-stat pipeline ────────────────────
 # Uses tools/perf_capture.sh (handles its own cset shield per variant) and
 # tools/parse_perf.py to fold perf stat + Google Benchmark JSON into the site

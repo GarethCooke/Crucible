@@ -1,0 +1,23 @@
+{
+  "demo": "04-spsc-queue",
+  "title": "Lock-free SPSC vs mutex queue: end-to-end tail latency",
+  "machine": {
+    "cpu": "AMD Ryzen 7 3800X 8-Core Processor",
+    "cores_physical": 8,
+    "cores_logical": 8,
+    "smt_enabled": false,
+    "ram_gb": 31,
+    "ram_speed_mhz": null,
+    "compiler": "gcc 13.2.0",
+    "compiler_flags": "-O3 -march=native -std=c++20",
+    "kernel": "",
+    "governor": "performance",
+    "turbo": false,
+    "isolated_cpus": "",
+    "cpu_affinity": "4-7",
+    "tsc_ns_per_cycle": 0.0
+  },
+  "captured_at": "",
+  "runs": [],
+  "notes": "Run ./scripts/run_one.sh 04-spsc-queue on the reference machine to populate."
+}
