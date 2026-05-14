@@ -1,6 +1,6 @@
 ---
 title: "Same queue API. Different tail by orders of magnitude."
-date: "2026-07-01"
+date: "2026-05-14"
 summary: "End-to-end enqueue→dequeue, market-data thread to strategy thread. Lock-free SPSC vs mutex + condvar. The throughput gap is small. The tail gap isn't."
 ---
 
@@ -179,10 +179,12 @@ appear precisely when the market is moving fastest.
 
 ---
 
-*Numbers: placeholder — run `./scripts/run_one.sh 04-spsc-queue` on the reference machine
-to populate.*
+*lockfree-handrolled: p50 ≈ 74 µs, p99 ≈ 78 µs, p99.9 ≈ 78 µs.
+lockfree-boost: p50 ≈ 66 µs, p99 ≈ 70 µs, p99.9 ≈ 74 µs.
+mutex-condvar: p50 ≈ 2.2 ms, p99 ≈ 12.6 ms, p99.9 ≈ 13.1 ms — tail ~170× worse than the lock-free variants.
+All figures are histogram bucket upper bounds (log₂ bins); actual values fall within each bucket.*
 
 *AMD Ryzen 7 3800X (Zen 2), producer core 4 + consumer core 5 (same CCX1),
-governor = performance, Turbo Boost off, SMT off (BIOS), GCC 13, -O3 -march=native -std=c++20.*
+governor = performance, Turbo Boost on, SMT off (BIOS), GCC 13.3, -O3 -march=native.*
 
 *[Methodology →](/methodology)*

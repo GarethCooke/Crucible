@@ -96,6 +96,11 @@ def parse_bench_json(path: Path, filter_name: str) -> dict:
     ops_per_sec      = int(1e9 / ns_per_op_median) if ns_per_op_median > 0 else 0
 
     return {
+        "real_time_ns": {
+            "median": round(median_ns_iter, 1),
+            "min":    round(min_ns_iter,    1),
+            "iqr":    round(iqr_ns_iter,    1),
+        },
         "ns_per_op": {
             "median": round(ns_per_op_median, 4),
             "min":    round(ns_per_op_min,    4),
@@ -168,13 +173,14 @@ def main():
     cores_used = cores_map.get(nthreads, [])
 
     new_run = {
-        "variant":    variant,
-        "threads":    nthreads,
-        "padded":     bool(args.padded),
-        "placement":  placement,
-        "cores_used": cores_used,
-        "ns_per_op":  timing["ns_per_op"],
-        "ops_per_sec": timing["ops_per_sec"],
+        "variant":      variant,
+        "threads":      nthreads,
+        "padded":       bool(args.padded),
+        "placement":    placement,
+        "cores_used":   cores_used,
+        "real_time_ns": timing["real_time_ns"],
+        "ns_per_op":    timing["ns_per_op"],
+        "ops_per_sec":  timing["ops_per_sec"],
         "counters":   counters,
         "notes": (
             f"cores: {cores_used}; fill seed: 42; "

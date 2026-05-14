@@ -32,6 +32,11 @@
       "cores_used": [
         4
       ],
+      "real_time_ns": {
+        "median": 15052.8,
+        "min": 15052.8,
+        "iqr": 0.0
+      },
       "ns_per_op": {
         "median": 0.0147,
         "min": 0.0147,
@@ -54,6 +59,11 @@
       "cores_used": [
         4
       ],
+      "real_time_ns": {
+        "median": 14950.4,
+        "min": 14950.4,
+        "iqr": 0.0
+      },
       "ns_per_op": {
         "median": 0.0146,
         "min": 0.0146,
@@ -77,6 +87,11 @@
         4,
         5
       ],
+      "real_time_ns": {
+        "median": 15564.8,
+        "min": 15564.8,
+        "iqr": 204.8
+      },
       "ns_per_op": {
         "median": 0.0076,
         "min": 0.0076,
@@ -100,6 +115,11 @@
         4,
         5
       ],
+      "real_time_ns": {
+        "median": 15360.0,
+        "min": 15360.0,
+        "iqr": 0.0
+      },
       "ns_per_op": {
         "median": 0.0075,
         "min": 0.0075,
@@ -125,6 +145,11 @@
         6,
         7
       ],
+      "real_time_ns": {
+        "median": 20480.0,
+        "min": 20480.0,
+        "iqr": 0.0
+      },
       "ns_per_op": {
         "median": 0.005,
         "min": 0.005,
@@ -150,6 +175,11 @@
         6,
         7
       ],
+      "real_time_ns": {
+        "median": 4915.2,
+        "min": 4915.2,
+        "iqr": 0.0
+      },
       "ns_per_op": {
         "median": 0.0012,
         "min": 0.0012,
@@ -173,6 +203,11 @@
         0,
         4
       ],
+      "real_time_ns": {
+        "median": 20070.4,
+        "min": 20070.4,
+        "iqr": 614.4
+      },
       "ns_per_op": {
         "median": 0.0098,
         "min": 0.0098,
@@ -196,6 +231,11 @@
         0,
         4
       ],
+      "real_time_ns": {
+        "median": 5324.8,
+        "min": 5324.8,
+        "iqr": 204.8
+      },
       "ns_per_op": {
         "median": 0.0026,
         "min": 0.0026,
@@ -221,6 +261,11 @@
         4,
         5
       ],
+      "real_time_ns": {
+        "median": 22118.4,
+        "min": 22118.4,
+        "iqr": 0.0
+      },
       "ns_per_op": {
         "median": 0.0054,
         "min": 0.0054,
@@ -246,6 +291,11 @@
         4,
         5
       ],
+      "real_time_ns": {
+        "median": 5324.8,
+        "min": 5324.8,
+        "iqr": 0.0
+      },
       "ns_per_op": {
         "median": 0.0013,
         "min": 0.0013,
@@ -275,6 +325,11 @@
         6,
         7
       ],
+      "real_time_ns": {
+        "median": 22118.4,
+        "min": 22118.4,
+        "iqr": 0.0
+      },
       "ns_per_op": {
         "median": 0.0027,
         "min": 0.0027,
@@ -304,6 +359,11 @@
         6,
         7
       ],
+      "real_time_ns": {
+        "median": 7372.8,
+        "min": 7372.8,
+        "iqr": 0.0
+      },
       "ns_per_op": {
         "median": 0.0009,
         "min": 0.0009,

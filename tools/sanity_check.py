@@ -26,7 +26,7 @@ def find_run(runs: list[dict], placement: str, threads: int, variant: str) -> di
 
 
 def median_ns(run: dict) -> float:
-    return run["ns_per_op"]["median"]
+    return run["real_time_ns"]["median"]
 
 
 def ipc(run: dict) -> float:
@@ -103,7 +103,7 @@ def main() -> None:
         u_ns = median_ns(intra1u)
         p_ns = median_ns(intra1p)
         diff_pct = abs(u_ns - p_ns) / max(u_ns, p_ns) * 100
-        label = f"intra-ccx/1t unpadded={u_ns:.3f} padded={p_ns:.3f} ns/op ({diff_pct:.1f}% diff)"
+        label = f"intra-ccx/1t unpadded={u_ns:.1f} padded={p_ns:.1f} ns wall-clock ({diff_pct:.1f}% diff)"
         if diff_pct <= 20.0:
             print(f"  PASS  {label} (≤20% required)")
         else:
@@ -126,8 +126,8 @@ def main() -> None:
         intra_ns = median_ns(intra2u)
         ratio = cross_ns / intra_ns if intra_ns > 0 else 0
         label = (
-            f"cross-ccx/2t/unpadded={cross_ns:.4f} ns/op  "
-            f"intra-ccx/2t/unpadded={intra_ns:.4f} ns/op  "
+            f"cross-ccx/2t/unpadded={cross_ns:.1f} ns  "
+            f"intra-ccx/2t/unpadded={intra_ns:.1f} ns  "
             f"ratio={ratio:.2f}×"
         )
         if ratio >= 1.15:
@@ -151,8 +151,8 @@ def main() -> None:
         intra_ns = median_ns(intra4u)
         ratio = cross_ns / intra_ns if intra_ns > 0 else 0
         label = (
-            f"cross-ccx/4t/unpadded={cross_ns:.4f} ns/op  "
-            f"intra-ccx/4t/unpadded={intra_ns:.4f} ns/op  "
+            f"cross-ccx/4t/unpadded={cross_ns:.1f} ns  "
+            f"intra-ccx/4t/unpadded={intra_ns:.1f} ns  "
             f"ratio={ratio:.2f}×"
         )
         if ratio >= 1.15:
@@ -179,8 +179,8 @@ def main() -> None:
         intra_ns = median_ns(intra2p)
         ratio = cross_ns / intra_ns if intra_ns > 0 else 0
         label = (
-            f"cross-ccx/2t/padded={cross_ns:.4f} ns/op  "
-            f"intra-ccx/2t/padded={intra_ns:.4f} ns/op  "
+            f"cross-ccx/2t/padded={cross_ns:.1f} ns  "
+            f"intra-ccx/2t/padded={intra_ns:.1f} ns  "
             f"ratio={ratio:.2f}×"
         )
         if 0.90 <= ratio <= 1.15:
