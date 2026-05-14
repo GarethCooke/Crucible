@@ -18,6 +18,9 @@
 #include <cassert>
 #include <cstdio>
 #include <fstream>
+#include <sched.h>
+#include <sys/syscall.h>
+#include <unistd.h>
 #include <pthread.h>
 #include <random>
 #include <stdexcept>
@@ -137,6 +140,7 @@ struct WorkerCtx {
 
 static void worker_fn(WorkerCtx ctx) {
     while (true) {
+        fprintf(stderr, "[bench] slot=%d tid=%ld cpu=%d\n", ctx.slot, (long)syscall(SYS_gettid), sched_getcpu());
         ctx.go_bar->arrive_and_wait();
         if (ctx.stop->load(std::memory_order_relaxed)) break;
 
