@@ -17,6 +17,7 @@ DEMOS=(
     01-branch-prediction
     02-false-sharing
     03-simd-blackscholes
+    04-spsc-queue
 )
 
 for slug in "${DEMOS[@]}"; do
