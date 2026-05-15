@@ -68,7 +68,6 @@ export default function RootLayout({
             </a>
           </div>
         </footer>
-        {children}
         <Script
           defer
           src="https://cloud.umami.is/script.js"
