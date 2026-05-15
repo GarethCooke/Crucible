@@ -192,6 +192,13 @@ static void run_benchmark(
         pin_thread(workers.back(), cores[t]);
     }
 
+    // Warmup: one full barrier round-trip before measurement begins.
+    // Pre-touches every fills[] page on each participating core, warms the branch
+    // predictor, and resolves first-touch NUMA allocations on g_padded/g_unpadded.
+    // Discarded — not measured.
+    go_bar.arrive_and_wait();
+    done_bar.arrive_and_wait();
+
     for (auto _ : state) {
         state.PauseTiming();
         go_bar.arrive_and_wait();    // release workers — barrier cost excluded from timing
@@ -230,7 +237,7 @@ int main(int argc, char** argv) {
                 benchmark::RegisterBenchmark(name.c_str(),
                     [padded, cores](benchmark::State& s) {
                         run_benchmark(s, static_cast<int>(cores.size()), padded, cores);
-                    })->Repetitions(11)->Unit(benchmark::kNanosecond);
+                    })->Repetitions(11)->Iterations(50)->Unit(benchmark::kNanosecond);
             }
     };
 

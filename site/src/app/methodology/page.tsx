@@ -132,6 +132,17 @@ export default function MethodologyPage() {
           SMT-sibling resource sharing (L1, L2, execution ports, frontend) from all
           measurements. Exact shielded core IDs are recorded in each demo&rsquo;s JSON{' '}
           <code>machine.isolated_cores</code> field.
+          <br /><br />
+          <strong style={{ color: 'var(--text-secondary)' }}>Cross-CCX results.</strong>{' '}
+          Runs that span both CCXs (cores 0–3 and 4–7) are categorised as{' '}
+          <em>exploratory</em> rather than publication-grade. Cores 0–3 are not
+          permanently isolated — cpu 0 in particular carries the system timer and other
+          unmovable kernel work that <code>cset shield</code> cannot evict. Cross-CCX
+          measurements therefore carry higher ambient noise than intra-CCX measurements and
+          should be read as directional signal only. Publication-grade cross-CCX data would
+          require <code>isolcpus=0-7 nohz_full=0-7 rcu_nocbs=0-7</code> as persistent boot
+          parameters, which is deferred until a dedicated benchmark machine is available.
+          Every post labels cross-CCX results accordingly.
         </Commitment>
         <Commitment n={4} title="Statistical reporting">
           Each benchmark runs ≥20 repetitions after warmup. Every chart states which statistic
