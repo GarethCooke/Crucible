@@ -33,20 +33,20 @@
         4
       ],
       "real_time_ns": {
-        "median": 2919677.7,
-        "min": 2919213.1,
-        "iqr": 205.8
+        "median": 2920810.7,
+        "min": 2919180.5,
+        "iqr": 6455.7
       },
       "ns_per_op": {
-        "median": 0.0149,
-        "min": 0.0149,
-        "iqr": 0.0
+        "median": 2.8524,
+        "min": 2.8508,
+        "iqr": 0.0063
       },
-      "ops_per_sec": 67231666535,
+      "ops_per_sec": 350587593,
       "counters": {
-        "cache_misses_per_op": 0.003325,
-        "cache_miss_ratio": 0.272872,
-        "instructions_per_cycle": 0.5479,
+        "cache_misses_per_op": 1.366387,
+        "cache_miss_ratio": 0.280052,
+        "instructions_per_cycle": 0.5488,
         "l1d_misses_per_op": null
       },
       "notes": "cores: [4]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles); l1d event: l1d.replacement (verify with perf list | grep -i l1d on reference machine)"
@@ -60,20 +60,20 @@
         4
       ],
       "real_time_ns": {
-        "median": 2919993.0,
-        "min": 2919109.7,
-        "iqr": 421.9
+        "median": 2920043.9,
+        "min": 2918586.1,
+        "iqr": 2244.3
       },
       "ns_per_op": {
-        "median": 0.0148,
-        "min": 0.0148,
-        "iqr": 0.0
+        "median": 2.8516,
+        "min": 2.8502,
+        "iqr": 0.0022
       },
-      "ops_per_sec": 67344872500,
+      "ops_per_sec": 350679656,
       "counters": {
-        "cache_misses_per_op": 0.003377,
-        "cache_miss_ratio": 0.278132,
-        "instructions_per_cycle": 0.5479,
+        "cache_misses_per_op": 1.379643,
+        "cache_miss_ratio": 0.283119,
+        "instructions_per_cycle": 0.5488,
         "l1d_misses_per_op": null
       },
       "notes": "cores: [4]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles); l1d event: l1d.replacement (verify with perf list | grep -i l1d on reference machine)"
@@ -88,20 +88,20 @@
         5
       ],
       "real_time_ns": {
-        "median": 7911992.0,
-        "min": 7897750.6,
-        "iqr": 16946.3
+        "median": 7714000.4,
+        "min": 7645326.5,
+        "iqr": 22171.3
       },
       "ns_per_op": {
-        "median": 0.0076,
-        "min": 0.0076,
-        "iqr": 0.0
+        "median": 3.7666,
+        "min": 3.7331,
+        "iqr": 0.0108
       },
-      "ops_per_sec": 131401593039,
+      "ops_per_sec": 265491300,
       "counters": {
-        "cache_misses_per_op": 0.180819,
-        "cache_miss_ratio": 0.947705,
-        "instructions_per_cycle": 0.2055,
+        "cache_misses_per_op": 57.45079,
+        "cache_miss_ratio": 0.942051,
+        "instructions_per_cycle": 0.2103,
         "l1d_misses_per_op": null
       },
       "notes": "cores: [4, 5]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles); l1d event: l1d.replacement (verify with perf list | grep -i l1d on reference machine)"
@@ -116,20 +116,20 @@
         5
       ],
       "real_time_ns": {
-        "median": 3001481.9,
-        "min": 2995317.7,
-        "iqr": 3489.6
+        "median": 2995007.9,
+        "min": 2921521.3,
+        "iqr": 24304.2
       },
       "ns_per_op": {
-        "median": 0.0076,
-        "min": 0.0076,
-        "iqr": 0.0
+        "median": 1.4624,
+        "min": 1.4265,
+        "iqr": 0.0119
       },
-      "ops_per_sec": 131364415086,
+      "ops_per_sec": 683804540,
       "counters": {
-        "cache_misses_per_op": 0.001912,
-        "cache_miss_ratio": 0.215256,
-        "instructions_per_cycle": 0.5477,
+        "cache_misses_per_op": 0.767654,
+        "cache_miss_ratio": 0.226274,
+        "instructions_per_cycle": 0.5481,
         "l1d_misses_per_op": null
       },
       "notes": "cores: [4, 5]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles); l1d event: l1d.replacement (verify with perf list | grep -i l1d on reference machine)"
@@ -146,20 +146,20 @@
         7
       ],
       "real_time_ns": {
-        "median": 11703427.2,
-        "min": 11647524.2,
-        "iqr": 30152.3
+        "median": 11667083.1,
+        "min": 11465811.1,
+        "iqr": 162475.8
       },
       "ns_per_op": {
-        "median": 0.0051,
-        "min": 0.0051,
-        "iqr": 0.0
+        "median": 2.8484,
+        "min": 2.7993,
+        "iqr": 0.0397
       },
-      "ops_per_sec": 197648761454,
+      "ops_per_sec": 351073182,
       "counters": {
-        "cache_misses_per_op": 0.230707,
-        "cache_miss_ratio": 0.91921,
-        "instructions_per_cycle": 0.1091,
+        "cache_misses_per_op": 56.321127,
+        "cache_miss_ratio": 0.916356,
+        "instructions_per_cycle": 0.1094,
         "l1d_misses_per_op": null
       },
       "notes": "cores: [4, 5, 6, 7]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles); l1d event: l1d.replacement (verify with perf list | grep -i l1d on reference machine)"
@@ -176,20 +176,20 @@
         7
       ],
       "real_time_ns": {
-        "median": 1673840.6,
-        "min": 1644615.0,
-        "iqr": 17371.5
+        "median": 1708352.7,
+        "min": 1514887.6,
+        "iqr": 210673.4
       },
       "ns_per_op": {
-        "median": 0.0012,
-        "min": 0.0012,
-        "iqr": 0.0
+        "median": 0.4171,
+        "min": 0.3698,
+        "iqr": 0.0514
       },
-      "ops_per_sec": 841635217502,
+      "ops_per_sec": 2397631383,
       "counters": {
-        "cache_misses_per_op": 0.000551,
-        "cache_miss_ratio": 0.027831,
-        "instructions_per_cycle": 0.5477,
+        "cache_misses_per_op": 0.196308,
+        "cache_miss_ratio": 0.080724,
+        "instructions_per_cycle": 0.548,
         "l1d_misses_per_op": null
       },
       "notes": "cores: [4, 5, 6, 7]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles); l1d event: l1d.replacement (verify with perf list | grep -i l1d on reference machine)"
@@ -204,20 +204,20 @@
         4
       ],
       "real_time_ns": {
-        "median": 8336781.7,
-        "min": 8196458.4,
-        "iqr": 89705.0
+        "median": 8394608.1,
+        "min": 8246118.5,
+        "iqr": 115466.6
       },
       "ns_per_op": {
-        "median": 0.0099,
-        "min": 0.0099,
-        "iqr": 0.0001
+        "median": 4.0989,
+        "min": 4.0264,
+        "iqr": 0.0564
       },
-      "ops_per_sec": 101478770646,
+      "ops_per_sec": 243966124,
       "counters": {
-        "cache_misses_per_op": 0.122944,
-        "cache_miss_ratio": 0.868084,
-        "instructions_per_cycle": 0.1606,
+        "cache_misses_per_op": 30.192109,
+        "cache_miss_ratio": 0.863287,
+        "instructions_per_cycle": 0.1648,
         "l1d_misses_per_op": null
       },
       "notes": "cores: [0, 4]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles); l1d event: l1d.replacement (verify with perf list | grep -i l1d on reference machine)"
@@ -232,20 +232,20 @@
         4
       ],
       "real_time_ns": {
-        "median": 1765334.8,
-        "min": 1566580.5,
-        "iqr": 189588.8
+        "median": 1874283.2,
+        "min": 1285793.0,
+        "iqr": 267974.8
       },
       "ns_per_op": {
-        "median": 0.0026,
-        "min": 0.0026,
-        "iqr": 0.0003
+        "median": 0.9152,
+        "min": 0.6278,
+        "iqr": 0.1308
       },
-      "ops_per_sec": 382295856485,
+      "ops_per_sec": 1092684404,
       "counters": {
-        "cache_misses_per_op": 0.000558,
-        "cache_miss_ratio": 0.025262,
-        "instructions_per_cycle": 0.547,
+        "cache_misses_per_op": 0.205646,
+        "cache_miss_ratio": 0.080896,
+        "instructions_per_cycle": 0.5474,
         "l1d_misses_per_op": null
       },
       "notes": "cores: [0, 4]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles); l1d event: l1d.replacement (verify with perf list | grep -i l1d on reference machine)"
@@ -262,20 +262,20 @@
         5
       ],
       "real_time_ns": {
-        "median": 15344581.3,
-        "min": 15327458.1,
-        "iqr": 26907.5
+        "median": 15672398.2,
+        "min": 15535069.9,
+        "iqr": 126198.8
       },
       "ns_per_op": {
-        "median": 0.0054,
-        "min": 0.0054,
-        "iqr": 0.0
+        "median": 3.8263,
+        "min": 3.7927,
+        "iqr": 0.0308
       },
-      "ops_per_sec": 184965209516,
+      "ops_per_sec": 261351194,
       "counters": {
-        "cache_misses_per_op": 0.221464,
-        "cache_miss_ratio": 0.904418,
-        "instructions_per_cycle": 0.0889,
+        "cache_misses_per_op": 50.730555,
+        "cache_miss_ratio": 0.899898,
+        "instructions_per_cycle": 0.086,
         "l1d_misses_per_op": null
       },
       "notes": "cores: [0, 1, 4, 5]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles); l1d event: l1d.replacement (verify with perf list | grep -i l1d on reference machine)"
@@ -292,20 +292,20 @@
         5
       ],
       "real_time_ns": {
-        "median": 1540899.7,
-        "min": 1520460.9,
-        "iqr": 28809.9
+        "median": 1604902.4,
+        "min": 1171990.2,
+        "iqr": 316897.2
       },
       "ns_per_op": {
-        "median": 0.0012,
-        "min": 0.0012,
-        "iqr": 0.0
+        "median": 0.3918,
+        "min": 0.2861,
+        "iqr": 0.0774
       },
-      "ops_per_sec": 814718478067,
+      "ops_per_sec": 2552180183,
       "counters": {
-        "cache_misses_per_op": 0.000622,
-        "cache_miss_ratio": 0.03028,
-        "instructions_per_cycle": 0.5474,
+        "cache_misses_per_op": 0.191042,
+        "cache_miss_ratio": 0.078236,
+        "instructions_per_cycle": 0.5476,
         "l1d_misses_per_op": null
       },
       "notes": "cores: [0, 1, 4, 5]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles); l1d event: l1d.replacement (verify with perf list | grep -i l1d on reference machine)"
@@ -326,20 +326,20 @@
         7
       ],
       "real_time_ns": {
-        "median": 27134229.2,
-        "min": 27049440.3,
-        "iqr": 62028.4
+        "median": 26998752.8,
+        "min": 26948430.1,
+        "iqr": 98140.7
       },
       "ns_per_op": {
-        "median": 0.0027,
-        "min": 0.0027,
-        "iqr": 0.0
+        "median": 3.2957,
+        "min": 3.2896,
+        "iqr": 0.012
       },
-      "ops_per_sec": 369716466463,
+      "ops_per_sec": 303421423,
       "counters": {
-        "cache_misses_per_op": 0.024663,
-        "cache_miss_ratio": 0.899053,
-        "instructions_per_cycle": 0.0575,
+        "cache_misses_per_op": 56.228435,
+        "cache_miss_ratio": 0.895916,
+        "instructions_per_cycle": 0.0566,
         "l1d_misses_per_op": null
       },
       "notes": "cores: [0, 1, 2, 3, 4, 5, 6, 7]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles); l1d event: l1d.replacement (verify with perf list | grep -i l1d on reference machine)"
@@ -360,20 +360,20 @@
         7
       ],
       "real_time_ns": {
-        "median": 1561635.0,
-        "min": 1545848.1,
-        "iqr": 17255.2
+        "median": 1601916.9,
+        "min": 1316460.7,
+        "iqr": 242883.2
       },
       "ns_per_op": {
-        "median": 0.0009,
-        "min": 0.0009,
-        "iqr": 0.0
+        "median": 0.1955,
+        "min": 0.1607,
+        "iqr": 0.0296
       },
-      "ops_per_sec": 1080795121656,
+      "ops_per_sec": 5113873387,
       "counters": {
-        "cache_misses_per_op": 0.001201,
-        "cache_miss_ratio": 0.03701,
-        "instructions_per_cycle": 0.5476,
+        "cache_misses_per_op": 0.208513,
+        "cache_miss_ratio": 0.083576,
+        "instructions_per_cycle": 0.5477,
         "l1d_misses_per_op": null
       },
       "notes": "cores: [0, 1, 2, 3, 4, 5, 6, 7]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles); l1d event: l1d.replacement (verify with perf list | grep -i l1d on reference machine)"
