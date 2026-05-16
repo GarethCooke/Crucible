@@ -68,7 +68,7 @@ export default function MethodologyPage() {
         <div><span style={{ color: 'var(--text-muted)' }}>RAM</span>       <span className="ml-4">32 GB DDR4-3200</span></div>
         <div><span style={{ color: 'var(--text-muted)' }}>Board</span>     <span className="ml-4">ASUS ROG STRIX B550-F GAMING</span></div>
         <div><span style={{ color: 'var(--text-muted)' }}>OS</span>        <span className="ml-4">Ubuntu Server LTS (dual-boot)</span></div>
-        <div><span style={{ color: 'var(--text-muted)' }}>Boot</span>      <span className="ml-4">No core-isolation params — cset shield applied per-benchmark</span></div>
+        <div><span style={{ color: 'var(--text-muted)' }}>Boot</span>      <span className="ml-4">isolcpus=0-7 nohz_full=0-7 rcu_nocbs=0-7; benchmarks pin to cores 4–7 via taskset</span></div>
         <div><span style={{ color: 'var(--text-muted)' }}>BIOS</span>      <span className="ml-4">Core Performance Boost disabled, SMT disabled</span></div>
         <div className="pt-2 border-t" style={{ borderColor: 'var(--border-color)' }}>
           <span style={{ color: 'var(--text-muted)' }}>ISA</span>
@@ -82,11 +82,10 @@ export default function MethodologyPage() {
       </p>
       <p className="text-sm mb-12" style={{ color: 'var(--text-muted)' }}>
         <strong style={{ color: 'var(--text-secondary)' }}>Boot parameters.</strong>{' '}
-        No core-isolation boot parameters are committed (<code>isolcpus=</code>,{' '}
-        <code>nohz_full=</code>, <code>rcu_nocbs=</code> are all unset). Demos with hard
-        tail-latency claims (sub-microsecond p99.9) may introduce <code>nohz_full=</code> at
-        that point, with each addition documented in that demo&rsquo;s methodology notes
-        alongside the data it is needed for.
+        Cores 0–7 are isolated from the kernel scheduler&rsquo;s load-balancing domains via{' '}
+        <code>isolcpus=0-7 nohz_full=0-7 rcu_nocbs=0-7</code> boot parameters. Benchmarks pin
+        to cores 4–7 within the isolated set via <code>taskset</code>; cores 0–3 absorb residual
+        kernel housekeeping that the isolation directives don&rsquo;t redirect elsewhere.
       </p>
 
       {/* ── Four commitments ──────────────────────────────────────────────── */}
@@ -100,49 +99,36 @@ export default function MethodologyPage() {
           numbers look better or worse than they really are.
         </Commitment>
         <Commitment n={2} title="Turbo Boost disabled">
-          Core Performance Boost is disabled in BIOS and verified via{' '}
-          <code>/sys/devices/system/cpu/cpufreq/boost</code> (reads&nbsp;0) before each run.
+          Core Performance Boost is disabled in BIOS. State is verified by{' '}
+          <code>run_one.sh</code> via <code>cpupower frequency-info</code> before any benchmark
+          binary runs; the result is exported as <code>CRUCIBLE_TURBO=off</code> and recorded in
+          the JSON <code>machine.turbo</code> field. If turbo state cannot be determined the
+          script exits non-zero rather than silently recording a wrong value.
           Boost obscures the true steady-state throughput the predictor and cache hierarchy
           deliver at nominal frequency.
         </Commitment>
         <Commitment n={3} title="Core isolation">
-          Core isolation is applied per-benchmark via <code>cset shield</code>, not via
-          persistent <code>isolcpus=</code> boot parameters. The reference machine is
-          dual-purpose — it dual-boots Windows, and the Ubuntu install is used for things
-          other than benchmarking — so permanent kernel-level isolation would penalise normal
-          use and is the kind of configuration that&rsquo;s easy to forget about and hard to
-          debug six months later. <code>cset shield --cpu=0-7</code> is invoked by the
-          per-demo wrapper scripts immediately before the benchmark binary runs and reset
-          (<code>cset shield --reset</code>) immediately after, providing isolation during the
-          measurement window and nothing more.
-          <br /><br />
-          The tradeoff: <code>cset shield</code> is a best-effort migration at shield time,
-          not a kernel-enforced exclusion. Tasks already pinned to a shielded cpu, kernel
-          threads that can&rsquo;t be moved, and tasks that spawn during the run can still
-          appear on benchmark cores. Within a single run this is negligible — CV across 11
-          repetitions is typically under 0.3%. Across separate runs, cpus that pick up
-          ambient kernel activity (notably cpu 0, which holds the system timer and other
-          unmovable work) can drift by a few percent. Where this matters for sanity
-          assertions we use measurements that are robust to that drift, typically by running
-          enough contending threads that the silicon-level signal dominates over background
-          noise. IRQ affinity is steered to non-shielded cores via{' '}
-          <code>/proc/irq/*/smp_affinity</code> by the wrapper script. SMT is disabled at
-          the BIOS level — verified via <code>/sys/devices/system/cpu/smt/active</code>{' '}
-          returning <code>0</code> and <code>lscpu</code> reporting 8 CPUs — to remove
-          SMT-sibling resource sharing (L1, L2, execution ports, frontend) from all
-          measurements. Exact shielded core IDs are recorded in each demo&rsquo;s JSON{' '}
-          <code>machine.isolated_cores</code> field.
+          Cores 0–7 are isolated at the kernel level via <code>isolcpus=0-7 nohz_full=0-7 rcu_nocbs=0-7</code>{' '}
+          boot parameters. Within that isolated set, benchmarks are additionally pinned to cores
+          4–7 via <code>taskset</code> (invoked by the per-demo wrapper scripts), with cores 0–3
+          absorbing any residual kernel housekeeping the isolation directives cannot redirect. The
+          wrapper also steers IRQ affinity to non-benchmark cores via{' '}
+          <code>/proc/irq/*/smp_affinity</code> for the duration of each run.
+          {' '}SMT is disabled at the BIOS level — verified via{' '}
+          <code>/sys/devices/system/cpu/smt/active</code> returning <code>0</code> and{' '}
+          <code>lscpu</code> reporting 8 CPUs — to remove SMT-sibling resource sharing (L1,
+          L2, execution ports, frontend) from all measurements. Actual shielded core IDs are
+          recorded in each demo&rsquo;s JSON <code>machine.cpu_affinity</code> field.
           <br /><br />
           <strong style={{ color: 'var(--text-secondary)' }}>Cross-CCX results.</strong>{' '}
-          Runs that span both CCXs (cores 0–3 and 4–7) are categorised as{' '}
-          <em>exploratory</em> rather than publication-grade. Cores 0–3 are not
-          permanently isolated — cpu 0 in particular carries the system timer and other
-          unmovable kernel work that <code>cset shield</code> cannot evict. Cross-CCX
-          measurements therefore carry higher ambient noise than intra-CCX measurements and
-          should be read as directional signal only. Publication-grade cross-CCX data would
-          require <code>isolcpus=0-7 nohz_full=0-7 rcu_nocbs=0-7</code> as persistent boot
-          parameters, which is deferred until a dedicated benchmark machine is available.
-          Every post labels cross-CCX results accordingly.
+          Runs that span both CCXs (cores 0–3 and 4–7) use the full kernel-isolated set:
+          the machine boots with <code>isolcpus=0-7 nohz_full=0-7 rcu_nocbs=0-7</code>,
+          so all eight cores are excluded from the scheduler&rsquo;s load-balancing domains.
+          Benchmarks pin to cores 4–7 for intra-CCX runs; cross-CCX runs additionally use
+          cores 0–3 within the isolated set. Cpu 0 still carries the system timer and other
+          unmovable kernel work that <code>isolcpus=</code> cannot fully evict, so cross-CCX
+          measurements carry slightly higher ambient noise than intra-CCX measurements and
+          are labelled accordingly in every post.
         </Commitment>
         <Commitment n={4} title="Statistical reporting">
           Each benchmark runs ≥20 repetitions after warmup. Every chart states which statistic

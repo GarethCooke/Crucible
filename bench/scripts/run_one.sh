@@ -39,6 +39,25 @@ sudo -v  # refresh sudo cache — cset/perf calls throughout this script need it
 
 set_governor_performance
 
+# Verify turbo state and export for machine_info.h to consume.
+# Caller can pre-set CRUCIBLE_TURBO=on|off to override (e.g. on systems
+# without cpupower); otherwise we derive it from cpupower output.
+if [ -z "${CRUCIBLE_TURBO:-}" ]; then
+    boost=$(cpupower frequency-info 2>/dev/null \
+        | awk '/boost state support/{flag=1; next} flag && /Active/{print tolower($2); exit}')
+    case "$boost" in
+        no)  export CRUCIBLE_TURBO=off ;;
+        yes) export CRUCIBLE_TURBO=on  ;;
+        *)
+            echo "FATAL: cannot determine turbo state from cpupower" >&2
+            echo "Run 'cpupower frequency-info' and verify manually," >&2
+            echo "then export CRUCIBLE_TURBO=on|off before invoking this script." >&2
+            exit 1
+            ;;
+    esac
+fi
+echo "CRUCIBLE_TURBO=$CRUCIBLE_TURBO (verified)" >&2
+
 echo "==> Building ${SLUG}..."
 cmake -B "${BENCH_ROOT}/build" -S "${BENCH_ROOT}" -DCMAKE_BUILD_TYPE=Release -Wno-dev --log-level=ERROR
 cmake --build "${BENCH_ROOT}/build" --parallel > /dev/null

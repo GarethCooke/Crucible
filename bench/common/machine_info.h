@@ -83,19 +83,22 @@ inline std::string machine_info_json() {
     // null when dmidecode is unavailable without sudo; renderer treats null as "not captured"
     const auto ram_mhz  = shell("dmidecode -t 17 2>/dev/null | awk '/Speed:.*MHz/{print $2; exit}'");
     const auto compiler = shell("gcc --version | head -1");
-    // $CXXFLAGS reflects the shell environment at process startup, not the
-    // CMake-generated flags.  If unset, the renderer falls back to -O3 -march=native.
-    const auto flags    = shell("echo \"$CXXFLAGS\"");
     const auto kernel   = shell("uname -r");
     const auto governor = shell("cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null || echo unknown");
-    const auto turbo_r  = shell("cat /sys/devices/system/cpu/cpufreq/boost 2>/dev/null || echo 1");
+    // CRUCIBLE_TURBO is set by run_one.sh after verifying CPB state via cpupower.
+    // Null means the caller did not verify — avoids asserting unobserved facts.
+    const auto turbo_env = shell("echo \"$CRUCIBLE_TURBO\"");
     // isolated_cpus: kernel-level isolation (empty unless isolcpus= is on the cmdline)
     const auto iso_cpus    = shell("grep -o 'isolcpus=[^ ]*' /proc/cmdline | cut -d= -f2");
     // cpu_affinity: actual cpuset the process is running on (taskset, cset, or unrestricted)
     const auto cpu_affinity = detail::cpu_affinity_string();
 
     const bool smt_on   = (smt_raw != "1");
-    const bool turbo_on = (turbo_r != "0");
+
+    std::string turbo_field;
+    if      (turbo_env == "off") turbo_field = "false";
+    else if (turbo_env == "on")  turbo_field = "true";
+    else                          turbo_field = "null";
 
     return
         "\"cpu\":\""            + cpu      + "\","
@@ -105,10 +108,9 @@ inline std::string machine_info_json() {
         "\"ram_gb\":"           + (ram_gb.empty()  ? "0" : ram_gb)  + ","
         "\"ram_speed_mhz\":"    + (ram_mhz.empty() ? "null" : ram_mhz) + ","
         "\"compiler\":\""       + compiler  + "\","
-        "\"compiler_flags\":\"" + (flags.empty() ? "-O3 -march=native" : flags) + "\","
         "\"kernel\":\""         + kernel   + "\","
         "\"governor\":\""       + governor + "\","
-        "\"turbo\":"            + (turbo_on ? "true" : "false")     + ","
+        "\"turbo\":"            + turbo_field + ","
         "\"isolated_cpus\":\""  + iso_cpus + "\","
         "\"cpu_affinity\":\""   + cpu_affinity + "\"";
 }
