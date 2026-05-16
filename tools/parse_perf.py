@@ -15,7 +15,7 @@ Run once per variant. The script upserts the run entry into the JSON file
 N_FILLS     = 1024   # inner loop: 8 KB fill stream, fits in L1d
 N_ITERS     = 1000   # barrier epochs per GB outer iteration
 BENCH_ITERS = 50     # fixed GB outer iterations per rep (->Iterations(50))
-BENCH_REPS  = 11     # repetitions per variant (--benchmark_repetitions=11)
+BENCH_REPS  = 20     # repetitions per variant (--benchmark_repetitions=20)
 
 import argparse
 import json

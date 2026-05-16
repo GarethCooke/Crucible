@@ -245,7 +245,7 @@ int main(int argc, char** argv) {
                 benchmark::RegisterBenchmark(name.c_str(),
                     [padded, cores](benchmark::State& s) {
                         run_benchmark(s, static_cast<int>(cores.size()), padded, cores);
-                    })->Iterations(50)->Repetitions(11)->Unit(benchmark::kNanosecond);
+                    })->Iterations(50)->Repetitions(20)->Unit(benchmark::kNanosecond);
             }
     };
 

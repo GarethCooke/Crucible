@@ -101,7 +101,7 @@ latency, no shared cache to absorb the round-trips.
 At 4 threads, the cross-CCX unpadded result is 4.57 ns/op against intra-CCX 4t unpadded
 at 3.61 ns/op — **a 1.27× additional penalty from crossing the Fabric, on top of the
 5× false-sharing penalty already paid**. The cross-CCX 4t result has IQR/median under
-0.02% across 11 repetitions, so the 1.27× number is reproducible to the third decimal.
+0.02% across 20 repetitions, so the 1.27× number is reproducible to the third decimal.
 
 ## 14× at 8 threads cross-CCX
 

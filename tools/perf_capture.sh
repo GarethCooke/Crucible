@@ -94,7 +94,7 @@ perf stat \
     -- \
     "$BINARY" \
         --benchmark_filter="$FILTER" \
-        --benchmark_repetitions=11 \
+        --benchmark_repetitions=20 \
         --benchmark_out="$BENCH_OUT" \
         --benchmark_out_format=json
 
