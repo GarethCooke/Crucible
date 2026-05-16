@@ -1,5 +1,5 @@
 {
-  "demo": "false-sharing-pnl",
+  "demo": "02-false-sharing-pnl",
   "title": "False sharing: padded vs unpadded P&L accumulators",
   "machine": {
     "cpu": "AMD Ryzen 7 3800X",

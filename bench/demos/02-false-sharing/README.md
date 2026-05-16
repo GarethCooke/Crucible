@@ -55,7 +55,7 @@ done
 python3 tools/parse_perf.py \
   --perf  intra-ccx_4t_unpadded.perf.json \
   --bench intra-ccx_4t_unpadded.bench.json \
-  --out   site/src/data/perf/false-sharing-pnl.json \
+  --out   site/src/data/perf/02-false-sharing-pnl.json \
   --placement intra-ccx --threads 4 --padded 0
 # repeat for each variant; the script upserts into the JSON file
 ```

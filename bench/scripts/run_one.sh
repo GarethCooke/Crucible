@@ -145,7 +145,7 @@ fi
 # data file. Does not use the cset / assemble_results.py path below.
 if [[ "${SLUG}" == "02-false-sharing" ]]; then
     FS_BINARY="${BENCH_ROOT}/build/demos/02-false-sharing/bench_02_false_sharing_pnl"
-    OUT_JSON="${REPO_ROOT}/site/src/data/perf/false-sharing-pnl.json"
+    OUT_JSON="${REPO_ROOT}/site/src/data/perf/02-false-sharing-pnl.json"
 
     if [[ ! -x "${FS_BINARY}" ]]; then
         echo "ERROR: binary not found: ${FS_BINARY}" >&2; exit 1

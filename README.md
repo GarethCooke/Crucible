@@ -179,7 +179,7 @@ Both scripts require per-boot setup applied and (on Desktop edition) the runtime
 
 **Demo 01 — branch prediction** uses `cset shield` + a single benchmark run + `assemble_results.py`. IRQ affinity is steered by the wrapper; the shielded core set is recorded in `machine.isolated_cores` of the output JSON.
 
-**Demo 02 — false sharing** uses a different pipeline: `tools/perf_capture.sh` + `tools/parse_perf.py`, invoked per variant (12 total: 2 topologies × 3 thread counts × 2 padding options). `perf_capture.sh` handles its own `cset shield` setup and IRQ steering per invocation; `parse_perf.py` upserts each variant into `site/src/data/perf/false-sharing-pnl.json`. A post-run sanity check (`tools/sanity_check.py`) asserts the expected false-sharing effect ratios before exit.
+**Demo 02 — false sharing** uses a different pipeline: `tools/perf_capture.sh` + `tools/parse_perf.py`, invoked per variant (12 total: 2 topologies × 3 thread counts × 2 padding options). `perf_capture.sh` handles its own `cset shield` setup and IRQ steering per invocation; `parse_perf.py` upserts each variant into `site/src/data/perf/02-false-sharing-pnl.json`. A post-run sanity check (`tools/sanity_check.py`) asserts the expected false-sharing effect ratios before exit.
 
 This demo requires `kernel.perf_event_paranoid ≤ 1` (set in [Persistent setup](#persistent-setup-one-time) above) and `linux-tools-$(uname -r)` for `perf stat`.
 

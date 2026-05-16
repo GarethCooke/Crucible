@@ -47,9 +47,9 @@ all threads, so every thread reads identical data — the only writes are the pe
 The clearest evidence of false sharing is in the performance counters. With all threads
 pinned to one CCX (cores 4–7), watch IPC and cache miss rate as thread count grows:
 
-<CounterOverlay slug="false-sharing-pnl" placement="intra-ccx" metric="instructions_per_cycle" />
+<CounterOverlay slug="02-false-sharing-pnl" placement="intra-ccx" metric="instructions_per_cycle" />
 
-<CounterOverlay slug="false-sharing-pnl" placement="intra-ccx" metric="cache_miss_ratio" />
+<CounterOverlay slug="02-false-sharing-pnl" placement="intra-ccx" metric="cache_miss_ratio" />
 
 At 1 thread, both layouts are identical — no contention, near-zero miss rate, similar
 IPC. At 4 threads, the unpadded variant's IPC falls to **0.11** while the padded
@@ -69,7 +69,7 @@ time waiting rather than executing.
 The counter signal is the reliable part. The wall-clock impact within one CCX is muted
 on Zen 2:
 
-<ThroughputBars slug="false-sharing-pnl" placement="intra-ccx" />
+<ThroughputBars slug="02-false-sharing-pnl" placement="intra-ccx" />
 
 At 4 threads, the unpadded variant is noticeably slower than the padded variant — but
 the ratio is around 1.2×, far below the ~5× the counter collapse would suggest. The
@@ -88,9 +88,9 @@ cross the Infinity Fabric — higher latency, no shared cache to absorb the roun
 With threads distributed across both CCXs, the counter collapse looks the same — false
 sharing is firing identically — but the wall-clock penalty now has somewhere new to land:
 
-<CounterOverlay slug="false-sharing-pnl" placement="cross-ccx" metric="instructions_per_cycle" />
+<CounterOverlay slug="02-false-sharing-pnl" placement="cross-ccx" metric="instructions_per_cycle" />
 
-<ThroughputBars slug="false-sharing-pnl" placement="cross-ccx" />
+<ThroughputBars slug="02-false-sharing-pnl" placement="cross-ccx" />
 
 The counter signal at 2t cross-CCX is nearly identical to 2t intra-CCX: IPC ~0.17 in
 both cases, miss rate ~68% vs ~80%. The mechanism is the same. But the wall-clock cost
@@ -225,7 +225,7 @@ objdump -d build/demos/02-false-sharing/bench_02_false_sharing_pnl \
 python3 tools/parse_perf.py \
   --perf  intra-ccx_4t_unpadded.perf.json \
   --bench intra-ccx_4t_unpadded.bench.json \
-  --out   site/src/data/perf/false-sharing-pnl.json \
+  --out   site/src/data/perf/02-false-sharing-pnl.json \
   --placement intra-ccx --threads 4 --padded 0
 ```
 

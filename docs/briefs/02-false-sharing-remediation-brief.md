@@ -107,7 +107,7 @@ done
 
 python3 tools/parse_perf.py \
   --inputs <captured files> \
-  --out site/src/data/perf/false-sharing-pnl.json
+  --out site/src/data/perf/02-false-sharing-pnl.json
 # Set captured_at to real ISO timestamp on the reference machine
 ```
 
@@ -120,7 +120,7 @@ User runs the capture step on the reference machine; CC's job is to produce the 
 - Padded burst time across thread counts varies by ≤5%.
 - `objdump` CI step passes and is required for the build.
 - `/methodology` reflects the actual isolation approach.
-- New `false-sharing-pnl.json` exists with real `captured_at`, all 12 variants.
+- New `02-false-sharing-pnl.json` exists with real `captured_at`, all 12 variants.
 
 ## Out of scope
 

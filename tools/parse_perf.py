@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Folds perf stat JSON + Google Benchmark JSON into false-sharing-pnl.json.
+"""Folds perf stat JSON + Google Benchmark JSON into 02-false-sharing-pnl.json.
 
 Usage:
     python3 tools/parse_perf.py \\
         --perf   <placement>_<N>t_<padded|unpadded>.perf.json \\
         --bench  <placement>_<N>t_<padded|unpadded>.bench.json \\
-        --out    site/src/data/perf/false-sharing-pnl.json
+        --out    site/src/data/perf/02-false-sharing-pnl.json
 
 Run once per variant. The script upserts the run entry into the JSON file
 (matching on placement + threads + variant), preserving all other runs.
@@ -198,7 +198,7 @@ def main():
             data = json.load(f)
     else:
         data = {
-            "demo": "false-sharing-pnl",
+            "demo": "02-false-sharing-pnl",
             "title": "False sharing: padded vs unpadded P&L accumulators",
             "machine": {},
             "captured_at": "PLACEHOLDER",

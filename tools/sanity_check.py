@@ -2,7 +2,7 @@
 """Post-run sanity checks for the false-sharing benchmark data.
 
 Usage:
-    python3 tools/sanity_check.py site/src/data/perf/false-sharing-pnl.json
+    python3 tools/sanity_check.py site/src/data/perf/02-false-sharing-pnl.json
 
 Exit 0 if all assertions pass; exit 1 on any failure.
 """
@@ -40,7 +40,7 @@ def miss_ratio(run: dict) -> float:
 
 def main() -> None:
     if len(sys.argv) != 2:
-        print(f"Usage: {sys.argv[0]} <false-sharing-pnl.json>", file=sys.stderr)
+        print(f"Usage: {sys.argv[0]} <02-false-sharing-pnl.json>", file=sys.stderr)
         sys.exit(1)
 
     path = Path(sys.argv[1])

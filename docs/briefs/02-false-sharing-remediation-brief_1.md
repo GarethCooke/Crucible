@@ -109,7 +109,7 @@ done
 
 python3 tools/parse_perf.py \
   --inputs <captured files> \
-  --out site/src/data/perf/false-sharing-pnl.json
+  --out site/src/data/perf/02-false-sharing-pnl.json
 # Set captured_at to real ISO timestamp on the reference machine
 ```
 
@@ -124,7 +124,7 @@ User runs the capture step on the reference machine; CC's job is to produce the 
 - `perf_capture.sh` aborts cleanly when not run from the benchmark GRUB entry (i.e. when `/sys/devices/system/cpu/isolated` is not `0-7`).
 - All `cset shield` references removed from scripts and post.
 - `/methodology` reflects the dual-GRUB-entry / `isolcpus=0-7` approach.
-- New `false-sharing-pnl.json` exists with real `captured_at`, all 12 variants, captured from the benchmark GRUB entry.
+- New `02-false-sharing-pnl.json` exists with real `captured_at`, all 12 variants, captured from the benchmark GRUB entry.
 
 ## Out of scope
 
