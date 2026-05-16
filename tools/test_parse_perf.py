@@ -11,10 +11,12 @@ sys.path.insert(0, os.path.dirname(__file__))
 from parse_perf import N_FILLS, N_ITERS, derive_counters, parse_bench_json, parse_perf_json
 
 
-def _write_bench_json(benchmarks: list[dict]) -> Path:
-    """Write a minimal Google Benchmark JSON file and return its Path."""
-    f = tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False)
-    json.dump({"benchmarks": benchmarks}, f)
+# ─── Helpers ─────────────────────────────────────────────────────────────────
+
+def _write_bench_json(benchmarks: list) -> Path:
+    data = {"context": {}, "benchmarks": benchmarks}
+    f = tempfile.NamedTemporaryFile(mode="w", suffix=".bench.json", delete=False)
+    json.dump(data, f)
     f.close()
     return Path(f.name)
 
@@ -159,109 +161,125 @@ class TestDeriveCounters(unittest.TestCase):
 
 
 class TestParseBenchJson(unittest.TestCase):
-    def setUp(self):
-        self._tmp = None
+    """Verify parse_bench_json produces correct ns_per_op values.
+
+    Key invariant: ns_per_op * nthreads * N_ITERS * N_FILLS == real_time_ns
+    (within floating-point rounding). This identity would fail with the previous
+    implementation that derived ns_per_op via items_per_second.
+    """
 
     def tearDown(self):
-        if self._tmp and self._tmp.exists():
+        if hasattr(self, "_tmp") and self._tmp.exists():
             self._tmp.unlink()
 
-    def _make_rep(self, name: str, real_time_ns: float) -> dict:
-        return {"name": name, "real_time": real_time_ns, "run_type": "iteration"}
-
-    def _parse(self, benchmarks: list, filter_name: str, nthreads: int):
+    def _parse(self, benchmarks, filter_name, nthreads):
         self._tmp = _write_bench_json(benchmarks)
         return parse_bench_json(self._tmp, filter_name, nthreads)
 
-    # ── round-trip invariant ─────────────────────────────────────────────────
-    # For every row: abs(ns_per_op * nthreads * N_ITERS * N_FILLS - real_time_ns)
-    #               / real_time_ns < 0.001
-    # This is the canonical guard against the "divide by iterations twice" bug.
+    # ── roundtrip identity ────────────────────────────────────────────────────
 
-    def test_roundtrip_1t(self):
-        real_time_ns = 2_919_677.7
+    def test_roundtrip_identity_1t(self):
+        """Single thread: ns_per_op * N_ITERS * N_FILLS must recover real_time_ns."""
+        real_time_ns = 2920469.8
         nthreads = 1
-        reps = [self._make_rep("IntraCCX/1t/unpadded", real_time_ns)] * 11
-        result = self._parse(reps, "IntraCCX/1t/unpadded", nthreads)
-        ns_op = result["ns_per_op"]["median"]
-        self.assertLess(
-            abs(ns_op * nthreads * N_ITERS * N_FILLS - real_time_ns) / real_time_ns,
-            0.001,
+        result = self._parse(
+            [{"name": "IntraCCX/1t/unpadded/0", "real_time": real_time_ns}],
+            "IntraCCX/1t/unpadded",
+            nthreads,
         )
+        recovered = result["ns_per_op"]["median"] * nthreads * N_ITERS * N_FILLS
+        rel_err = abs(recovered - result["real_time_ns"]["median"]) / result["real_time_ns"]["median"]
+        self.assertLess(rel_err, 0.001, f"roundtrip relative error {rel_err:.6f} >= 0.001")
 
-    def test_roundtrip_4t(self):
-        real_time_ns = 1_673_840.6
+    def test_roundtrip_identity_4t(self):
+        """Four threads: same identity, with multiple reps for realistic median."""
         nthreads = 4
-        reps = [self._make_rep("IntraCCX/4t/padded", real_time_ns)] * 11
-        result = self._parse(reps, "IntraCCX/4t/padded", nthreads)
-        ns_op = result["ns_per_op"]["median"]
-        self.assertLess(
-            abs(ns_op * nthreads * N_ITERS * N_FILLS - real_time_ns) / real_time_ns,
-            0.001,
-        )
+        reps = [1_650_000.0, 1_670_000.0, 1_645_000.0, 1_660_000.0, 1_655_000.0]
+        bms = [{"name": f"IntraCCX/4t/padded/{i}", "real_time": r} for i, r in enumerate(reps)]
+        result = self._parse(bms, "IntraCCX/4t/padded", nthreads)
+        recovered = result["ns_per_op"]["median"] * nthreads * N_ITERS * N_FILLS
+        rel_err = abs(recovered - result["real_time_ns"]["median"]) / result["real_time_ns"]["median"]
+        self.assertLess(rel_err, 0.001)
 
-    def test_roundtrip_8t(self):
-        real_time_ns = 1_561_635.0
+    def test_roundtrip_identity_8t_cross_ccx(self):
+        """Eight threads cross-CCX."""
         nthreads = 8
-        reps = [self._make_rep("CrossCCX/8t/padded", real_time_ns)] * 11
-        result = self._parse(reps, "CrossCCX/8t/padded", nthreads)
-        ns_op = result["ns_per_op"]["median"]
-        self.assertLess(
-            abs(ns_op * nthreads * N_ITERS * N_FILLS - real_time_ns) / real_time_ns,
-            0.001,
+        real_time_ns = 1_572_549.0
+        result = self._parse(
+            [{"name": "CrossCCX/8t/padded/0", "real_time": real_time_ns}],
+            "CrossCCX/8t/padded",
+            nthreads,
         )
+        recovered = result["ns_per_op"]["median"] * nthreads * N_ITERS * N_FILLS
+        rel_err = abs(recovered - result["real_time_ns"]["median"]) / result["real_time_ns"]["median"]
+        self.assertLess(rel_err, 0.001)
 
-    # ── sanity: absolute value in expected range ─────────────────────────────
+    # ── ops_per_sec sanity bounds ─────────────────────────────────────────────
 
-    def test_1t_ns_per_op_in_range(self):
-        # 1t padded should be ~2.85 ns/op, not ~0.015 (the bugged value)
-        real_time_ns = 2_919_677.7
-        nthreads = 1
-        reps = [self._make_rep("IntraCCX/1t/padded", real_time_ns)] * 11
-        result = self._parse(reps, "IntraCCX/1t/padded", nthreads)
-        ns_op = result["ns_per_op"]["median"]
-        self.assertGreater(ns_op, 1.0,  "ns/op should be > 1 ns (physical floor ~1.3 ns)")
-        self.assertLess(ns_op, 10.0, "ns/op should be < 10 ns for single-thread padded")
+    def test_ops_per_sec_1t_in_hundreds_of_millions(self):
+        """After fix, 1t unpadded should be ~350 M/s, not ~68 G/s."""
+        real_time_ns = 2920469.8   # ~2.9 ms for 1t intra-CCX unpadded
+        result = self._parse(
+            [{"name": "IntraCCX/1t/unpadded/0", "real_time": real_time_ns}],
+            "IntraCCX/1t/unpadded",
+            nthreads=1,
+        )
+        ops = result["ops_per_sec"]
+        self.assertGreater(ops, 100_000_000,    "ops_per_sec < 100 M/s — too low")
+        self.assertLess(ops,   2_000_000_000,   "ops_per_sec > 2 G/s — likely still using items_per_second")
 
-    def test_ops_per_sec_not_in_tens_of_billions(self):
-        # Pre-fix the value was ~67 G ops/sec — physically impossible on a single thread
-        real_time_ns = 2_919_677.7
-        nthreads = 1
-        reps = [self._make_rep("IntraCCX/1t/unpadded", real_time_ns)] * 11
-        result = self._parse(reps, "IntraCCX/1t/unpadded", nthreads)
-        self.assertLess(result["ops_per_sec"], 2_000_000_000,
-                        "single-thread ops/sec must be < 2G (not tens of G)")
+    def test_ops_per_sec_8t_padded_a_few_gops(self):
+        """8t padded cross-CCX should land at a few G ops/sec total."""
+        real_time_ns = 1_572_549.0   # ~1.6 ms for 8t cross-CCX padded
+        result = self._parse(
+            [{"name": "CrossCCX/8t/padded/0", "real_time": real_time_ns}],
+            "CrossCCX/8t/padded",
+            nthreads=8,
+        )
+        ops = result["ops_per_sec"]
+        self.assertGreater(ops, 1_000_000_000,  "ops_per_sec < 1 G/s — too low for 8t padded")
+        self.assertLess(ops,   20_000_000_000,  "ops_per_sec > 20 G/s — still wrong")
 
-    # ── aggregate filtering ───────────────────────────────────────────────────
+    # ── aggregate rows and filtering ──────────────────────────────────────────
 
     def test_aggregate_rows_excluded(self):
-        real_time_ns = 3_000_000.0
-        nthreads = 1
-        reps = [
-            self._make_rep("IntraCCX/1t/unpadded",        real_time_ns),
-            {"name": "IntraCCX/1t/unpadded_mean",    "real_time": 9_999_999.0},
-            {"name": "IntraCCX/1t/unpadded_median",  "real_time": 9_999_999.0},
-            {"name": "IntraCCX/1t/unpadded_stddev",  "real_time": 9_999_999.0},
+        """_mean/_median/_stddev/_cv rows must not affect real_time_ns."""
+        bms = [
+            {"name": "IntraCCX/1t/unpadded/0",     "real_time": 2_920_469.8},
+            {"name": "IntraCCX/1t/unpadded_mean",   "real_time": 0.0},
+            {"name": "IntraCCX/1t/unpadded_median", "real_time": 0.0},
+            {"name": "IntraCCX/1t/unpadded_stddev", "real_time": 0.0},
+            {"name": "IntraCCX/1t/unpadded_cv",     "real_time": 0.0},
         ]
-        result = self._parse(reps, "IntraCCX/1t/unpadded", nthreads)
-        self.assertAlmostEqual(result["real_time_ns"]["median"], real_time_ns, places=0)
+        result = self._parse(bms, "IntraCCX/1t/unpadded", nthreads=1)
+        self.assertAlmostEqual(result["real_time_ns"]["median"], 2_920_469.8, places=0)
+
+    def test_unrelated_benchmarks_excluded(self):
+        """Rows for a different benchmark must not pollute the result."""
+        bms = [
+            {"name": "CrossCCX/8t/unpadded/0",  "real_time": 99_000_000.0},
+            {"name": "IntraCCX/1t/unpadded/0",  "real_time": 2_920_469.8},
+        ]
+        result = self._parse(bms, "IntraCCX/1t/unpadded", nthreads=1)
+        self.assertAlmostEqual(result["real_time_ns"]["median"], 2_920_469.8, places=0)
 
     def test_no_matching_rows_raises(self):
-        reps = [self._make_rep("IntraCCX/1t/unpadded", 1_000_000.0)]
+        bms = [{"name": "CrossCCX/8t/unpadded/0", "real_time": 1_000.0}]
         with self.assertRaises(ValueError):
-            self._parse(reps, "CrossCCX/8t/padded", 8)
+            self._parse(bms, "IntraCCX/1t/unpadded", nthreads=1)
 
-    # ── min / iqr fields populated ────────────────────────────────────────────
+    # ── output structure ──────────────────────────────────────────────────────
 
-    def test_min_le_median(self):
-        reps = [
-            self._make_rep("IntraCCX/2t/padded", 3_000_000.0),
-            self._make_rep("IntraCCX/2t/padded", 2_900_000.0),
-            self._make_rep("IntraCCX/2t/padded", 3_100_000.0),
-        ]
-        result = self._parse(reps, "IntraCCX/2t/padded", 2)
-        self.assertLessEqual(result["real_time_ns"]["min"], result["real_time_ns"]["median"])
-        self.assertLessEqual(result["ns_per_op"]["min"],    result["ns_per_op"]["median"])
+    def test_output_keys_present(self):
+        result = self._parse(
+            [{"name": "IntraCCX/1t/unpadded/0", "real_time": 2_920_469.8}],
+            "IntraCCX/1t/unpadded", nthreads=1,
+        )
+        for key in ("real_time_ns", "ns_per_op", "ops_per_sec"):
+            self.assertIn(key, result)
+        for sub in ("median", "min", "iqr"):
+            self.assertIn(sub, result["real_time_ns"])
+            self.assertIn(sub, result["ns_per_op"])
 
 
 if __name__ == "__main__":

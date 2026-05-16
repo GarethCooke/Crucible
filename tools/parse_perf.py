@@ -1,19 +1,21 @@
 #!/usr/bin/env python3
-"""Folds perf stat JSON + Google Benchmark JSON into false-sharing-pnl.json.
+"""Folds perf stat JSON + Google Benchmark JSON into 02-false-sharing-pnl.json.
 
 Usage:
     python3 tools/parse_perf.py \\
         --perf   <placement>_<N>t_<padded|unpadded>.perf.json \\
         --bench  <placement>_<N>t_<padded|unpadded>.bench.json \\
-        --out    site/src/data/perf/false-sharing-pnl.json
+        --out    site/src/data/perf/02-false-sharing-pnl.json
 
 Run once per variant. The script upserts the run entry into the JSON file
 (matching on placement + threads + variant), preserving all other runs.
 """
 
-# SYNC: these must match N_FILLS and N_ITERS in bench/demos/02-false-sharing/false_sharing_pnl.cpp
-N_FILLS = 1024   # inner loop length (fill stream entries per barrier epoch)
-N_ITERS = 1000   # outer iterations per barrier epoch
+# ─── Benchmark constants (must match false_sharing_pnl.cpp) ──────────────────
+N_FILLS     = 1024   # inner loop: 8 KB fill stream, fits in L1d
+N_ITERS     = 1000   # barrier epochs per GB outer iteration
+BENCH_ITERS = 50     # fixed GB outer iterations per rep (->Iterations(50))
+BENCH_REPS  = 20     # repetitions per variant (--benchmark_repetitions=20)
 
 import argparse
 import json
@@ -57,12 +59,14 @@ def parse_bench_json(path: Path, filter_name: str, nthreads: int) -> dict:
     """Extract timing stats for a specific benchmark from GB JSON output.
 
     ns_per_op is computed as real_time_ns / (nthreads * N_ITERS * N_FILLS).
-    Google Benchmark's real_time field is already normalised per outer iteration,
-    so the iteration count must NOT be applied again.
+    Google Benchmark's real_time is already normalised per outer iteration, so
+    items_per_second is not used — that field folds in the auto-chosen iteration
+    count and applying it again would produce values ~190× too small.
     """
     with open(path) as f:
         data = json.load(f)
 
+    # Collect real_time from individual repetition rows (skip aggregate rows)
     ns_per_iter_values = []
 
     for bm in data.get("benchmarks", []):
@@ -71,6 +75,7 @@ def parse_bench_json(path: Path, filter_name: str, nthreads: int) -> dict:
             continue
         if filter_name not in name:
             continue
+
         ns = bm.get("real_time", None)
         if ns is None:
             continue
@@ -84,8 +89,8 @@ def parse_bench_json(path: Path, filter_name: str, nthreads: int) -> dict:
     min_ns_iter    = ns_vals[0]
     iqr_ns_iter    = percentile(ns_vals, 75) - percentile(ns_vals, 25)
 
-    # Direct formula: real_time is per outer iteration; each outer iteration
-    # does nthreads * N_ITERS * N_FILLS ops.
+    # Direct calculation: real_time is per-GB-iteration; each iteration does
+    # nthreads * N_ITERS * N_FILLS operations across all worker threads.
     ops_per_iter     = nthreads * N_ITERS * N_FILLS
     ns_per_op_median = median_ns_iter / ops_per_iter
     ns_per_op_min    = min_ns_iter    / ops_per_iter
@@ -156,16 +161,18 @@ def main():
     print(f"Parsing bench: {args.bench} (filter: {filter_name})")
     timing = parse_bench_json(args.bench, filter_name, nthreads)
 
-    # ops per outer iteration — exact, used for perf-counter per-op rates
-    ops_approx = nthreads * N_ITERS * N_FILLS
-    counters = derive_counters(perf_counts, ops_approx)
+    # Total ops seen by perf stat: BENCH_REPS reps × BENCH_ITERS iters × per-iter ops.
+    # perf stat wraps the whole binary run, so this approximates the denominator for
+    # per-op counter metrics (cache_misses_per_op, l1d_misses_per_op).
+    ops_total = BENCH_REPS * BENCH_ITERS * nthreads * N_ITERS * N_FILLS
+    counters = derive_counters(perf_counts, ops_total)
 
     # Core assignments — SYNC: must match intra_ccx_cores/cross_ccx_cores in
     # bench/demos/02-false-sharing/false_sharing_pnl.cpp
     if placement == "intra-ccx":
         cores_map = {1: [4], 2: [4, 5], 4: [4, 5, 6, 7]}
     else:
-        cores_map = {2: [0, 4], 4: [0, 1, 4, 5], 8: [0, 1, 2, 3, 4, 5, 6, 7]}
+        cores_map = {2: [1, 4], 4: [1, 2, 4, 5], 8: [0, 1, 2, 3, 4, 5, 6, 7]}
     cores_used = cores_map.get(nthreads, [])
 
     new_run = {
@@ -191,7 +198,7 @@ def main():
             data = json.load(f)
     else:
         data = {
-            "demo": "false-sharing-pnl",
+            "demo": "02-false-sharing-pnl",
             "title": "False sharing: padded vs unpadded P&L accumulators",
             "machine": {},
             "captured_at": "PLACEHOLDER",

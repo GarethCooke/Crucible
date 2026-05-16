@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # Wraps `perf stat -j` around the false-sharing benchmark binary.
-# Handles cset shield setup/teardown and IRQ affinity steering.
+#
+# PRECONDITION: must be run from the benchmark GRUB entry with kernel params
+#   isolcpus=0-7 nohz_full=0-7 rcu_nocbs=0-7
+# The script aborts if /sys/devices/system/cpu/isolated does not read "0-7".
+# See /methodology for the dual-GRUB-entry setup.
 #
 # Usage:
 #   ./tools/perf_capture.sh <binary> <placement> <threads> <padded>
@@ -16,8 +20,9 @@
 #   <placement>_<threads>t_<padded|unpadded>.bench.json  Google Benchmark JSON
 #
 # Prerequisites:
-#   sudo apt install cpuset linux-tools-common linux-tools-$(uname -r)
+#   Boot into the benchmark GRUB entry (isolcpus=0-7 nohz_full=0-7 rcu_nocbs=0-7)
 #   sudo sysctl kernel.perf_event_paranoid=1
+#   linux-tools-$(uname -r) installed
 
 set -euo pipefail
 
@@ -31,6 +36,21 @@ BINARY="${1:?Usage: $0 <binary> <placement> <threads> <padded>}"
 PLACEMENT="${2:?}"
 THREADS="${3:?}"
 PADDED_FLAG="${4:?}"  # 0 or 1
+
+# ─── Precondition: verify isolcpus kernel boot params ────────────────────────
+
+ISOLATED="$(cat /sys/devices/system/cpu/isolated 2>/dev/null || echo '')"
+# The kernel will not isolate cpu0 (the boot CPU) regardless of isolcpus= — so
+# the effective isolation from isolcpus=0-7 is always "1-7". Accept that value.
+if [[ "$ISOLATED" != "1-7" ]]; then
+    echo "ERROR: cores 1-7 are not isolated as required." >&2
+    echo "  /sys/devices/system/cpu/isolated = '${ISOLATED}'" >&2
+    echo "  Boot into the benchmark GRUB entry:" >&2
+    echo "    isolcpus=0-7 nohz_full=0-7 rcu_nocbs=0-7" >&2
+    echo "  (kernel reports 1-7 because cpu0 is the boot CPU and cannot be isolated)" >&2
+    echo "  See /methodology for the dual-GRUB-entry setup." >&2
+    exit 1
+fi
 
 # ─── Resolve variant name for benchmark filter ───────────────────────────────
 
@@ -46,21 +66,10 @@ else
     exit 1
 fi
 
-# ─── Determine shield cores ──────────────────────────────────────────────────
-
+# Validate thread/placement combination
 case "$PLACEMENT/$THREADS" in
-    intra-ccx/1|intra-ccx/2|intra-ccx/4)
-        SHIELD_CPUS="4-7"
-        ;;
-    cross-ccx/2)
-        SHIELD_CPUS="0,4"
-        ;;
-    cross-ccx/4)
-        SHIELD_CPUS="0,1,4,5"
-        ;;
-    cross-ccx/8)
-        SHIELD_CPUS="0-7"
-        ;;
+    intra-ccx/1|intra-ccx/2|intra-ccx/4) ;;
+    cross-ccx/2|cross-ccx/4|cross-ccx/8) ;;
     *)
         echo "ERROR: unsupported placement/threads combination: $PLACEMENT/$THREADS" >&2
         exit 1
@@ -73,39 +82,20 @@ SLUG="${PLACEMENT}_${THREADS}t_${PADDED_STR}"
 PERF_OUT="${SLUG}.perf.json"
 BENCH_OUT="${SLUG}.bench.json"
 
-echo "==> cset shield --cpu=$SHIELD_CPUS"
-sudo cset shield --cpu="$SHIELD_CPUS" --kthread=on 2>/dev/null || true
-
-# Steer IRQs away from shielded cores
-echo "==> steering IRQ affinity away from shielded cores"
-IRQ_MASK="ff"  # all 8 CPUs by default
-case "$SHIELD_CPUS" in
-    4-7)          IRQ_MASK="0f" ;;   # only CPUs 0-3 handle IRQs
-    0,4)          IRQ_MASK="ee" ;;
-    0,1,4,5)      IRQ_MASK="cc" ;;
-    0-7)          IRQ_MASK="ff" ;;   # all 8 CPUs shielded — leave mask unchanged to avoid routing IRQs into the workload
-esac
-for affinity_file in /proc/irq/*/smp_affinity; do
-    echo "$IRQ_MASK" | sudo tee "$affinity_file" > /dev/null 2>&1 || true
-done
-
-echo "==> running benchmark: $FILTER"
+echo "==> Isolation: cores 0-7 confirmed (isolcpus=0-7 nohz_full=0-7 rcu_nocbs=0-7)"
+echo "==> Running benchmark: $FILTER"
 echo "    perf JSON  → $PERF_OUT"
 echo "    bench JSON → $BENCH_OUT"
 
-sudo cset shield --exec -- \
-    perf stat \
-        --event=cache-misses,cache-references,instructions,cycles \
-        --json \
-        --output="$PERF_OUT" \
-        -- \
-        "$BINARY" \
-            --benchmark_filter="$FILTER" \
-            --benchmark_repetitions=11 \
-            --benchmark_out="$BENCH_OUT" \
-            --benchmark_out_format=json
+perf stat \
+    --event=cache-misses,cache-references,instructions,cycles \
+    --json \
+    --output="$PERF_OUT" \
+    -- \
+    "$BINARY" \
+        --benchmark_filter="$FILTER" \
+        --benchmark_repetitions=20 \
+        --benchmark_out="$BENCH_OUT" \
+        --benchmark_out_format=json
 
-echo "==> cset shield --reset"
-sudo cset shield --reset 2>/dev/null || true
-
-echo "==> done: $PERF_OUT  $BENCH_OUT"
+echo "==> Done: $PERF_OUT  $BENCH_OUT"

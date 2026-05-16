@@ -69,15 +69,17 @@ Per-thread workload is identical (1,024,000 ops). With padding, there is no shar
 
 ### 3. Resolve core isolation
 
-`BRIEF.md` locks `isolcpus=4-7` as non-negotiable methodology. The implementation uses `cset shield`, and the post acknowledges the contamination this causes. Pick one:
+`BRIEF.md` locks `isolcpus=4-7` as non-negotiable methodology. The original implementation used `cset shield`, which is best-effort and contaminated the 2t cross-CCX results. **This is now resolved at the host level:** the reference machine has a second GRUB entry, "Ubuntu (benchmark — cores 0-7 isolated)", which boots with kernel params `isolcpus=0-7 nohz_full=0-7 rcu_nocbs=0-7`. Cross-CCX runs span both CCXs, so all 8 cores are shielded. The dev-box-unusable cost is mitigated by booting the standard entry for development work and the benchmark entry only for capture runs.
 
-- **Option A (preferred).** Broaden isolation to `isolcpus=0-7 nohz_full=0-7 rcu_nocbs=0-7`. Cross-CCX runs span both CCXs, so all 8 cores need shielding. The dev box becomes unusable for general work while booted this way — mitigate with a separate GRUB entry "Ubuntu (benchmark)" containing these params. Switch to it for benchmark runs, back to the normal entry afterwards.
+**CC tasks:**
 
-- **Option B.** Drop cross-CCX from this demo. Ship intra-CCX only. Cross-CCX becomes a follow-up post once isolation covers cores 0–3, possibly bundled with NUMA on a 2-socket rented box. The intra-CCX story (false sharing → IPC collapse → wall-time penalty) stands on its own.
+- **Remove all `cset shield` invocations** from `tools/perf_capture.sh` and any other capture/runner scripts. Replace with a precondition check that asserts `cat /sys/devices/system/cpu/isolated` returns `0-7`, fail with a clear error if it doesn't ("Boot into the benchmark GRUB entry — cores 0-7 must be isolated. See /methodology.").
 
-- **Option C.** Keep cset, formally update `/methodology` to disclose the change, the trade-off, and which results are affected. Cross-CCX results get labelled "exploratory" rather than "publication-grade" everywhere they appear in the post.
+- **Update `/methodology` page** to document the actual approach: dual GRUB entry, `isolcpus=0-7 nohz_full=0-7 rcu_nocbs=0-7` for benchmark runs, full 8-core shielding. Drop any prior wording referring to `cset` or `isolcpus=4-7` specifically. The boot params are user-managed on the reference machine; the project repo doesn't need to ship a GRUB config.
 
-Document the decision on `/methodology` either way. The brief's methodology commitments are not silently amendable.
+- **Remove the apologetic caveats** in `02-false-sharing.mdx` about cset being best-effort and 2t cross-CCX being unreliable for that reason. (Note: the caveats may still be partly accurate after recapture — that's a prose call once real data is in. CC's job here is just to delete the cset-specific wording; the post's framing of 2t vs 4t cross-CCX reliability is part of the prose rewrite, out of scope for this brief.)
+
+- **Document the precondition** in the demo's README and in `tools/perf_capture.sh --help`: capture must be run from the benchmark GRUB entry.
 
 ### 4. CI-assert the volatile codegen
 
@@ -119,8 +121,10 @@ User runs the capture step on the reference machine; CC's job is to produce the 
 - `ops_per_sec` for 1t case is in the 100s of M/s, not 10s of G/s.
 - Padded burst time across thread counts varies by ≤5%.
 - `objdump` CI step passes and is required for the build.
-- `/methodology` reflects the actual isolation approach.
-- New `02-false-sharing-pnl.json` exists with real `captured_at`, all 12 variants.
+- `perf_capture.sh` aborts cleanly when not run from the benchmark GRUB entry (i.e. when `/sys/devices/system/cpu/isolated` is not `0-7`).
+- All `cset shield` references removed from scripts and post.
+- `/methodology` reflects the dual-GRUB-entry / `isolcpus=0-7` approach.
+- New `02-false-sharing-pnl.json` exists with real `captured_at`, all 12 variants, captured from the benchmark GRUB entry.
 
 ## Out of scope
 

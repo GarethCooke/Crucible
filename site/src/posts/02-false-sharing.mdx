@@ -1,14 +1,13 @@
 ---
-title: "False sharing: a 341× throughput gap from two missing bytes"
+title: "False sharing: a 13× throughput gap from two missing bytes"
 date: "2026-05-22"
-summary: "Same algorithm. Same fill stream. Same machine. One struct layout collapses under thread count; the other scales near-linearly."
+summary: "Same algorithm. Same fill stream. Same machine. The only variable is struct layout — and it dominates."
 ---
 
 Same algorithm. Same fill stream. Same machine. Two versions of a single struct — the
-only difference is 56 bytes of padding. One collapses as thread count grows; the other
-scales near-linearly. The IPC counter drops in lockstep with the throughput collapse,
-and the cache-miss counter rises to match. Whether that collapse costs you wall-clock
-time depends on where the coherency traffic has to travel.
+only difference is 56 bytes of padding. At 8 threads, the unpadded version runs at
+3.31 ns/op; the padded version reaches 0.26 ns/op. A 13× gap from a layout choice the
+compiler never warned about.
 
 ## The setup
 
@@ -40,130 +39,91 @@ PaddedStrategy strategies[8];`}
 The fill stream is 1,024 doubles (8 KB), sized to sit comfortably in the 32 KB L1d
 cache. It is generated once at startup with a fixed seed and shared read-only across
 all threads, so every thread reads identical data — the only writes are the per-slot
-`pnl` accumulations.
+`pnl` accumulations. Each thread owns a slot; threads never write to each other's slots
+logically. The only sharing is incidental — adjacent slots happen to land on the same
+cache line.
 
-## The counter signal — intra-CCX
+## The mechanism
 
-The clearest evidence of false sharing is in the performance counters. With all threads
-pinned to one CCX (cores 4–7), watch IPC and cache miss rate as thread count grows:
+Every write to an unpadded slot invalidates the entire cache line, which holds seven
+neighbouring slots belonging to other threads. Each thread must re-fetch the line
+before it can write. Accesses that previously resolved in L1d (~4 cycles) now require
+L3 round-trips (~35 cycles on Zen 2). With four threads simultaneously invalidating
+each other, the CPU spends most of its time waiting.
 
-<CounterOverlay slug="false-sharing-pnl" placement="intra-ccx" metric="instructions_per_cycle" />
+The IPC counter and cache-miss-ratio counter make this visible:
 
-<CounterOverlay slug="false-sharing-pnl" placement="intra-ccx" metric="cache_miss_ratio" />
+<CounterOverlay
+  slug="02-false-sharing-pnl"
+  placement="intra-ccx"
+  metric="instructions_per_cycle"
+/>
+<CounterOverlay
+  slug="02-false-sharing-pnl"
+  placement="intra-ccx"
+  metric="cache_miss_ratio"
+/>
 
-At 1 thread, both layouts are identical — no contention, near-zero miss rate, similar
-IPC. At 4 threads, the unpadded variant's IPC falls to **0.11** while the padded
-variant holds at **0.56** — a **5× IPC collapse**. The cache miss rate tracks the same
-story: unpadded goes from ~2.5% at 1 thread to **~80% at 4 threads**; padded stays
-near 2.8% throughout.
+At 1 thread the two layouts are indistinguishable — no contention, ~26% miss ratio,
+IPC ~0.56. At 4 threads the unpadded layout collapses to IPC 0.11 and a 96% miss
+ratio; the padded layout holds at IPC 0.55 and ~19% miss ratio.
 
-What is happening: every write to an unpadded slot invalidates the entire cache line,
-which holds seven neighbouring slots belonging to other threads. Each thread must
-re-fetch the line from the L3 before it can write. The accesses that previously
-resolved in the L1d (~4 cycles) now require L3 round-trips (~35 cycles on Zen 2), and
-with four threads simultaneously invalidating each other, the CPU spends most of its
-time waiting rather than executing.
+The padded IPC of 0.55 is not itself a problem — it is the architectural floor of this
+accumulator pattern. `volatile` on the `pnl` slot is necessary to defeat register
+allocation and surface the false-sharing effect, but it forces every loop iteration
+through a store-to-load forwarding round-trip on the L1 store buffer (~5 cycles),
+capping IPC near 0.8 regardless of how much parallelism the rest of the machine could
+offer. The relevant signal is the drop under contention — 0.55 → 0.11 at 4t — not the
+absolute value. A read-modify-write accumulator in a real trading engine has the same
+ceiling; that is exactly why false sharing on this pattern is so destructive.
 
-## Wall-clock impact — intra-CCX
+## The wall-clock cost
 
-The counter signal is the reliable part. The wall-clock impact within one CCX is muted
-on Zen 2:
+The counter collapse translates directly into wall-clock time. At 4 threads on a
+single CCX, unpadded is 3.61 ns/op against padded's 0.71 ns/op — **a 5× wall-clock
+penalty inside one core complex**, lockstep with the 5× IPC collapse. The shared L3
+doesn't rescue you — every false-sharing round-trip still costs you instructions you
+could have been executing.
 
-<ThroughputBars slug="false-sharing-pnl" placement="intra-ccx" />
+<ThroughputBars slug="02-false-sharing-pnl" placement="intra-ccx" />
 
-At 4 threads, the unpadded variant is noticeably slower than the padded variant — but
-the ratio is around 1.2×, far below the ~5× the counter collapse would suggest. The
-reason: all four cores share the same 16 MB L3 cache. Coherency traffic between cores
-in the same CCX resolves within that shared cache at tens-of-nanoseconds per hop,
-without touching DRAM. The hardware absorbs the penalty; the counters see it; the
-wall clock mostly doesn't.
+## Crossing the Fabric
 
-## Where wall-clock magnification reasserts itself
+Zen 2 is a chiplet architecture. Two 4-core CCXs sit on a compute die (CCD), connected
+via Infinity Fabric to a separate I/O die (IOD) that holds the memory controller.
+Coherency traffic between two cores on the same CCX travels through their shared 16 MB
+L3. Coherency traffic between CCX0 and CCX1 has to cross the Infinity Fabric — higher
+latency, no shared cache to absorb the round-trips.
 
-Zen 2 is a chiplet architecture: two 4-core CCXs on a shared memory controller die,
-connected via AMD's Infinity Fabric. Coherency traffic between two cores on the same
-CCX travels through the shared 16 MB L3. Coherency traffic between CCX0 and CCX1 must
-cross the Infinity Fabric — higher latency, no shared cache to absorb the round-trips.
+<ThroughputBars slug="02-false-sharing-pnl" placement="cross-ccx" />
+<CounterOverlay slug="02-false-sharing-pnl" placement="cross-ccx" metric="instructions_per_cycle" />
 
-With threads distributed across both CCXs, the counter collapse looks the same — false
-sharing is firing identically — but the wall-clock penalty now has somewhere new to land:
+At 4 threads, the cross-CCX unpadded result is 4.59 ns/op against intra-CCX 4t unpadded
+at 3.61 ns/op — **a 1.27× additional penalty from crossing the Fabric, on top of the
+5× false-sharing penalty already paid**. The cross-CCX 4t result has IQR/median under
+0.4% across 20 repetitions — reproducible to two significant figures.
 
-<CounterOverlay slug="false-sharing-pnl" placement="cross-ccx" metric="instructions_per_cycle" />
+## 13× at 8 threads cross-CCX
 
-<ThroughputBars slug="false-sharing-pnl" placement="cross-ccx" />
+At 8 threads spanning both CCXs, the gap widens. The unpadded variant settles at
+3.31 ns/op; the padded variant reaches 0.26 ns/op — a **13× throughput gap** from a
+single struct layout decision.
 
-The counter signal at 2t cross-CCX is nearly identical to 2t intra-CCX: IPC ~0.17 in
-both cases, miss rate ~68% vs ~80%. The mechanism is the same. But the wall-clock cost
-is surprisingly restrained.
+| Configuration         | Median ns/op | Throughput (ops/sec) | IQR/median |
+| --------------------- | ------------ | -------------------- | ---------- |
+| Intra-CCX 4t padded   | 0.71         | 1.40 G/s             | 0.04%      |
+| Intra-CCX 4t unpadded | 3.61         | 277 M/s              | 0.08%      |
+| Cross-CCX 4t padded   | 0.71         | 1.40 G/s             | 0.35%      |
+| Cross-CCX 4t unpadded | 4.59         | 218 M/s              | 0.17%      |
+| Cross-CCX 8t padded   | 0.26         | 3.89 G/s             | 12%        |
+| Cross-CCX 8t unpadded | 3.31         | 302 M/s              | 1.4%       |
 
-Conventional wisdom for AMD Zen 2 says cross-CCX cache-line transfer is 2–3× slower
-than intra-CCX — about 80 ns vs 25 ns for an isolated line fetch. You might extrapolate
-that false sharing across the Infinity Fabric will be similarly punishing.
-
-It isn't. On the 3800X, the cross-CCX penalty for false sharing is a remarkably
-consistent **1.28×** at both 2 and 4 contending threads, with CV under 0.25% across 11
-repetitions.
-
-The reason is dilution. Each loop iteration does the coherence ping-pong _plus_ some
-local work, and the local work doesn't care which CCX the other thread sits on. That
-uncontended work absorbs some of the IF round-trip latency on every iteration.
-Back-of-envelope: with around 200 ns of local work per iteration,
-`(80 + 200) / (25 + 200) ≈ 1.24×` — within rounding of what we measure.
-
-| Test                 | Median (ns) | Items/s    |
-| -------------------- | ----------- | ---------- |
-| IntraCCX/2t/unpadded | 7,761,535   | 188.98 G/s |
-| CrossCCX/2t/unpadded | 9,956,942   | 196.43 G/s |
-| IntraCCX/4t/unpadded | 14,792,861  | 415.50 G/s |
-| CrossCCX/4t/unpadded | 18,862,904  | 368.12 G/s |
-
-Two thread counts are reported because they carry different signals. At 4 threads the cache line is hot enough that Infinity Fabric latency dominates any ambient noise, and the measured 1.31× ratio is reproducible across separate runs to within 1%. At 2 threads the same physical effect is present at a similar magnitude, but the measurement is more sensitive to whatever else cpu 0 happens to be doing during the run — the reference machine uses `cset shield` for isolation rather than `isolcpus=` boot params (see [methodology](/methodology)), and `cset` is best-effort. We treat the 4t number as the definitive cross-CCX result; 2t is reported for completeness but is not used as a regression sanity check.
-
-At 8 threads cross-CCX, the unpadded variant reaches **68.2 ns/op** against the padded
-variant's **0.20 ns/op** — a **341× gap**. The padded 8-thread variant shows near-perfect
-linear throughput scaling (8× vs 1 thread).
-
-## Sharing is what costs you, not crossing the Fabric
-
-The padded baseline closes the loop. With padding, each thread owns its own cache line
-— there is no coherency traffic to send across the Infinity Fabric. The cross-CCX wall
-overhead collapses to ~1.0×.
-
-The full penalty stack on a 3800X:
-
-| Configuration       | Wall-time, relative                            |
-| ------------------- | ---------------------------------------------- |
-| Padded, intra-CCX   | 1.0× (baseline)                                |
-| Padded, cross-CCX   | ~1.0× (IF invisible without sharing)           |
-| Unpadded, intra-CCX | ~5× (false sharing within CCX)                 |
-| Unpadded, cross-CCX | ~5× × 1.28× ≈ 6.4× (false sharing across CCX) |
-
-Design your data layout so threads don't share lines. Once you've solved that
-first-order problem, whether the threads happen to land on the same CCX or not is a
-second-order concern.
-
-## The regime question
-
-False sharing has two separable effects:
-
-**Counter collapse is universal.** Wherever threads share a cache line, the
-invalidation/refetch cycle fires. IPC drops. Miss rate climbs. This is visible
-regardless of topology and regardless of whether wall-clock time degrades. If your
-profiler shows an unexplained IPC collapse under thread scale, false sharing is on the
-list of suspects.
-
-**Wall-clock penalty depends on coherency-domain topology.** Modern shared-LLC
-architectures — Zen 2 within a CCX, Intel within a socket — absorb much of the cost
-in the shared cache. The round-trip happens, but it stays in silicon at tens-of-ns.
-Cross-coherency-domain transfers — cross-CCX on Zen 2, cross-socket, NUMA — remove
-that cushion. The same false-sharing pattern that causes a ~1.2× wall-clock regression
-intra-CCX causes a **~1.28×** regression from crossing the Infinity Fabric — modest,
-because the non-contended work per iteration dilutes the IF round-trip. The full
-unpadded-vs-padded gap at 8 threads cross-CCX reaches **341×**.
-
-This has a practical implication for measurement: benchmarking false sharing on a
-single socket may understate the production penalty if the production system spans NUMA
-nodes, or runs on a processor with discrete CCX/CCD partitioning.
+The 8-thread configuration is the only one that includes cpu0, which the kernel
+refuses to isolate (it's the boot CPU and handles unmigrable housekeeping). Run-to-run
+variance is correspondingly higher there. The unpadded number remains robust —
+false-sharing cost dwarfs cpu0 background noise — but the padded baseline has
+IQR/median around 12% rather than the sub-1% seen everywhere else. The 13× headline is
+real; treat the third significant figure with skepticism.
 
 ## What this means in practice
 
@@ -182,22 +142,20 @@ The fix is straightforward: align each per-thread slot to the cache-line size.
 memory: 8 threads × 64 bytes = 512 bytes instead of 64 bytes. For hot-path accumulators
 the trade-off is almost always worthwhile.
 
-What this benchmark doesn't show is subtler cases: false sharing between a writer thread
-and a reader thread on the same cache line, or producer–consumer patterns where the
-sequence number and the payload are laid out on the same line. The magnitude of those
-effects depends on access frequency and temporal overlap — but the mechanism and the fix
-are identical.
+## What this benchmark doesn't show
 
-## A note on measurement conditions
-
-Core isolation uses `cset shield --cpu=0-7`, invoked by the wrapper script immediately
-before each benchmark run and reset after (see [methodology](/methodology)). `cset` shields
-all 8 cores, but cpu 0 sits on CCX0 alongside the system timer and other unmovable kernel
-threads — it sees more ambient noise than the CCX1 cores. CV across 11 reps was
-0.02–0.22% intra-run, which confirms that background noise isn't materially affecting
-single-run measurements. Across separate runs, the CrossCCX/2t result is more variable
-than 4t for exactly this reason — which is why we treat the 4t number as the definitive
-cross-CCX result.
+- **Read-write sharing is different.** This benchmark measures write-write false sharing.
+  Writer-reader and reader-writer patterns (e.g., one thread updating a sequence number
+  while another reads the payload on the same line) have different magnitudes — usually
+  less severe, since reads don't invalidate.
+- **The result is hardware-specific.** Zen 2's 16 MB shared L3 within a CCX and the
+  Infinity Fabric latency to the other CCX are the specific topology measured. Intel
+  monolithic-die designs absorb intra-socket false sharing in the shared LLC;
+  multi-socket NUMA systems behave more like cross-CCX. The mechanism is universal; the
+  magnitudes depend on the chip.
+- **cpu0 cannot be kernel-isolated.** On the reference machine the 8t result includes
+  cpu0 in the worker pool. The 13× number is robust because the false-sharing signal
+  dominates; smaller effects measured at 8t would need different methodology.
 
 ## Reproducing this
 
@@ -226,7 +184,7 @@ objdump -d build/demos/02-false-sharing/bench_02_false_sharing_pnl \
 python3 tools/parse_perf.py \
   --perf  intra-ccx_4t_unpadded.perf.json \
   --bench intra-ccx_4t_unpadded.bench.json \
-  --out   site/src/data/perf/false-sharing-pnl.json \
+  --out   site/src/data/perf/02-false-sharing-pnl.json \
   --placement intra-ccx --threads 4 --padded 0
 ```
 
@@ -236,11 +194,10 @@ For the L1D-specific miss counter, confirm the event name on Zen 2 before captur
 perf list | grep -i l1d   # look for l1d.replacement or L1-dcache-load-misses
 ```
 
-Pre-flight: SMT must be off (`cat /sys/devices/system/cpu/smt/active` → `0`),
-governor = performance, turbo off, `cpuset` package installed.
-The benchmark binary aborts with a clear error message if SMT is active.
-Cross-CCX runs use non-isolated cores (cores 0 and 4); see the `notes` field in the
-JSON for the caveat.
+Pre-flight: boot into the benchmark GRUB entry (`isolcpus=0-7 nohz_full=0-7 rcu_nocbs=0-7`),
+SMT off (`cat /sys/devices/system/cpu/smt/active` → `0`), governor = performance, turbo off.
+The benchmark binary aborts with a clear error message if SMT is active;
+`perf_capture.sh` aborts if `/sys/devices/system/cpu/isolated` is not `1-7`.
 
 To verify thread-to-CPU pinning (invaluable when debugging topology issues), set the
 `CRUCIBLE_PRINT_AFFINITY` environment variable before running:
@@ -254,7 +211,6 @@ CRUCIBLE_PRINT_AFFINITY=1 ./bench/build/demos/02-false-sharing/bench_02_false_sh
 
 ---
 
-*All numbers: placeholder — replace by running the capture scripts on the reference machine.
-AMD Ryzen 7 3800X, Zen 2, 3.9 GHz base, governor = performance, Turbo Boost off,
+*AMD Ryzen 7 3800X, Zen 2, 3.9 GHz base, governor = performance, Turbo Boost off,
 SMT off (BIOS), GCC 13, -O3 -march=native.*
 *[Methodology →](/methodology)*

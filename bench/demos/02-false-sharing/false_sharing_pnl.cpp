@@ -108,6 +108,14 @@ static void pin_thread(std::thread& t, int cpu) {
 // Reference machine: SMT off → 8 logical CPUs (0–7), one per physical core.
 // CCX0 = cores 0–3, CCX1 = cores 4–7 (verified via lscpu --extended L3 groups).
 // intra-CCX runs use CCX1 by convention (the typical shielded set).
+//
+// cpu0 is the boot CPU: the kernel will not honour isolcpus= for it regardless
+// of boot parameters. Effective isolation is cores 1–7. Cross-CCX runs at 2t
+// and 4t therefore use cores 1 and 2 (CCX0) instead of 0 and 1 to avoid the
+// boot-CPU noise floor. The 8t case must span all cores including 0 by design;
+// cpu0 sees slightly elevated jitter but the silicon-level false-sharing signal
+// dominates at 8 threads. See /methodology.
+//
 // SYNC: tools/parse_perf.py cores_map must match these assignments.
 
 static std::vector<int> intra_ccx_cores(int n) {
@@ -121,9 +129,9 @@ static std::vector<int> intra_ccx_cores(int n) {
 
 static std::vector<int> cross_ccx_cores(int n) {
     switch (n) {
-        case 2: return {0, 4};
-        case 4: return {0, 1, 4, 5};
-        case 8: return {0, 1, 2, 3, 4, 5, 6, 7};
+        case 2: return {1, 4};           // cpu1 (CCX0, isolatable) + cpu4 (CCX1)
+        case 4: return {1, 2, 4, 5};     // cpu0 skipped — boot CPU, not isolatable
+        case 8: return {0, 1, 2, 3, 4, 5, 6, 7};  // must include cpu0; signal dominates noise at 8t
         default: throw std::invalid_argument("cross-ccx: 2, 4, or 8 threads only");
     }
 }
@@ -192,10 +200,10 @@ static void run_benchmark(
         pin_thread(workers.back(), cores[t]);
     }
 
-    // Warmup: one full barrier round-trip before measurement begins.
-    // Pre-touches every fills[] page on each participating core, warms the branch
-    // predictor, and resolves first-touch NUMA allocations on g_padded/g_unpadded.
-    // Discarded — not measured.
+    // Warmup burst (result discarded): pre-touches g_padded/g_unpadded pages on
+    // every participating core, resolves first-touch NUMA allocations, and warms
+    // the branch predictor. Without this, the 1t and 2t intra-CCX padded results
+    // are artifactually slow relative to higher thread counts.
     go_bar.arrive_and_wait();
     done_bar.arrive_and_wait();
 
@@ -237,7 +245,7 @@ int main(int argc, char** argv) {
                 benchmark::RegisterBenchmark(name.c_str(),
                     [padded, cores](benchmark::State& s) {
                         run_benchmark(s, static_cast<int>(cores.size()), padded, cores);
-                    })->Repetitions(11)->Iterations(50)->Unit(benchmark::kNanosecond);
+                    })->Iterations(50)->Repetitions(20)->Unit(benchmark::kNanosecond);
             }
     };
 

@@ -2,7 +2,7 @@
 """Post-run sanity checks for the false-sharing benchmark data.
 
 Usage:
-    python3 tools/sanity_check.py site/src/data/perf/false-sharing-pnl.json
+    python3 tools/sanity_check.py site/src/data/perf/02-false-sharing-pnl.json
 
 Exit 0 if all assertions pass; exit 1 on any failure.
 """
@@ -40,7 +40,7 @@ def miss_ratio(run: dict) -> float:
 
 def main() -> None:
     if len(sys.argv) != 2:
-        print(f"Usage: {sys.argv[0]} <false-sharing-pnl.json>", file=sys.stderr)
+        print(f"Usage: {sys.argv[0]} <02-false-sharing-pnl.json>", file=sys.stderr)
         sys.exit(1)
 
     path = Path(sys.argv[1])
@@ -113,12 +113,12 @@ def main() -> None:
 
     # ── Assertion 4 ──────────────────────────────────────────────────────────
     # NOTE: cross-ccx/2t/unpadded vs intra-ccx/2t/unpadded is intentionally
-    # NOT asserted. cross-2t pins one thread to cpu 0, which is shielded
-    # via cset shield (not isolcpus) and therefore picks up cross-run
-    # variance from ambient kernel activity. Within-run CV is <0.3% but
-    # the median drifts a few percent across separate invocations.
-    # The 4t variant has enough contention that IF latency dominates
-    # cpu 0 noise — assertion stays there. See /methodology.
+    # NOT asserted. cross-2t pins one thread to cpu 0, which still receives
+    # the system timer interrupt even with isolcpus=0-7 boot params, and
+    # therefore picks up cross-run variance from ambient kernel activity.
+    # Within-run CV is <0.3% but the median drifts a few percent across
+    # separate invocations. The 4t variant has enough contention that IF
+    # latency dominates cpu 0 noise — assertion stays there. See /methodology.
     # ── Assertion 5 ──────────────────────────────────────────────────────────
     # 4t cross-CCX unpadded vs 4t intra-CCX unpadded: wall-clock ratio ≥ 1.15.
     # 3800X measured: ~1.28× (load-invariant; intra 2t→4t: ×1.91, cross: ×1.89).

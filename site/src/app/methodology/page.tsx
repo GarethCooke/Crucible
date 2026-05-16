@@ -113,8 +113,8 @@ export default function MethodologyPage() {
           4–7 via <code>taskset</code> (invoked by the per-demo wrapper scripts), with cores 0–3
           absorbing any residual kernel housekeeping the isolation directives cannot redirect. The
           wrapper also steers IRQ affinity to non-benchmark cores via{' '}
-          <code>/proc/irq/*/smp_affinity</code> for the duration of each run.
-          {' '}SMT is disabled at the BIOS level — verified via{' '}
+          <code>/proc/irq/*/smp_affinity</code> for the duration of each run.{' '}
+          SMT is disabled at the BIOS level — verified via{' '}
           <code>/sys/devices/system/cpu/smt/active</code> returning <code>0</code> and{' '}
           <code>lscpu</code> reporting 8 CPUs — to remove SMT-sibling resource sharing (L1,
           L2, execution ports, frontend) from all measurements. Actual shielded core IDs are
