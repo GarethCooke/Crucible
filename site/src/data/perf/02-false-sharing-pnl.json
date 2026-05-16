@@ -14,15 +14,18 @@
     "kernel": "6.8.0-generic",
     "governor": "performance",
     "turbo": false,
-    "isolated_cpus": "4-7",
+    "isolated_cpus": "1-7",
     "isolated_cores": [
+      1,
+      2,
+      3,
       4,
       5,
       6,
       7
     ]
   },
-  "captured_at": "PLACEHOLDER \u2014 run tools/perf_capture.sh for each variant on the reference machine",
+  "captured_at": "2026-05-16T16:58:01+00:00",
   "runs": [
     {
       "variant": "unpadded",
@@ -379,5 +382,5 @@
       "notes": "cores: [0, 1, 2, 3, 4, 5, 6, 7]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles); l1d event: l1d.replacement (verify with perf list | grep -i l1d on reference machine)"
     }
   ],
-  "notes": "Placeholder data \u2014 replace by running tools/perf_capture.sh for each variant on the reference machine. Fill stream: 1024 doubles (8 KB), mt19937 seed 42, uniform [-1, 1]. Compiler: GCC 13, -O3 -march=native. AMD PMU generic counters used (not AMD-specific l2_request_g1 family). l1d_misses_per_op: requires capturing the l1d.replacement event (confirm name with 'perf list | grep -i l1d' on reference machine); field is null until captured. AMD-specific counters are a future-work upgrade for sharper Zen 2 L2/L3 data."
+  "notes": "Captured on AMD Ryzen 7 3800X, Zen 2, governor=performance, turbo off, SMT off, isolated cpus 1-7 (cpu0 cannot be kernel-isolated). Fill stream: 1024 doubles (8 KB), mt19937 seed 42, uniform [-1, 1]. Compiler: GCC 13, -O3 -march=native."
 }

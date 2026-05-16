@@ -121,7 +121,9 @@ export default function MethodologyPage() {
           (CCX0) rather than 0–1, so all measured threads land on isolatable cores.
           The 8-thread variant must span all cores including cpu0 by design; at 8
           contending threads the silicon-level false-sharing signal dominates the
-          boot-CPU noise floor. Capture scripts assert{' '}
+          boot-CPU noise floor. Some benchmarks (e.g. 8-thread configurations on the
+          reference machine) necessarily include cpu0; results for those configurations
+          are flagged inline where they appear. Capture scripts assert{' '}
           <code>/sys/devices/system/cpu/isolated</code> reads <code>1-7</code> and abort
           with a clear error otherwise. SMT is disabled at the BIOS level — verified via{' '}
           <code>/sys/devices/system/cpu/smt/active</code> returning <code>0</code> — to
