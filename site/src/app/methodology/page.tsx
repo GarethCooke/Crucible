@@ -84,11 +84,11 @@ export default function MethodologyPage() {
         <strong style={{ color: 'var(--text-secondary)' }}>Boot parameters.</strong>{' '}
         The reference machine has two GRUB entries. The standard entry runs without
         isolation parameters and is used for everyday development. The benchmark entry
-        adds <code>isolcpus=0-7 nohz_full=0-7 rcu_nocbs=0-7</code>, shielding all 8
-        cores from scheduler and timer activity for the duration of the capture run.
-        Capture scripts abort if <code>/sys/devices/system/cpu/isolated</code> does not
-        read <code>0-7</code>, so it is not possible to accidentally capture on the wrong
-        entry.
+        adds <code>isolcpus=0-7 nohz_full=0-7 rcu_nocbs=0-7</code>. In practice the
+        kernel will not isolate cpu0 (the boot CPU) regardless of the parameter, so the
+        effective isolation is cores 1–7; <code>/sys/devices/system/cpu/isolated</code>{' '}
+        reads <code>1-7</code>. Capture scripts assert that value and abort otherwise,
+        making it impossible to accidentally capture on the wrong boot entry.
       </p>
 
       {/* ── Four commitments ──────────────────────────────────────────────── */}
@@ -110,18 +110,22 @@ export default function MethodologyPage() {
         <Commitment n={3} title="Core isolation">
           Core isolation is applied via kernel boot parameters{' '}
           <code>isolcpus=0-7 nohz_full=0-7 rcu_nocbs=0-7</code>, set in a dedicated
-          GRUB entry (&ldquo;Ubuntu (benchmark — cores 0-7 isolated)&rdquo;). This removes
-          scheduler, timer-tick, and RCU-callback activity from all 8 benchmark cores at
-          the kernel level — a hard exclusion, not a best-effort migration. The reference
-          machine dual-boots; the standard GRUB entry is used for development and the
-          benchmark entry only for capture runs.
+          GRUB entry. This removes scheduler, timer-tick, and RCU-callback activity from
+          benchmark cores at the kernel level — a hard exclusion, not a best-effort
+          migration. The reference machine dual-boots; the standard GRUB entry is used
+          for development and the benchmark entry only for capture runs.
           <br /><br />
-          Capture scripts assert <code>/sys/devices/system/cpu/isolated</code> reads{' '}
-          <code>0-7</code> before running and abort with a clear error otherwise, making
-          it impossible to accidentally capture from the wrong boot entry. SMT is disabled
-          at the BIOS level — verified via <code>/sys/devices/system/cpu/smt/active</code>{' '}
-          returning <code>0</code> — to remove SMT-sibling resource sharing (L1, L2,
-          execution ports, frontend) from all measurements. Exact shielded core IDs are
+          One constraint: cpu0 is the boot CPU and the kernel will not honour{' '}
+          <code>isolcpus=</code> for it — effective isolation is cores 1–7.
+          Cross-CCX benchmark variants at 2 and 4 threads therefore use cores 1–2
+          (CCX0) rather than 0–1, so all measured threads land on isolatable cores.
+          The 8-thread variant must span all cores including cpu0 by design; at 8
+          contending threads the silicon-level false-sharing signal dominates the
+          boot-CPU noise floor. Capture scripts assert{' '}
+          <code>/sys/devices/system/cpu/isolated</code> reads <code>1-7</code> and abort
+          with a clear error otherwise. SMT is disabled at the BIOS level — verified via{' '}
+          <code>/sys/devices/system/cpu/smt/active</code> returning <code>0</code> — to
+          remove SMT-sibling resource sharing from all measurements. Exact core IDs are
           recorded in each demo&rsquo;s JSON <code>machine.isolated_cores</code> field.
         </Commitment>
         <Commitment n={4} title="Statistical reporting">

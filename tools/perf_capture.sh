@@ -40,11 +40,14 @@ PADDED_FLAG="${4:?}"  # 0 or 1
 # ─── Precondition: verify isolcpus kernel boot params ────────────────────────
 
 ISOLATED="$(cat /sys/devices/system/cpu/isolated 2>/dev/null || echo '')"
-if [[ "$ISOLATED" != "0-7" ]]; then
-    echo "ERROR: cores 0-7 are not isolated as required." >&2
+# The kernel will not isolate cpu0 (the boot CPU) regardless of isolcpus= — so
+# the effective isolation from isolcpus=0-7 is always "1-7". Accept that value.
+if [[ "$ISOLATED" != "1-7" ]]; then
+    echo "ERROR: cores 1-7 are not isolated as required." >&2
     echo "  /sys/devices/system/cpu/isolated = '${ISOLATED}'" >&2
     echo "  Boot into the benchmark GRUB entry:" >&2
     echo "    isolcpus=0-7 nohz_full=0-7 rcu_nocbs=0-7" >&2
+    echo "  (kernel reports 1-7 because cpu0 is the boot CPU and cannot be isolated)" >&2
     echo "  See /methodology for the dual-GRUB-entry setup." >&2
     exit 1
 fi

@@ -172,7 +172,7 @@ def main():
     if placement == "intra-ccx":
         cores_map = {1: [4], 2: [4, 5], 4: [4, 5, 6, 7]}
     else:
-        cores_map = {2: [0, 4], 4: [0, 1, 4, 5], 8: [0, 1, 2, 3, 4, 5, 6, 7]}
+        cores_map = {2: [1, 4], 4: [1, 2, 4, 5], 8: [0, 1, 2, 3, 4, 5, 6, 7]}
     cores_used = cores_map.get(nthreads, [])
 
     new_run = {
