@@ -68,7 +68,7 @@ export default function MethodologyPage() {
         <div><span style={{ color: 'var(--text-muted)' }}>RAM</span>       <span className="ml-4">32 GB DDR4-3200</span></div>
         <div><span style={{ color: 'var(--text-muted)' }}>Board</span>     <span className="ml-4">ASUS ROG STRIX B550-F GAMING</span></div>
         <div><span style={{ color: 'var(--text-muted)' }}>OS</span>        <span className="ml-4">Ubuntu Server LTS (dual-boot)</span></div>
-        <div><span style={{ color: 'var(--text-muted)' }}>Boot</span>      <span className="ml-4">No core-isolation params — cset shield applied per-benchmark</span></div>
+        <div><span style={{ color: 'var(--text-muted)' }}>Boot</span>      <span className="ml-4">Benchmark entry: <code>isolcpus=0-7 nohz_full=0-7 rcu_nocbs=0-7</code></span></div>
         <div><span style={{ color: 'var(--text-muted)' }}>BIOS</span>      <span className="ml-4">Core Performance Boost disabled, SMT disabled</span></div>
         <div className="pt-2 border-t" style={{ borderColor: 'var(--border-color)' }}>
           <span style={{ color: 'var(--text-muted)' }}>ISA</span>
@@ -82,11 +82,13 @@ export default function MethodologyPage() {
       </p>
       <p className="text-sm mb-12" style={{ color: 'var(--text-muted)' }}>
         <strong style={{ color: 'var(--text-secondary)' }}>Boot parameters.</strong>{' '}
-        No core-isolation boot parameters are committed (<code>isolcpus=</code>,{' '}
-        <code>nohz_full=</code>, <code>rcu_nocbs=</code> are all unset). Demos with hard
-        tail-latency claims (sub-microsecond p99.9) may introduce <code>nohz_full=</code> at
-        that point, with each addition documented in that demo&rsquo;s methodology notes
-        alongside the data it is needed for.
+        The reference machine has two GRUB entries. The standard entry runs without
+        isolation parameters and is used for everyday development. The benchmark entry
+        adds <code>isolcpus=0-7 nohz_full=0-7 rcu_nocbs=0-7</code>, shielding all 8
+        cores from scheduler and timer activity for the duration of the capture run.
+        Capture scripts abort if <code>/sys/devices/system/cpu/isolated</code> does not
+        read <code>0-7</code>, so it is not possible to accidentally capture on the wrong
+        entry.
       </p>
 
       {/* ── Four commitments ──────────────────────────────────────────────── */}
@@ -106,32 +108,21 @@ export default function MethodologyPage() {
           deliver at nominal frequency.
         </Commitment>
         <Commitment n={3} title="Core isolation">
-          Core isolation is applied per-benchmark via <code>cset shield</code>, not via
-          persistent <code>isolcpus=</code> boot parameters. The reference machine is
-          dual-purpose — it dual-boots Windows, and the Ubuntu install is used for things
-          other than benchmarking — so permanent kernel-level isolation would penalise normal
-          use and is the kind of configuration that&rsquo;s easy to forget about and hard to
-          debug six months later. <code>cset shield --cpu=0-7</code> is invoked by the
-          per-demo wrapper scripts immediately before the benchmark binary runs and reset
-          (<code>cset shield --reset</code>) immediately after, providing isolation during the
-          measurement window and nothing more.
+          Core isolation is applied via kernel boot parameters{' '}
+          <code>isolcpus=0-7 nohz_full=0-7 rcu_nocbs=0-7</code>, set in a dedicated
+          GRUB entry (&ldquo;Ubuntu (benchmark — cores 0-7 isolated)&rdquo;). This removes
+          scheduler, timer-tick, and RCU-callback activity from all 8 benchmark cores at
+          the kernel level — a hard exclusion, not a best-effort migration. The reference
+          machine dual-boots; the standard GRUB entry is used for development and the
+          benchmark entry only for capture runs.
           <br /><br />
-          The tradeoff: <code>cset shield</code> is a best-effort migration at shield time,
-          not a kernel-enforced exclusion. Tasks already pinned to a shielded cpu, kernel
-          threads that can&rsquo;t be moved, and tasks that spawn during the run can still
-          appear on benchmark cores. Within a single run this is negligible — CV across 11
-          repetitions is typically under 0.3%. Across separate runs, cpus that pick up
-          ambient kernel activity (notably cpu 0, which holds the system timer and other
-          unmovable work) can drift by a few percent. Where this matters for sanity
-          assertions we use measurements that are robust to that drift, typically by running
-          enough contending threads that the silicon-level signal dominates over background
-          noise. IRQ affinity is steered to non-shielded cores via{' '}
-          <code>/proc/irq/*/smp_affinity</code> by the wrapper script. SMT is disabled at
-          the BIOS level — verified via <code>/sys/devices/system/cpu/smt/active</code>{' '}
-          returning <code>0</code> and <code>lscpu</code> reporting 8 CPUs — to remove
-          SMT-sibling resource sharing (L1, L2, execution ports, frontend) from all
-          measurements. Exact shielded core IDs are recorded in each demo&rsquo;s JSON{' '}
-          <code>machine.isolated_cores</code> field.
+          Capture scripts assert <code>/sys/devices/system/cpu/isolated</code> reads{' '}
+          <code>0-7</code> before running and abort with a clear error otherwise, making
+          it impossible to accidentally capture from the wrong boot entry. SMT is disabled
+          at the BIOS level — verified via <code>/sys/devices/system/cpu/smt/active</code>{' '}
+          returning <code>0</code> — to remove SMT-sibling resource sharing (L1, L2,
+          execution ports, frontend) from all measurements. Exact shielded core IDs are
+          recorded in each demo&rsquo;s JSON <code>machine.isolated_cores</code> field.
         </Commitment>
         <Commitment n={4} title="Statistical reporting">
           Each benchmark runs ≥20 repetitions after warmup. Every chart states which statistic

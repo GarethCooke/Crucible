@@ -192,6 +192,13 @@ static void run_benchmark(
         pin_thread(workers.back(), cores[t]);
     }
 
+    // Warmup burst (result discarded): pre-touches g_padded/g_unpadded pages on
+    // every participating core, resolves first-touch NUMA allocations, and warms
+    // the branch predictor. Without this, the 1t and 2t intra-CCX padded results
+    // are artifactually slow relative to higher thread counts.
+    go_bar.arrive_and_wait();
+    done_bar.arrive_and_wait();
+
     for (auto _ : state) {
         state.PauseTiming();
         go_bar.arrive_and_wait();    // release workers — barrier cost excluded from timing
@@ -230,7 +237,7 @@ int main(int argc, char** argv) {
                 benchmark::RegisterBenchmark(name.c_str(),
                     [padded, cores](benchmark::State& s) {
                         run_benchmark(s, static_cast<int>(cores.size()), padded, cores);
-                    })->Repetitions(11)->Unit(benchmark::kNanosecond);
+                    })->Iterations(50)->Repetitions(11)->Unit(benchmark::kNanosecond);
             }
     };
 

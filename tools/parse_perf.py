@@ -11,6 +11,12 @@ Run once per variant. The script upserts the run entry into the JSON file
 (matching on placement + threads + variant), preserving all other runs.
 """
 
+# ─── Benchmark constants (must match false_sharing_pnl.cpp) ──────────────────
+N_FILLS     = 1024   # inner loop: 8 KB fill stream, fits in L1d
+N_ITERS     = 1000   # barrier epochs per GB outer iteration
+BENCH_ITERS = 50     # fixed GB outer iterations per rep (->Iterations(50))
+BENCH_REPS  = 11     # repetitions per variant (--benchmark_repetitions=11)
+
 import argparse
 import json
 import sys
@@ -49,18 +55,22 @@ def parse_perf_json(path: Path) -> dict[str, int]:
 
 # ─── Google Benchmark JSON parsing ───────────────────────────────────────────
 
-def parse_bench_json(path: Path, filter_name: str) -> dict:
-    """Extract timing stats for a specific benchmark from GB JSON output."""
+def parse_bench_json(path: Path, filter_name: str, nthreads: int) -> dict:
+    """Extract timing stats for a specific benchmark from GB JSON output.
+
+    ns_per_op is computed as real_time_ns / (nthreads * N_ITERS * N_FILLS).
+    Google Benchmark's real_time is already normalised per outer iteration, so
+    items_per_second is not used — that field folds in the auto-chosen iteration
+    count and applying it again would produce values ~190× too small.
+    """
     with open(path) as f:
         data = json.load(f)
 
-    # Collect all individual repetitions (not aggregate rows)
+    # Collect real_time from individual repetition rows (skip aggregate rows)
     ns_per_iter_values = []
-    items_per_sec = None
 
     for bm in data.get("benchmarks", []):
         name = bm.get("name", "")
-        # Skip aggregate rows (mean/median/stddev/cv)
         if any(name.endswith(sfx) for sfx in ("_mean", "_median", "_stddev", "_cv")):
             continue
         if filter_name not in name:
@@ -71,28 +81,20 @@ def parse_bench_json(path: Path, filter_name: str) -> dict:
             continue
         ns_per_iter_values.append(ns)
 
-        if items_per_sec is None:
-            items_per_sec = bm.get("items_per_second", None)
-
     if not ns_per_iter_values:
         raise ValueError(f"No benchmark rows matching '{filter_name}' found in {path}")
-
-    # ns_per_iter = wall_time for one GB outer iteration.
-    # Since SetItemsProcessed is constant across reps,
-    # items_per_sec × real_time_s = total_items is invariant —
-    # so using items_per_sec from any rep is correct.
-    if items_per_sec is None:
-        raise ValueError("items_per_second not found in benchmark output")
 
     ns_vals = sorted(ns_per_iter_values)
     median_ns_iter = percentile(ns_vals, 50)
     min_ns_iter    = ns_vals[0]
     iqr_ns_iter    = percentile(ns_vals, 75) - percentile(ns_vals, 25)
 
-    items_per_outer  = items_per_sec * (median_ns_iter * 1e-9)
-    ns_per_op_median = median_ns_iter / items_per_outer if items_per_outer > 0 else 0.0
-    ns_per_op_min    = min_ns_iter    / (items_per_sec * (min_ns_iter * 1e-9)) if items_per_sec > 0 else 0.0
-    iqr_ns_op        = iqr_ns_iter    / items_per_outer if items_per_outer > 0 else 0.0
+    # Direct calculation: real_time is per-GB-iteration; each iteration does
+    # nthreads * N_ITERS * N_FILLS operations across all worker threads.
+    ops_per_iter     = nthreads * N_ITERS * N_FILLS
+    ns_per_op_median = median_ns_iter / ops_per_iter
+    ns_per_op_min    = min_ns_iter    / ops_per_iter
+    iqr_ns_op        = iqr_ns_iter    / ops_per_iter
     ops_per_sec      = int(1e9 / ns_per_op_median) if ns_per_op_median > 0 else 0
 
     return {
@@ -157,12 +159,13 @@ def main():
     perf_counts = parse_perf_json(args.perf)
 
     print(f"Parsing bench: {args.bench} (filter: {filter_name})")
-    timing = parse_bench_json(args.bench, filter_name)
+    timing = parse_bench_json(args.bench, filter_name, nthreads)
 
-    # Approximate total ops for one GB outer iteration (≈ N_ITERS × N_FILLS × nthreads).
-    # Using ops_per_sec / 10 gives roughly one iteration's worth at current N_ITERS=1000.
-    ops_approx = timing["ops_per_sec"] // 10
-    counters = derive_counters(perf_counts, ops_approx)
+    # Total ops seen by perf stat: BENCH_REPS reps × BENCH_ITERS iters × per-iter ops.
+    # perf stat wraps the whole binary run, so this approximates the denominator for
+    # per-op counter metrics (cache_misses_per_op, l1d_misses_per_op).
+    ops_total = BENCH_REPS * BENCH_ITERS * nthreads * N_ITERS * N_FILLS
+    counters = derive_counters(perf_counts, ops_total)
 
     # Core assignments — SYNC: must match intra_ccx_cores/cross_ccx_cores in
     # bench/demos/02-false-sharing/false_sharing_pnl.cpp
