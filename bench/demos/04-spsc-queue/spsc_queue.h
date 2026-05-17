@@ -29,6 +29,12 @@ class SPSCQueue {
         char pad[64 - sizeof(std::atomic<size_t>)];
     };
 
+    static_assert(sizeof(PaddedAtomic) == 64,
+                  "PaddedAtomic must occupy exactly one cache line");
+    static_assert(__builtin_offsetof(SPSCQueue, tail_) -
+                  __builtin_offsetof(SPSCQueue, head_) >= 64,
+                  "head_ and tail_ must be on separate cache lines");
+
     PaddedAtomic head_{};  // sole writer: consumer
     PaddedAtomic tail_{};  // sole writer: producer
     alignas(64) T buffer_[N];

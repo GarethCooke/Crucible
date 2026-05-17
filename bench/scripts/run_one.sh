@@ -115,8 +115,11 @@ fi
 # ─────────────────────────────────────────────────────────────────────────────
 
 # ─── Demo 04: SPSC queue — custom latency pipeline ───────────────────────────
-# Standalone binary (not Google Benchmark). Runs each variant once (binary
-# handles 5 internal iterations + histogram merge). Assembles via assemble_results_04.py.
+# Three measurement modes per variant:
+#   paced     — producer paced at 1 MHz; queue stays near-empty (headline latency)
+#   saturated — producer flat-out; measures peak throughput
+#   sweep     — 8 log-spaced paced runs 100 kHz→25 MHz (latency-vs-load chart)
+# Assembles all runs into a single 04-spsc-queue.json via assemble_results_04.py.
 if [[ "${SLUG}" == "04-spsc-queue" ]]; then
     SPSC_BINARY="${BENCH_ROOT}/build/demos/04-spsc-queue/bench_04_spsc_queue"
 
@@ -140,9 +143,20 @@ if [[ "${SLUG}" == "04-spsc-queue" ]]; then
     WDIR=$(mktemp -d /tmp/crucible_spsc_XXXXXX)
 
     for VARIANT in lockfree-handrolled lockfree-boost mutex-condvar; do
-        echo "==> Running variant: ${VARIANT} (5 × 1M items)..."
+        echo "==> Running ${VARIANT}: paced 1 MHz (5 × 1M items)..."
         sudo -E cset shield --exec -- "${SPSC_BINARY}" "${VARIANT}" \
-            | grep -v '^cset:' > "${WDIR}/${VARIANT}.json"
+            --mode paced --rate-hz 1000000 \
+            | grep -v '^cset:' > "${WDIR}/${VARIANT}-paced.json"
+
+        echo "==> Running ${VARIANT}: saturated (5 × 1M items)..."
+        sudo -E cset shield --exec -- "${SPSC_BINARY}" "${VARIANT}" \
+            --mode saturated \
+            | grep -v '^cset:' > "${WDIR}/${VARIANT}-saturated.json"
+
+        echo "==> Running ${VARIANT}: sweep 100kHz→25MHz, 8 steps..."
+        sudo -E cset shield --exec -- "${SPSC_BINARY}" "${VARIANT}" \
+            --mode sweep --rate-from 100000 --rate-to 25000000 --steps 8 \
+            | grep -v '^cset:' > "${WDIR}/${VARIANT}-sweep.json"
     done
 
     sudo -E cset shield --reset > /dev/null

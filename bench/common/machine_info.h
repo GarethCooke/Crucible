@@ -4,6 +4,7 @@
 
 #include <array>
 #include <cstdio>
+#include <cstring>
 #include <sched.h>
 #include <string>
 
@@ -30,6 +31,46 @@ inline std::string shell(const char* cmd) {
         safe += static_cast<char>(c);
     }
     return safe;
+}
+
+// Like shell() but preserves newlines as \n and tabs as spaces — for multiline output.
+inline std::string shell_multiline(const char* cmd) {
+    std::array<char, 512> buf;
+    std::string out;
+    FILE* fp = ::popen(cmd, "r");
+    if (!fp) return "";
+    while (std::fgets(buf.data(), static_cast<int>(buf.size()), fp))
+        out += buf.data();
+    ::pclose(fp);
+    while (!out.empty() && (out.back() == '\n' || out.back() == '\r'))
+        out.pop_back();
+    std::string safe;
+    for (unsigned char c : out) {
+        if (c == '\n' || c == '\r') { safe += "\\n"; continue; }
+        if (c == '\t')              { safe += ' ';   continue; }
+        if (c < 0x20 || c == 0x7f) continue;
+        if (c == '\\') { safe += "\\\\"; continue; }
+        if (c == '"')  { safe += "\\\""; continue; }
+        safe += static_cast<char>(c);
+    }
+    return safe;
+}
+
+// Parse isolcpus= value directly from /proc/cmdline.
+// Returns the verbatim value (e.g. "1-7") or empty string if not present.
+inline std::string isolated_cpus_from_cmdline() {
+    FILE* f = ::fopen("/proc/cmdline", "r");
+    if (!f) return "";
+    char line[4096] = {};
+    ::fgets(line, sizeof(line), f);
+    ::fclose(f);
+    const char* tok = std::strstr(line, "isolcpus=");
+    if (!tok) return "";
+    tok += 9;  // skip "isolcpus="
+    std::string val;
+    while (*tok && *tok != ' ' && *tok != '\t' && *tok != '\n' && *tok != '\r')
+        val += *tok++;
+    return val;
 }
 
 // Returns the CPU affinity of the calling process as a compact range string,
@@ -73,6 +114,7 @@ inline std::string cpu_affinity_string() {
 // Returns a JSON object string (no surrounding braces) for the "machine" field.
 inline std::string machine_info_json() {
     using detail::shell;
+    using detail::shell_multiline;
 
     // head -1: guard against lscpu printing one line per socket/NUMA node
     const auto cpu      = shell("lscpu | grep 'Model name' | sed 's/.*: *//' | head -1");
@@ -88,10 +130,17 @@ inline std::string machine_info_json() {
     // CRUCIBLE_TURBO is set by run_one.sh after verifying CPB state via cpupower.
     // Null means the caller did not verify — avoids asserting unobserved facts.
     const auto turbo_env = shell("echo \"$CRUCIBLE_TURBO\"");
-    // isolated_cpus: kernel-level isolation (empty unless isolcpus= is on the cmdline)
-    const auto iso_cpus    = shell("grep -o 'isolcpus=[^ ]*' /proc/cmdline | cut -d= -f2");
+
+    // isolated_cpus: parse from /proc/cmdline for accuracy; the cgroup affinity
+    // seen via sched_getaffinity reflects the cset shield, not the isolcpus= parameter.
+    const auto iso_cpus  = detail::isolated_cpus_from_cmdline();
+    const auto iso_source = iso_cpus.empty() ? "cgroup" : "cmdline";
+
     // cpu_affinity: actual cpuset the process is running on (taskset, cset, or unrestricted)
     const auto cpu_affinity = detail::cpu_affinity_string();
+
+    // lscpu --extended: makes CCX topology visible; condensed to one line via \n escaping
+    const auto lscpu_ext = shell_multiline("lscpu --extended 2>/dev/null");
 
     const bool smt_on   = (smt_raw != "1");
 
@@ -101,18 +150,20 @@ inline std::string machine_info_json() {
     else                          turbo_field = "null";
 
     return
-        "\"cpu\":\""            + cpu      + "\","
-        "\"cores_physical\":"   + (phys.empty()    ? "0" : phys)    + ","
-        "\"cores_logical\":"    + (logical.empty() ? "0" : logical) + ","
-        "\"smt_enabled\":"      + (smt_on ? "true" : "false")       + ","
-        "\"ram_gb\":"           + (ram_gb.empty()  ? "0" : ram_gb)  + ","
-        "\"ram_speed_mhz\":"    + (ram_mhz.empty() ? "null" : ram_mhz) + ","
-        "\"compiler\":\""       + compiler  + "\","
-        "\"kernel\":\""         + kernel   + "\","
-        "\"governor\":\""       + governor + "\","
-        "\"turbo\":"            + turbo_field + ","
-        "\"isolated_cpus\":\""  + iso_cpus + "\","
-        "\"cpu_affinity\":\""   + cpu_affinity + "\"";
+        "\"cpu\":\""                  + cpu      + "\","
+        "\"cores_physical\":"         + (phys.empty()    ? "0" : phys)    + ","
+        "\"cores_logical\":"          + (logical.empty() ? "0" : logical) + ","
+        "\"smt_enabled\":"            + (smt_on ? "true" : "false")       + ","
+        "\"ram_gb\":"                 + (ram_gb.empty()  ? "0" : ram_gb)  + ","
+        "\"ram_speed_mhz\":"          + (ram_mhz.empty() ? "null" : ram_mhz) + ","
+        "\"compiler\":\""             + compiler  + "\","
+        "\"kernel\":\""               + kernel   + "\","
+        "\"governor\":\""             + governor + "\","
+        "\"turbo\":"                  + turbo_field + ","
+        "\"isolated_cpus\":\""        + iso_cpus + "\","
+        "\"isolated_cpus_source\":\"" + iso_source + "\","
+        "\"cpu_affinity\":\""         + cpu_affinity + "\","
+        "\"lscpu_extended\":\""       + lscpu_ext + "\"";
 }
 
 } // namespace crucible

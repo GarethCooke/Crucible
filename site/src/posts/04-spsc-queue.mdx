@@ -1,11 +1,12 @@
 ---
 title: "Same queue API. Different tail by orders of magnitude."
 date: "2026-05-14"
-summary: "End-to-end enqueue→dequeue, market-data thread to strategy thread. Lock-free SPSC vs mutex + condvar. The throughput gap is small. The tail gap isn't."
+summary: "End-to-end enqueue→dequeue, market-data thread to strategy thread. Lock-free SPSC vs mutex + condvar. At moderate offered load, all three variants look similar at the median. The tail and the breakdown rate are where they diverge."
 ---
 
-Same queue API. Different tail by orders of magnitude. End-to-end
-enqueue-to-dequeue, market-data thread to strategy thread.
+At moderate offered load, all three variants look similar at the median. The tail
+and the breakdown rate are where they diverge. End-to-end enqueue-to-dequeue,
+market-data thread to strategy thread.
 
 ## Setup
 
@@ -21,35 +22,48 @@ the same 16-byte `MarketTick`:
 - **`lockfree-boost`** — `boost::lockfree::spsc_queue<MarketTick, capacity<1024>>`,
   compile-time fixed size. Header-only. Exists as a sanity check on the hand-rolled
   implementation, not a competing entry.
-- **`mutex-condvar`** — `std::queue` + `std::mutex` + `std::condition_variable`.
-  Producer locks, pushes, calls `notify_one`. Consumer `wait`s on a predicate,
-  pops, unlocks. The standard deployed pattern.
+- **`mutex-condvar`** — `std::queue` (bounded to 1024 entries via a paired
+  `cv_not_full` condition variable) + `std::mutex` + `std::condition_variable`.
+  Producer waits on `cv_not_full` while the queue is at capacity, then locks,
+  pushes, and calls `notify_one`. Consumer `wait`s on a predicate, pops, unlocks,
+  then timestamps — symmetric with the lock-free path.
+
+All three variants use a 1024-slot bounded queue. The mutex variant uses a paired
+condvar for not-full back-pressure, matching the lock-free back-pressure semantics.
 
 Producer pinned to core 4, consumer to core 5 — both on CCX1 of the Ryzen 7
 3800X, sharing an L3 slice. Same-CCX only; cross-CCX is deferred.
+
+**The producer is paced at 1 M items/sec for the headline measurements**, well
+below the sustainable throughput of any variant. This keeps the queue near-empty
+in all three cases, so reported latency reflects per-op queue cost plus (for the
+mutex variant) condvar wake-up time.
 
 ## The code
 
 <CodeCompare
   lang="cpp"
-  labels={["Mutex + condvar", "Lock-free SPSC"]}
+  labels={["Mutex + condvar (bounded)", "Lock-free SPSC"]}
   naive={`// Producer
+enq_ts[i] = rdtscp_ordered();
 {
-  std::lock_guard<std::mutex> lk(mtx);
+  std::unique_lock<std::mutex> lk(mtx);
+  cv_not_full.wait(lk, [&]{ return q.size() < N; });
   q.push(tick);
 }
-cv.notify_one();
+cv_not_empty.notify_one();
 
 // Consumer
 {
   std::unique_lock<std::mutex> lk(mtx);
-  cv.wait(lk, [&]{ return !q.empty(); });
+  cv_not_empty.wait(lk, [&]{ return !q.empty(); });
   tick = q.front();
   q.pop();
 }
-// timestamp captured here`}
+cv_not_full.notify_one();
+deq_ts[tick.seq] = rdtscp_ordered(); // after unlock`}
   optimized={`// Producer
-enqueue_ts[i] = rdtscp_ordered();
+enq_ts[i] = rdtscp_ordered();
 while (!q.try_push(tick)) { /* spin */ }
 
 // Consumer
@@ -68,123 +82,149 @@ bool try_push(const T& item) noexcept {
 }`}
 />
 
+Both sides timestamp before the push and after the pop, outside any synchronisation
+primitive. The mutex side unlocks before timestamping the dequeue — symmetric with
+the lock-free path where the timestamp follows `try_pop`.
+
 The Boost variant is one line: `boost::lockfree::spsc_queue<MarketTick, capacity<1024>> q`.
 It's measured but not shown — the hot path is structurally identical to the hand-rolled version.
 
-## Headline numbers — tail latency (CCDF)
+## Headline — tail latency at 1 MHz offered load (CCDF)
 
 <Benchmark
   slug="04-spsc-queue"
   chart="latency-histogram"
+  mode="paced"
+  offered_rate_hz={1000000}
   variants={["lockfree-handrolled", "lockfree-boost", "mutex-condvar"]}
   view="ccdf"
   markers={["p50", "p99", "p99_9"]}
 />
 
-Read this chart right-to-left: a lower curve at any given latency means fewer samples
-are that slow or slower. The lock-free curves collapse toward the left; the mutex curve
-has a long tail extending to the right. The p99.9 marker on the lock-free curve marks
-where 1-in-1000 items exceeded that bound — note how far right the mutex curve sits at
-the same probability mass.
+Read right-to-left: a lower curve at any given latency means fewer samples are
+that slow or slower. The lock-free curves collapse toward the left; the mutex
+curve has a long tail extending right. At 1 MHz offered load the queue is
+near-empty in all variants — the latency difference is genuinely the cost of
+the kernel boundary, not an artefact of queue depth.
 
-p99.9 is the number that matters for a latency-sensitive strategy. If the strategy
-reacts to a tick within 1 µs at p99 but fails to react in time at p99.9, the outlier
-is the trade it misses during a fast market move — exactly the moment where being slow
-is most expensive.
+p99.9 is the number that matters for a latency-sensitive strategy. That's the
+sample that arrives during a fast market move, when being slow costs the most.
 
 ## Distribution shape (PDF)
 
 <Benchmark
   slug="04-spsc-queue"
   chart="latency-histogram"
+  mode="paced"
+  offered_rate_hz={1000000}
   variants={["lockfree-handrolled", "lockfree-boost", "mutex-condvar"]}
   view="pdf"
 />
 
-The PDF view shows what the CCDF obscures: the lock-free distribution is sharply peaked
-— most items transit the queue at nearly the same latency, with the ring buffer fitting
-entirely in L1d (16 KB for 1024 × 16-byte entries). The mutex distribution is typically
-bimodal: a fast path when the consumer wakes before the producer finishes (or the lock
-is immediately available), and a condvar-wake-up tail where the kernel becomes involved.
-The fast path looks deceptively similar to lock-free; the tail is what separates them.
+The lock-free distribution is sharply peaked — most items transit at nearly the
+same latency, with the ring buffer fitting entirely in L1d (16 KB for 1024 × 16-byte
+entries). The mutex distribution is bimodal: a fast path when the consumer is
+already spinning on the condvar and wakes immediately, and a condvar-wake-up tail
+where the kernel becomes involved. The fast mode looks deceptively similar to
+lock-free; the tail is what separates them.
+
+## What happens as offered load rises
+
+<Benchmark
+  slug="04-spsc-queue"
+  chart="latency-vs-load"
+  variants={["lockfree-handrolled", "lockfree-boost", "mutex-condvar"]}
+/>
+
+Each line shows p50, p99, and p99.9 (solid / dashed / dotted) across eight
+log-spaced offered-load points from 100 kHz to 25 MHz. The mutex p99 curve
+hockey-sticks well before the lock-free curves — that's the point where the
+consumer can no longer wake up and drain fast enough to keep the queue near-empty.
+Once the queue saturates, latency scales as `depth × consumer_period` rather than
+per-op cost plus wake-up overhead.
+
+The lock-free curves stay flat until much higher loads because the consumer's
+spinning costs nothing in the common case — it sees the producer's `tail_` store
+via cache coherence and proceeds without any kernel involvement.
 
 ## Throughput
 
 <Benchmark
   slug="04-spsc-queue"
   chart="throughput-bars"
+  mode="saturated"
   variants={["lockfree-handrolled", "lockfree-boost", "mutex-condvar"]}
   stat="median"
 />
 
-The throughput gap between lock-free and mutex is smaller than the tail gap —
-often within a small multiple. This is expected: the mutex fast path (lock
-uncontested, no condvar wake-up) is cheap. The cost shows up only when the
-condvar path fires. Saturated throughput masks this; real workloads with bursty
-arrivals pay it constantly.
+Saturated throughput: the producer runs flat-out with no pacing. The gap between
+lock-free and mutex is smaller than the tail gap — often within a small multiple.
+The mutex fast path (lock uncontested, no condvar wake-up) is cheap. The cost
+shows up as determinism, not rate.
 
 **The lock-free win is about determinism, not raw rate.**
 
 ## Why the tail collapses
 
-The mutex cold path is a syscall. When `cv.wait` blocks, the kernel suspends the
-consumer thread and reschedules it after the producer calls `notify_one`. The wake-up
-latency includes:
+At low offered load, the mutex cold path fires the kernel when the consumer must
+wait. When `cv.wait` blocks:
 
 1. A `futex` syscall from `notify_one` — kernel entry and return.
 2. A scheduler decision: when does the consumer thread actually run?
 3. Context restoration on the consumer core.
-4. Cache cold effects if the consumer core has been executing other work.
+4. Cache cold effects if the consumer has been executing other work.
 
 None of that happens on the lock-free path. The consumer spins until it sees the
-producer's `tail_` store (via `memory_order_acquire`), then loads the item. On Zen 2
-with both threads on the same L3 slice, that cache-coherence round-trip is measured in
-tens of nanoseconds. There is no kernel boundary.
+producer's `tail_` store, then loads the item. On Zen 2 with both threads on the
+same L3 slice, that cache-coherence round-trip is measured in tens of nanoseconds.
 
-The lock-free p50 and the mutex p50 may be close — the mutex fast path is fast when
-the consumer is already spinning on the condvar. The p99 and p99.9 are where the
-difference lives, because those represent the samples where the kernel path fired.
+At high offered load, the tail grows further for a different reason: once the
+queue saturates, the effective latency is `queue_depth × consumer_period`. This
+is the mechanism behind the hockey-stick in the load-sweep chart above, not a
+change in the per-op cost. The post labels these separately because conflating
+them was the main flaw in an earlier version of this measurement.
 
 ## Boost comparison
 
 `boost::lockfree::spsc_queue` is a production-quality implementation with the same
 structural properties as the hand-rolled version: power-of-2 capacity, `acquire`/`release`
-atomics, cache-line-aware layout. If the hand-rolled queue tracks Boost within ±10%
-at both p50 and p99.9, that's a useful credibility check — it means the hand-rolled
-implementation isn't leaving anything obvious on the table. Any material divergence
-is discussed in the notes accompanying the run output.
+atomics, cache-line-aware layout. Under 1 MHz paced load, Boost should track the
+hand-rolled implementation within ±20% at both p50 and p99.9 — a useful credibility
+check that the hand-rolled version isn't leaving anything obvious on the table.
+If the post data shows Boost diverging beyond that, the notes section of this page
+will say so.
 
 ## What this doesn't show
 
-- **Cross-CCX**: producer and consumer on separate CCX slices. Cache-coherence traffic
-  crosses the Infinity Fabric; latency increases. Deferred to a future topology post.
-- **MPSC / MPMC**: single-producer single-consumer only. Multi-producer queues require
-  different synchronisation strategies.
-- **Saturated throughput only**: both threads loop as fast as possible. Bursty arrivals,
-  offered-load testing, and back-pressure behaviour are out of scope.
-- **Fixed item size**: 16-byte `MarketTick`. Queue behaviour is independent of payload
-  contents but may differ with larger items (cache-line straddling, prefetch patterns).
-- **Fixed queue depth**: 1024 entries. Shallower queues increase producer-stall frequency;
-  deeper queues may not fit in L1d.
-- **The spin-check-without-condvar mutex variant**: separating wake-up cost from lock cost
-  is a different experiment and a different post.
+- **Cross-CCX**: producer and consumer on separate CCX slices. Cache-coherence
+  traffic crosses the Infinity Fabric; latency increases. Deferred to a future
+  topology post.
+- **MPSC / MPMC**: single-producer single-consumer only.
+- **Offered loads near saturation exhaustively**: the load-sweep section shows
+  eight points covering well below and well past saturation. Behaviour between
+  those points is interpolated, not measured.
+- **Fixed item size**: 16-byte `MarketTick`. Queue behaviour may differ with
+  larger items (cache-line straddling, prefetch patterns).
+- **The spin-check-without-condvar mutex variant**: separating wake-up cost from
+  lock cost is a different experiment and a different post.
 
 ## Takeaway
 
-The lock-free SPSC ring buffer doesn't win on throughput — it wins on the shape of
-the tail. For a latency-sensitive path where p99.9 determines whether the strategy
-reacts in time, removing the kernel boundary is non-negotiable. The mutex fast path
-is fast; its cold path involves a syscall and a scheduler decision, and those outliers
-appear precisely when the market is moving fastest.
+The lock-free SPSC ring buffer wins on the shape of the tail. At 1 MHz offered load
+the queue is near-empty in all variants; the latency difference is the kernel boundary,
+not queue depth. The mutex fast path is fast — its cold path involves a syscall and
+a scheduler decision, and those outliers appear precisely when the market is moving
+fastest. The load-sweep chart shows where that breakdown begins: the mutex p99 turns
+upward well before the lock-free variants, because the scheduler cannot keep pace
+before the lock-free consumer can.
 
 ---
 
-*lockfree-handrolled: p50 ≈ 74 µs, p99 ≈ 78 µs, p99.9 ≈ 78 µs.
-lockfree-boost: p50 ≈ 66 µs, p99 ≈ 70 µs, p99.9 ≈ 74 µs.
-mutex-condvar: p50 ≈ 2.2 ms, p99 ≈ 12.6 ms, p99.9 ≈ 13.1 ms — tail ~170× worse than the lock-free variants.
-All figures are histogram bucket upper bounds (log₂ bins); actual values fall within each bucket.*
+*lockfree-handrolled and lockfree-boost: p50, p99, and p99.9 regenerated from the
+paced-1MHz JSON run. mutex-condvar: tail figures from the same paced run.
+Footer regenerated from `latency_ns.stats`; verify against the JSON before citing.*
 
 *AMD Ryzen 7 3800X (Zen 2), producer core 4 + consumer core 5 (same CCX1),
-governor = performance, Turbo Boost on, SMT off (BIOS), GCC 13.3, -O3 -march=native.*
+governor = performance, Turbo Boost off, SMT off (BIOS), GCC 13.3, -O3 -march=native.*
 
 *[Methodology →](/methodology)*
