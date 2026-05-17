@@ -11,25 +11,25 @@
     "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
     "kernel": "6.8.0-111-generic",
     "governor": "performance",
-    "turbo": null,
+    "turbo": false,
     "isolated_cpus": "0-7",
     "cpu_affinity": "4-7"
   },
-  "captured_at": "2026-05-17T07:49:45Z",
+  "captured_at": "2026-05-17T08:31:53Z",
   "runs": [
     {
       "variant": "avx2fma",
       "n": 1024,
-      "iterations": 28371,
+      "iterations": 28580,
       "ns_per_op": {
-        "median": 24648.2071,
-        "min": 24620.5674,
-        "p99": 24688.0689,
-        "iqr": 19.8819
+        "median": 24506.7763,
+        "min": 24468.339,
+        "p99": 24573.2415,
+        "iqr": 25.3384
       },
-      "ops_per_sec": 41547115,
-      "instructions_per_cycle": 0.912,
-      "gflops": 5.193,
+      "ops_per_sec": 41785558,
+      "instructions_per_cycle": 0.91,
+      "gflops": 5.223,
       "max_abs_error_vs_scalar_libm": 5.817e-05,
       "variant_isa": "avx2+fma",
       "compile_flags": "-O3 -mavx -mavx2 -mfma"
@@ -37,16 +37,16 @@
     {
       "variant": "avx2fma",
       "n": 16384,
-      "iterations": 7364,
+      "iterations": 7363,
       "ns_per_op": {
-        "median": 95006.5563,
-        "min": 94981.4491,
-        "p99": 95049.5803,
-        "iqr": 26.5197
+        "median": 95036.6699,
+        "min": 94986.2963,
+        "p99": 95075.1121,
+        "iqr": 29.7262
       },
-      "ops_per_sec": 172454027,
-      "instructions_per_cycle": 0.911,
-      "gflops": 21.557,
+      "ops_per_sec": 172397803,
+      "instructions_per_cycle": 0.909,
+      "gflops": 21.55,
       "max_abs_error_vs_scalar_libm": 5.817e-05,
       "variant_isa": "avx2+fma",
       "compile_flags": "-O3 -mavx -mavx2 -mfma"
@@ -56,14 +56,14 @@
       "n": 262144,
       "iterations": 573,
       "ns_per_op": {
-        "median": 1221543.2941,
-        "min": 1221232.5183,
-        "p99": 1221831.7513,
-        "iqr": 254.7661
+        "median": 1221544.4075,
+        "min": 1221317.7679,
+        "p99": 1221835.2147,
+        "iqr": 232.9847
       },
-      "ops_per_sec": 214614012,
+      "ops_per_sec": 214604231,
       "instructions_per_cycle": 0.91,
-      "gflops": 26.827,
+      "gflops": 26.826,
       "max_abs_error_vs_scalar_libm": 5.817e-05,
       "variant_isa": "avx2+fma",
       "compile_flags": "-O3 -mavx -mavx2 -mfma"
@@ -73,14 +73,14 @@
       "n": 1048576,
       "iterations": 145,
       "ns_per_op": {
-        "median": 4838685.9966,
-        "min": 4838099.8966,
-        "p99": 4839692.5427,
-        "iqr": 483.7552
+        "median": 4839269.9138,
+        "min": 4837684.9655,
+        "p99": 4840670.2148,
+        "iqr": 1517.8966
       },
-      "ops_per_sec": 216713275,
+      "ops_per_sec": 216689879,
       "instructions_per_cycle": 0.909,
-      "gflops": 27.089,
+      "gflops": 27.086,
       "max_abs_error_vs_scalar_libm": 5.817e-05,
       "variant_isa": "avx2+fma",
       "compile_flags": "-O3 -mavx -mavx2 -mfma"
@@ -88,16 +88,16 @@
     {
       "variant": "scalarlibm",
       "n": 1024,
-      "iterations": 11660,
+      "iterations": 11646,
       "ns_per_op": {
-        "median": 60179.8747,
-        "min": 60083.5827,
-        "p99": 60259.8345,
-        "iqr": 68.4581
+        "median": 60081.9972,
+        "min": 59988.7734,
+        "p99": 60177.0735,
+        "iqr": 55.9595
       },
-      "ops_per_sec": 17015704,
-      "instructions_per_cycle": 1.949,
-      "gflops": 1.668,
+      "ops_per_sec": 17044174,
+      "instructions_per_cycle": 1.946,
+      "gflops": 1.67,
       "max_abs_error_vs_scalar_libm": 0.0,
       "variant_isa": "sse4.2",
       "compile_flags": "-O3 -fno-tree-vectorize -mno-avx -mno-avx2 -mno-fma -msse4.2"
@@ -105,16 +105,16 @@
     {
       "variant": "scalarlibm",
       "n": 16384,
-      "iterations": 874,
+      "iterations": 875,
       "ns_per_op": {
-        "median": 800480.2666,
-        "min": 800294.0664,
-        "p99": 800757.1024,
-        "iqr": 142.3287
+        "median": 800003.872,
+        "min": 799859.5211,
+        "p99": 800429.2727,
+        "iqr": 117.2503
       },
-      "ops_per_sec": 20467953,
-      "instructions_per_cycle": 1.627,
-      "gflops": 2.006,
+      "ops_per_sec": 20481081,
+      "instructions_per_cycle": 1.626,
+      "gflops": 2.007,
       "max_abs_error_vs_scalar_libm": 0.0,
       "variant_isa": "sse4.2",
       "compile_flags": "-O3 -fno-tree-vectorize -mno-avx -mno-avx2 -mno-fma -msse4.2"
@@ -124,12 +124,12 @@
       "n": 262144,
       "iterations": 56,
       "ns_per_op": {
-        "median": 12515985.5804,
-        "min": 12513498.9643,
-        "p99": 12517636.9462,
-        "iqr": 1981.9509
+        "median": 12513987.9554,
+        "min": 12513162.125,
+        "p99": 12517285.3709,
+        "iqr": 1103.1696
       },
-      "ops_per_sec": 20946350,
+      "ops_per_sec": 20948669,
       "instructions_per_cycle": 1.625,
       "gflops": 2.053,
       "max_abs_error_vs_scalar_libm": 0.0,
@@ -141,12 +141,12 @@
       "n": 1048576,
       "iterations": 14,
       "ns_per_op": {
-        "median": 50017994.6071,
-        "min": 50006023.9286,
-        "p99": 50035569.38,
-        "iqr": 12848.25
+        "median": 50009435.6786,
+        "min": 50001935.0714,
+        "p99": 50019540.1421,
+        "iqr": 4807.1786
       },
-      "ops_per_sec": 20966617,
+      "ops_per_sec": 20968703,
       "instructions_per_cycle": 1.625,
       "gflops": 2.055,
       "max_abs_error_vs_scalar_libm": 0.0,
@@ -156,16 +156,16 @@
     {
       "variant": "scalarpoly",
       "n": 1024,
-      "iterations": 11356,
+      "iterations": 11379,
       "ns_per_op": {
-        "median": 61733.7734,
-        "min": 61697.7927,
-        "p99": 61897.3964,
-        "iqr": 31.5914
+        "median": 61465.7486,
+        "min": 61435.4102,
+        "p99": 61540.5423,
+        "iqr": 40.839
       },
-      "ops_per_sec": 16588261,
-      "instructions_per_cycle": 1.539,
-      "gflops": 1.626,
+      "ops_per_sec": 16660631,
+      "instructions_per_cycle": 1.544,
+      "gflops": 1.633,
       "max_abs_error_vs_scalar_libm": 6.485e-05,
       "variant_isa": "sse4.2",
       "compile_flags": "-O3 -fno-tree-vectorize -mno-avx -mno-avx2 -mno-fma -msse4.2"
@@ -175,12 +175,12 @@
       "n": 16384,
       "iterations": 977,
       "ns_per_op": {
-        "median": 716639.827,
-        "min": 716484.6981,
-        "p99": 716819.9086,
-        "iqr": 218.4923
+        "median": 716469.0553,
+        "min": 716351.3818,
+        "p99": 716972.0668,
+        "iqr": 89.0706
       },
-      "ops_per_sec": 22863206,
+      "ops_per_sec": 22868337,
       "instructions_per_cycle": 1.477,
       "gflops": 2.241,
       "max_abs_error_vs_scalar_libm": 6.485e-05,
@@ -192,14 +192,14 @@
       "n": 262144,
       "iterations": 62,
       "ns_per_op": {
-        "median": 11206135.8387,
-        "min": 11204395.2742,
-        "p99": 11208932.1621,
-        "iqr": 1882.8629
+        "median": 11210127.2823,
+        "min": 11207819.0968,
+        "p99": 11212941.1052,
+        "iqr": 1674.6169
       },
-      "ops_per_sec": 23394153,
+      "ops_per_sec": 23385580,
       "instructions_per_cycle": 1.471,
-      "gflops": 2.293,
+      "gflops": 2.292,
       "max_abs_error_vs_scalar_libm": 6.485e-05,
       "variant_isa": "sse4.2",
       "compile_flags": "-O3 -fno-tree-vectorize -mno-avx -mno-avx2 -mno-fma -msse4.2"
@@ -209,14 +209,14 @@
       "n": 1048576,
       "iterations": 16,
       "ns_per_op": {
-        "median": 44800264.9375,
-        "min": 44790724.625,
-        "p99": 44816752.1712,
-        "iqr": 5431.8125
+        "median": 44812414.0,
+        "min": 44807564.5625,
+        "p99": 44860921.9487,
+        "iqr": 4062.6406
       },
-      "ops_per_sec": 23406352,
+      "ops_per_sec": 23400500,
       "instructions_per_cycle": 1.47,
-      "gflops": 2.294,
+      "gflops": 2.293,
       "max_abs_error_vs_scalar_libm": 6.485e-05,
       "variant_isa": "sse4.2",
       "compile_flags": "-O3 -fno-tree-vectorize -mno-avx -mno-avx2 -mno-fma -msse4.2"
@@ -224,16 +224,16 @@
     {
       "variant": "sse2",
       "n": 1024,
-      "iterations": 22944,
+      "iterations": 22983,
       "ns_per_op": {
-        "median": 30514.065,
-        "min": 30451.5276,
-        "p99": 30548.5118,
-        "iqr": 31.0565
+        "median": 30402.5653,
+        "min": 30377.0071,
+        "p99": 30466.3237,
+        "iqr": 36.7945
       },
-      "ops_per_sec": 33559257,
+      "ops_per_sec": 33684932,
       "instructions_per_cycle": 1.212,
-      "gflops": 4.195,
+      "gflops": 4.211,
       "max_abs_error_vs_scalar_libm": 6.485e-05,
       "variant_isa": "sse4.2",
       "compile_flags": "-O3 -msse4.2 -mno-avx -mno-avx2 -mno-fma"
@@ -241,16 +241,16 @@
     {
       "variant": "sse2",
       "n": 16384,
-      "iterations": 3689,
+      "iterations": 3692,
       "ns_per_op": {
-        "median": 189793.8014,
-        "min": 189736.846,
-        "p99": 189856.967,
-        "iqr": 53.657
+        "median": 189595.0328,
+        "min": 189563.1934,
+        "p99": 189638.6391,
+        "iqr": 27.8428
       },
-      "ops_per_sec": 86330533,
+      "ops_per_sec": 86417804,
       "instructions_per_cycle": 1.214,
-      "gflops": 10.791,
+      "gflops": 10.802,
       "max_abs_error_vs_scalar_libm": 6.485e-05,
       "variant_isa": "sse4.2",
       "compile_flags": "-O3 -msse4.2 -mno-avx -mno-avx2 -mno-fma"
@@ -260,14 +260,14 @@
       "n": 262144,
       "iterations": 256,
       "ns_per_op": {
-        "median": 2736721.7266,
-        "min": 2736514.2266,
-        "p99": 2737440.6502,
-        "iqr": 294.7168
+        "median": 2736603.377,
+        "min": 2736071.3086,
+        "p99": 2737320.4416,
+        "iqr": 544.1074
       },
-      "ops_per_sec": 95790032,
+      "ops_per_sec": 95796817,
       "instructions_per_cycle": 1.213,
-      "gflops": 11.974,
+      "gflops": 11.975,
       "max_abs_error_vs_scalar_libm": 6.485e-05,
       "variant_isa": "sse4.2",
       "compile_flags": "-O3 -msse4.2 -mno-avx -mno-avx2 -mno-fma"
@@ -277,14 +277,14 @@
       "n": 1048576,
       "iterations": 64,
       "ns_per_op": {
-        "median": 10897721.9531,
-        "min": 10896626.7656,
-        "p99": 10899216.2253,
-        "iqr": 577.8984
+        "median": 10898923.7969,
+        "min": 10895640.5625,
+        "p99": 10902200.7147,
+        "iqr": 2447.2695
       },
-      "ops_per_sec": 96220850,
-      "instructions_per_cycle": 1.212,
-      "gflops": 12.028,
+      "ops_per_sec": 96213758,
+      "instructions_per_cycle": 1.213,
+      "gflops": 12.027,
       "max_abs_error_vs_scalar_libm": 6.485e-05,
       "variant_isa": "sse4.2",
       "compile_flags": "-O3 -msse4.2 -mno-avx -mno-avx2 -mno-fma"
