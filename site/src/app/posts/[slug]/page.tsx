@@ -126,14 +126,57 @@ export default async function PostPage({ params }: { params: { slug: string } })
         />
       </div>
 
-      <footer className="mt-16 pt-8 border-t" style={{ borderColor: 'var(--border-color)' }}>
-        <a
-          href="/methodology"
-          className="text-sm transition-opacity hover:opacity-70"
-          style={{ color: 'var(--text-muted)' }}
-        >
-          ← Methodology: how these numbers are produced
-        </a>
+      <footer className="mt-16">
+        {(prev || next) && (
+          <nav className="border-t pt-8 mb-8 grid grid-cols-2 gap-4" style={{ borderColor: 'var(--border-color)' }}>
+            <div>
+              {prev && (
+                <a
+                  href={`/posts/${prev.slug}`}
+                  className="group block transition-opacity hover:opacity-70"
+                >
+                  <p
+                    className="font-mono text-xs uppercase tracking-widest mb-1 flex items-center gap-1.5"
+                    style={{ color: 'var(--text-muted)' }}
+                  >
+                    ← Previous
+                  </p>
+                  <p className="font-sans font-medium text-base" style={{ color: 'var(--text-primary)' }}>
+                    {prev.title}
+                  </p>
+                </a>
+              )}
+            </div>
+            <div className="text-right">
+              {next && (
+                <a
+                  href={`/posts/${next.slug}`}
+                  className="group block transition-opacity hover:opacity-70"
+                >
+                  <p
+                    className="font-mono text-xs uppercase tracking-widest mb-1 flex items-center justify-end gap-1.5"
+                    style={{ color: 'var(--text-muted)' }}
+                  >
+                    Next →
+                  </p>
+                  <p className="font-sans font-medium text-base" style={{ color: 'var(--text-primary)' }}>
+                    {next.title}
+                  </p>
+                </a>
+              )}
+            </div>
+          </nav>
+        )}
+
+        <div className="border-t pt-8" style={{ borderColor: 'var(--border-color)' }}>
+          <a
+            href="/methodology"
+            className="text-sm transition-opacity hover:opacity-70"
+            style={{ color: 'var(--text-muted)' }}
+          >
+            ← Methodology: how these numbers are produced
+          </a>
+        </div>
       </footer>
     </article>
   )
