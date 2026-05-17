@@ -19,8 +19,8 @@ export interface LegacyRun {
   n: number
   ns_per_op: NsPerOp
   ops_per_sec: number
-  branch_misses_per_op: number
-  instructions_per_cycle: number
+  branch_misses_per_op?: number
+  instructions_per_cycle?: number
   threads?: never
 }
 
@@ -143,7 +143,7 @@ function renderLegacy(
     .text((d) => `${(d.ns_per_op[stat] ?? d.ns_per_op.median).toFixed(2)} ns/op`)
 
   g.selectAll('.miss-label')
-    .data(data)
+    .data(data.filter((d) => d.branch_misses_per_op != null))
     .join('text')
     .attr('class', 'miss-label')
     .attr('x', (d) => x(d.variant)! + x.bandwidth() / 2)
@@ -151,7 +151,7 @@ function renderLegacy(
     .attr('text-anchor', 'middle')
     .attr('font-size', 10)
     .attr('fill', colors.textMuted)
-    .text((d) => `${(d.branch_misses_per_op * 100).toFixed(1)}% miss`)
+    .text((d) => `${((d.branch_misses_per_op ?? 0) * 100).toFixed(1)}% miss`)
 
   appendAxesLegacy(g, svg, x, y, inner, W, H, margin, stat, n)
 }

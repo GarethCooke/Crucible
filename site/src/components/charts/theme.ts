@@ -4,8 +4,9 @@
 import { tokens } from '@/lib/design-tokens'
 
 export const palette = {
-  sorted:   tokens.color.chart.sorted,
-  unsorted: tokens.color.chart.unsorted,
+  sorted:     tokens.color.chart.sorted,
+  unsorted:   tokens.color.chart.unsorted,
+  branchless: tokens.color.chart.series[3],   // amber — distinct from cyan/emerald
   // false-sharing demo: padded = good (cyan), unpadded = bad (rose)
   padded:   tokens.color.chart.series[0],
   unpadded: tokens.color.chart.series[2],

@@ -1,93 +1,210 @@
 ---
-title: "Sorted vs unsorted: a 6× branch-prediction gap"
-date: "2026-05-14"
-summary: "Same code. Same data values. ~6× difference. Why?"
+title: "Sorted vs unsorted: a branch-prediction deep dive"
+date: "2026-05-17"
+summary: "Same code. Same data. Three variants. Why does one run 6× faster — and why does the branchless version beat both?"
 ---
 
 Same code. Same data values. Same compiler flags. Yet one version runs
-roughly six times faster than the other. The difference is a single line
-of preparation applied to the input before the loop begins.
+roughly six times faster than the other on identical hardware, and a third
+version eliminates the performance gap entirely without sorting anything.
 
 ## The code
 
-Both variants execute this loop — nothing else:
+Three runs of the same loop body, with two axes of variation: input order
+(sorted vs shuffled) and control flow (branching vs branchless).
 
 <CodeCompare
   lang="cpp"
-  labels={["Sorted input", "Unsorted input"]}
-  naive={`// Input: std::vector<int32_t>, values 0–255
-// sorted ascending before the loop
-int64_t sum = 0;
-for (auto x : data) {
-    if (x >= 128) sum += x;
-}
-benchmark::DoNotOptimize(sum);`}
-  optimized={`// Input: std::vector<int32_t>, values 0–255
-// shuffled (std::shuffle, seed 42) before the loop
-int64_t sum = 0;
-for (auto x : data) {
-    if (x >= 128) sum += x;
-}
-benchmark::DoNotOptimize(sum);`}
+  labels={["Branching (sorted or unsorted input)", "Branchless"]}
+  naive={`// The compiler will happily turn this loop into a masked SIMD add or a
+// scalar cmov — both of which eliminate the branch we're trying to study.
+// Function-level attributes disable the two transformations that defeat
+// the experiment, keeping -O3 -march=native everywhere else.
+__attribute__((noinline,
+               optimize("no-tree-vectorize",
+                        "no-if-conversion",
+                        "no-if-conversion2")))
+static int64_t sum_threshold(const std::vector<int32_t>& data) {
+    int64_t sum = 0;
+    for (auto x : data) {
+        if (x >= 128) sum += x;       // real conditional jump
+    }
+    return sum;
+}`}
+  optimized={`// No attributes needed — GCC emits cmov for the ternary at -O3.
+// There is no data-dependent branch for the predictor to get wrong.
+__attribute__((noinline))
+static int64_t sum_threshold_branchless(const std::vector<int32_t>& data) {
+    int64_t sum = 0;
+    for (auto x : data) {
+        sum += (x >= 128) ? x : 0;    // compiles to cmov
+    }
+    return sum;
+}`}
 />
 
-The loop body is byte-for-byte identical. The only difference is whether
-the 32 million integers were sorted before the run started.
+The loop body is byte-for-byte identical across sorted and unsorted — the
+only difference is whether the 32 M integers were sorted before the run.
+The branchless variant is the same arithmetic expressed without a conditional
+jump; the compiler replaces the branch with a `cmov` (conditional move)
+instruction.
+
+## The asm
+
+Here is the inner loop that actually runs in `sum_threshold`. The attributes
+above are what keep it a real branch at `-O3`:
+
+```asm
+; sum_threshold inner loop — seven instructions, one data-dependent branch
+b8d0:  movslq (%rax),%rdx        ; load x  (sign-extend i32 → i64)
+b8d3:  cmp    $0x7f,%edx         ; x − 127  (sets flags)
+b8d6:  jle    b8db               ; ← the branch: skip add if x ≤ 127
+b8d8:  add    %rdx,%rsi          ; sum += x
+b8db:  add    $0x4,%rax          ; advance pointer
+b8df:  cmp    %rcx,%rax          ; ptr == end?
+b8e2:  jne    b8d0               ; loop
+```
+
+And here is the corresponding inner loop in `sum_threshold_branchless`.
+The `jle` and the conditional add are replaced by a single `cmovg`:
+
+```asm
+; sum_threshold_branchless inner loop — cmov replaces the branch entirely
+xxxx:  movslq (%rax),%rdx        ; load x
+xxxx:  xorl   %ecx,%ecx          ; tmp = 0
+xxxx:  cmpl   $0x7f,%edx         ; x − 127
+xxxx:  cmovg  %edx,%ecx          ; tmp = x if x > 127 else 0  ← no jump
+xxxx:  addq   %rcx,%rsi          ; sum += tmp
+xxxx:  addq   $0x4,%rax          ; advance pointer
+xxxx:  cmpq   %r9,%rax           ; ptr == end?
+xxxx:  jne    xxxx               ; loop
+```
+
+The `cmovg` (conditional move if greater) evaluates both the `sum += x` and
+`sum += 0` paths, writes the correct result, and moves on — no branch, no
+speculation, no pipeline flush on a misprediction.
 
 ## The numbers
 
 <Benchmark
   slug="01-branch-prediction"
   chart="throughput-bars"
-  variants={["sorted", "unsorted"]}
+  variants={["sorted", "unsorted", "branchless"]}
   stat="median"
 />
 
-At N = 32M, the sorted variant completes in **~1.2 ns/op**; the unsorted
-variant takes **~7.3 ns/op**. That is a **6.1× gap** on identical hardware,
-identical binary, identical data values.
+<CounterOverlay
+  slug="01-branch-prediction"
+  metric="branch_misses_per_op"
+  variants={["sorted", "unsorted", "branchless"]}
+/>
+
+The bar chart shows time for one pass through 32 M elements; the miss-rate
+chart shows the proximate cause. Sorted input: branch misses near zero —
+the predictor locks onto the monotone run and never guesses wrong. Unsorted:
+misses converge on **~50%**, the maximum for a fair binary outcome.
+Branchless: misses also near zero, because there is no data-dependent branch
+to mispredict at all.
 
 ## What is happening
 
 Modern out-of-order CPUs predict branches before they are evaluated.
 The branch predictor watches the history of each conditional jump and
-guesses which way it will go next. When the guess is right, the
-speculatively-executed instructions are committed with no penalty.
-When the guess is wrong, the pipeline is flushed and the correct path
-must be re-fetched and re-executed — a stall of roughly 10–20 cycles on
-a modern microarchitecture.
+guesses which way it will go. When the guess is right, the speculatively
+executed instructions are committed with no penalty. When the guess is
+wrong, the pipeline is flushed and the correct path must be re-fetched
+and re-executed — roughly **19 cycles on Zen 2** (the frontend-to-retire
+pipeline depth).
 
-**Sorted input** gives the predictor an easy job. The first half of the array
-produces `false` on every iteration; the second half produces `true`. After a
-handful of iterations the predictor locks onto these runs and misses almost
-never. Branch misses are measured at **≈ 0.1%** of comparisons.
+**Sorted input** gives the predictor an easy job. The first half of the
+array produces `false` on every iteration; the second half produces `true`.
+After a handful of iterations the predictor locks onto these runs and
+misses almost never. Branch misses are measured at **≈ 0.0%** of comparisons
+at N = 32 M. IPC reaches **3.0** — the pipeline is full.
 
 **Unsorted input** is adversarial. The condition resolves `true` or `false`
-in a pseudo-random order (seed 42, uniform over 0–255). The predictor has no
-exploitable history. Measured branch misses reach **≈ 49.8%** — close to the
-theoretical maximum of 50% for a fair coin flip. IPC drops from **3.2**
-(sorted) to **0.9** (unsorted) as the pipeline repeatedly flushes and
-restarts.
+in pseudo-random order (seed 42, uniform over 0–255). Zen 2's TAGE-style
+predictor _can_ in principle pick up long-history correlations even on
+superficially random data — what the measured **≈ 50% mispredict rate**
+tells us is that no such pattern exists in this shuffle, and the predictor
+converges on the 50% ceiling for a fair binary outcome. IPC drops to **0.44**
+as the pipeline repeatedly flushes and restarts.
+
+## The gap across the cache hierarchy
+
+The 6× headline is measured at N = 32 M (128 MiB), where both variants are
+partially DRAM-bound. Looking across all six sizes reveals a more interesting
+story:
+
+<TimeVsN
+  slug="01-branch-prediction"
+  variants={["sorted", "unsorted", "branchless"]}
+  stat="median"
+/>
+
+- **Small N (≤ 10 K)**: the array fits in L1/L2. Cache latency is minimal for
+  both variants; the predictor also needs a few iterations to warm up, so the
+  gap is compressed.
+- **Cache-resident N (~1 M, L3-bound)**: sorted is fast — the pipeline is
+  predictable and memory bandwidth is not yet a bottleneck. Unsorted is at
+  peak miss rate with no bandwidth relief. This is where the ratio peaks at
+  roughly **7×**.
+- **N = 32 M (DRAM-bound)**: both variants are bandwidth-limited; mispredict
+  cost overlaps with memory-wait cycles. The absolute gap stays substantial
+  but the ratio compresses to **~6.8×** — the _floor_ of the effect, not the
+  peak.
+
+Branchless tracks sorted closely at small N (no branch, no mispredict, same
+access pattern) and tracks the floor at large N (both variants become
+bandwidth-bound regardless of branch behaviour).
+
+## What you'd actually ship
+
+The branchless variant answers a different question than sorting does.
+Sorting is the right answer when input ordering is free or naturally
+maintained — time-ordered events, a sorted index column, an on-insertion
+sorted structure. It is **not** the right answer for a generic hot
+data-dependent branch in a tight loop.
+
+When you control the code, not the data, write branchless:
+
+```cpp
+// Replace this:
+if (x >= 128) sum += x;
+
+// With this — cmov, no mispredict possible:
+sum += (x >= 128) ? x : 0;
+```
+
+One caveat: branchless trades a possible-skip for a guaranteed-execute.
+If the predicate is very rarely true and the unselected work is expensive,
+a well-predicted branch can win. For the 50/50 case studied here, the cmov
+path is strictly better.
+
+## The sort caveat
+
+`std::sort` on 32 M integers takes **~1.0 s** on the reference machine —
+measured, not estimated. If the array is consumed once, sorting first is a
+net loss. The technique pays when the same data is scanned many times, when
+a sorted structure can be maintained incrementally, or when ordering falls
+out of the problem naturally (events in time order, an index column).
 
 ## Takeaway
 
-When you control input ordering — and ordering is free or cheap relative to
-how many times the data is consumed — sorting once can amortise across every
-subsequent scan that contains a branch on the values.
+Two O(n) algorithms with identical instruction counts can differ by 6× in
+wall time if one is predictor-friendly and the other is not. And both can
+lose to the same loop written branchlessly. The classic branch-prediction
+demo is not really a lesson about sorting — it is a lesson about how much
+performance is hiding in the control-flow shape of your hot loop.
 
-Worth being explicit about the caveat: `std::sort` on 32 M integers takes
-around 2–3 seconds. If the loop runs once, sorting first is a net loss. This
-technique pays when the same dataset is scanned repeatedly, when a hot data
-structure can be kept in sorted order on insertion, or when ordering falls
-out naturally from the problem (e.g., processing events in time order).
-
-The deeper lesson is that algorithmic complexity does not account for the
-cost of branch mispredicts. Two O(n) algorithms with the same instruction
-count can differ by 6× in wall time if one is branch-predictor friendly and
-the other is not. Always measure.
+Always check the disassembly, always measure, and when the branch is the
+bottleneck, consider removing it rather than feeding it predictable inputs.
 
 ---
 
-*All numbers: median ns/op, N = 32M, AMD Ryzen 7 3800X at 3.9 GHz base,
-governor = performance, Turbo Boost off, isolated cores 4–7.*
+*All numbers: median ns/iteration, AMD Ryzen 7 3800X at 3.9 GHz base,
+governor = performance, Turbo Boost off, isolated cores 4–7, GCC 13.3 `-O3 -march=native`.*
+*`sum_threshold` compiled with `no-tree-vectorize`, `no-if-conversion`, `no-if-conversion2`
+to preserve the conditional jump. `sum_threshold_branchless` compiled at default `-O3` (cmov path).*
+*Sort cost measured with `PauseTiming()` to exclude the per-iteration copy.*
 *[Methodology →](/methodology)*

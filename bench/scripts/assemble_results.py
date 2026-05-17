@@ -40,6 +40,19 @@ def main() -> None:
         key = (variant_raw, n)
         groups.setdefault(key, []).append(b)
 
+    # BM_Sort_32M is a standalone benchmark (no /N suffix) — extract separately.
+    sort_cost_32m = None
+    sort_reps = groups.pop(("sort_32m", 0), [])
+    if sort_reps:
+        sort_n = 33554432
+        times = sorted([r["real_time"] for r in sort_reps])
+        median_ns = times[len(times) // 2]
+        sort_cost_32m = {
+            "ns_per_op":     round(median_ns / sort_n, 4),
+            "wall_seconds":  round(median_ns / 1e9, 3),
+            "iterations":    sort_reps[0].get("iterations", 0),
+        }
+
     runs = []
     for (variant, n), reps in sorted(groups.items(), key=lambda x: (x[0][0], x[0][1])):
         times = [r["real_time"] for r in reps]
@@ -65,6 +78,8 @@ def main() -> None:
         "runs":        runs,
         "notes":       "Branch predictor learns sorted patterns; unsorted forces ~50% mispredicts.",
     }
+    if sort_cost_32m is not None:
+        output["sort_cost_32m"] = sort_cost_32m
 
     os.makedirs(os.path.dirname(args.out_path), exist_ok=True)
     with open(args.out_path, "w") as f:

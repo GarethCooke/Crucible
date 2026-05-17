@@ -36,7 +36,7 @@ static std::vector<int32_t> make_shuffled(int64_t n) {
 }
 
 // ---------------------------------------------------------------------------
-// Hot loop — identical code for both variants, only input ordering differs.
+// Hot loops
 // ---------------------------------------------------------------------------
 
 // Disable the two transformations that defeat this experiment:
@@ -50,6 +50,17 @@ static int64_t sum_threshold(const std::vector<int32_t>& data) {
     int64_t sum = 0;
     for (auto x : data) {
         if (x >= 128) sum += x;
+    }
+    return sum;
+}
+
+// Branchless variant: no attributes needed — GCC emits cmov for the ternary
+// at -O3. There is no data-dependent branch for the predictor to get wrong.
+__attribute__((noinline))
+static int64_t sum_threshold_branchless(const std::vector<int32_t>& data) {
+    int64_t sum = 0;
+    for (auto x : data) {
+        sum += (x >= 128) ? x : 0;    // compiles to cmov
     }
     return sum;
 }
@@ -82,14 +93,54 @@ static void BM_impl(benchmark::State& state, bool sorted) {
 static void BM_Sorted(benchmark::State& state)   { BM_impl(state, true);  }
 static void BM_Unsorted(benchmark::State& state) { BM_impl(state, false); }
 
+// Branchless variant on shuffled (adversarial) input — shows that on the
+// same worst-case ordering, removing the branch removes the mispredict penalty.
+static void BM_Branchless(benchmark::State& state) {
+    const int64_t n = state.range(0);
+    const auto data = make_shuffled(n);
+
+    crucible::PerfCounters perf;
+    crucible::PerfCounters::Counts total{};
+
+    for (auto _ : state) {
+        perf.start();
+        auto result = sum_threshold_branchless(data);
+        benchmark::DoNotOptimize(result);
+        perf.stop();
+        total += perf.read();
+    }
+
+    const int64_t ops = static_cast<int64_t>(state.iterations()) * n;
+    state.counters["branch_misses_per_op"] = total.branch_misses_per_op(ops);
+    state.counters["ipc"]                  = total.ipc();
+    state.SetItemsProcessed(ops);
+}
+
+// Sort-cost measurement: measures std::sort over a freshly-shuffled 32M vector.
+// PauseTiming excludes the per-iteration copy; only the sort is timed.
+static void BM_Sort_32M(benchmark::State& state) {
+    constexpr int64_t n = 33554432;
+    auto base = make_shuffled(n);
+    for (auto _ : state) {
+        state.PauseTiming();
+        auto v = base;                  // fresh copy per iteration
+        state.ResumeTiming();
+        std::sort(v.begin(), v.end());
+        benchmark::DoNotOptimize(v.data());
+    }
+    state.SetItemsProcessed(static_cast<int64_t>(state.iterations()) * n);
+}
+
 // Run at six sizes. --benchmark_repetitions=20 is set in run_one.sh.
 static void sizes(benchmark::internal::Benchmark* b) {
     for (int64_t n : {1024LL, 10240LL, 102400LL, 1048576LL, 10485760LL, 33554432LL})
         b->Arg(n)->MinTime(0.5);
 }
 
-BENCHMARK(BM_Sorted)  ->Apply(sizes);
-BENCHMARK(BM_Unsorted)->Apply(sizes);
+BENCHMARK(BM_Sorted)    ->Apply(sizes);
+BENCHMARK(BM_Unsorted)  ->Apply(sizes);
+BENCHMARK(BM_Branchless)->Apply(sizes);
+BENCHMARK(BM_Sort_32M)  ->MinTime(2.0);
 
 // ---------------------------------------------------------------------------
 // Custom main: optionally print machine info before running benchmarks.

@@ -9,9 +9,10 @@ import { CodeCompare } from '@/components/CodeCompare'
 import { Benchmark } from '@/components/Benchmark'
 import { ThroughputBars } from '@/components/charts/ThroughputBars'
 import { CounterOverlay } from '@/components/charts/CounterOverlay'
+import { TimeVsN } from '@/components/charts/TimeVsN'
 import { getAllPosts } from '@/lib/posts'
 
-const components = { CodeCompare, Benchmark, ThroughputBars, CounterOverlay }
+const components = { CodeCompare, Benchmark, ThroughputBars, CounterOverlay, TimeVsN }
 
 const POSTS_DIR = path.join(process.cwd(), 'src/posts')
 

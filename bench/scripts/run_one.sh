@@ -233,9 +233,11 @@ fi
 # ─── Disassembly guard — fails loudly if the compiler defeats the experiment ──
 if [[ "${SLUG}" == "01-branch-prediction" ]]; then
     DISASM_OUT="${REPO_ROOT}/site/src/data/perf/01-branch-prediction.disasm.txt"
+
+    # 1. Capture sum_threshold (branching variant — 13-char name → _ZL13sum_threshold)
     echo "==> Verifying disassembly of sum_threshold (must contain jl/jge, no cmov/SIMD)..."
     objdump -d "${BINARY}" \
-        | awk '/<_?Z[NL]?13sum_threshold/,/^$/' \
+        | awk '/<_ZL13sum_threshold[^_]/,/^$/' \
         > "${DISASM_OUT}" 2>/dev/null || true
     if ! grep -qE '\b(jl|jge|jb|jae)\b' "${DISASM_OUT}"; then
         echo "ERROR: no jl/jge/jb/jae found in sum_threshold — branch may have been eliminated." >&2
@@ -248,7 +250,30 @@ if [[ "${SLUG}" == "01-branch-prediction" ]]; then
         grep -E '\b(cmov[a-z]*|vpcmpgtd|vpand|vpaddd)\b' "${DISASM_OUT}" >&2
         exit 1
     fi
-    echo "    OK — branch instructions confirmed. Disassembly saved to ${DISASM_OUT}"
+    echo "    OK — branch instructions confirmed in sum_threshold."
+
+    # 2. Capture sum_threshold_branchless (24-char name → _ZL24sum_threshold_branchless)
+    echo "==> Verifying disassembly of sum_threshold_branchless (must contain cmov, no SIMD)..."
+    BRANCHLESS_DISASM=$(objdump -d "${BINARY}" \
+        | awk '/<_ZL24sum_threshold_branchless/,/^$/' 2>/dev/null || true)
+    if ! echo "${BRANCHLESS_DISASM}" | grep -qE '\bcmov'; then
+        echo "ERROR: no cmov found in sum_threshold_branchless." >&2
+        echo "       The ternary operator may not have compiled to cmov." >&2
+        echo "       Consider adding __attribute__((optimize(\"no-tree-vectorize\"))) or" >&2
+        echo "       accept vectorisation and adjust the post prose accordingly." >&2
+        exit 1
+    fi
+    if echo "${BRANCHLESS_DISASM}" | grep -qE '\b(vpcmpgtd|vpand|vpaddd)\b'; then
+        echo "WARNING: sum_threshold_branchless was vectorised (vpcmpgtd/vpand/vpaddd found)." >&2
+        echo "         The post prose should discuss SIMD rather than cmov, OR add" >&2
+        echo "         __attribute__((optimize(\"no-tree-vectorize\"))) and rebuild." >&2
+    fi
+    echo "    OK — cmov confirmed in sum_threshold_branchless."
+
+    # Append branchless asm to the disasm file (both inner loops committed together)
+    printf "\n" >> "${DISASM_OUT}"
+    echo "${BRANCHLESS_DISASM}" >> "${DISASM_OUT}"
+    echo "    Disassembly (both variants) saved to ${DISASM_OUT}"
 fi
 
 echo "==> Activating cset shield on cores 4-7..."

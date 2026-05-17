@@ -171,7 +171,7 @@ function render(el: SVGSVGElement, runs: SweepRun[], orderedVariants: string[]) 
 
     for (const stat of STATS_SHOWN) {
       const points: [number, number][] = arr
-        .map((r) => [r.offered_rate_hz!, r.latency_ns!.stats[stat as keyof LatencyStats] as number])
+        .map((r) => [r.offered_rate_hz!, r.latency_ns!.stats[stat as keyof LatencyStats] as number] as [number, number])
         .filter(([, v]) => v > 0)
 
       if (points.length === 0) continue

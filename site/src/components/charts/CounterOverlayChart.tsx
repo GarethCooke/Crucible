@@ -14,6 +14,11 @@ export interface CounterRun {
   }
 }
 
+export interface BranchMissRun {
+  variant: string
+  branch_misses_per_op: number
+}
+
 type Metric = 'cache_misses_per_op' | 'cache_miss_ratio' | 'instructions_per_cycle'
 
 const METRIC_LABELS: Record<Metric, string> = {
@@ -211,4 +216,123 @@ function render(el: SVGSVGElement, runs: CounterRun[], metric: Metric) {
       .attr('font-family', typography.fontMono)
       .text(label)
   })
+}
+
+// ─── Branch-miss overlay (branch-prediction demo) ────────────────────────────
+
+export function BranchMissOverlayChart({ runs, title }: { runs: BranchMissRun[]; title?: string }) {
+  const ref = useRef<SVGSVGElement>(null)
+
+  useEffect(() => {
+    if (!ref.current || runs.length === 0) return
+    d3.select(ref.current).selectAll('*').remove()
+    renderBranchMiss(ref.current, runs)
+  }, [runs])
+
+  return (
+    <figure className="my-8">
+      {title && (
+        <figcaption className="text-xs mb-3 font-mono" style={{ color: colors.textMuted }}>
+          {title}
+        </figcaption>
+      )}
+      <div
+        className="rounded-xl border overflow-hidden"
+        style={{ background: colors.bg, borderColor: colors.border }}
+      >
+        <svg ref={ref} className="w-full" style={{ display: 'block' }} />
+      </div>
+    </figure>
+  )
+}
+
+function renderBranchMiss(el: SVGSVGElement, runs: BranchMissRun[]) {
+  const W = el.clientWidth || 600
+  const H = 220
+  const margin = { top: 32, right: 24, bottom: 56, left: 72 }
+  const inner = { w: W - margin.left - margin.right, h: H - margin.top - margin.bottom }
+
+  const svg = d3
+    .select(el)
+    .attr('width', W)
+    .attr('height', H)
+    .attr('viewBox', `0 0 ${W} ${H}`)
+    .style('font-family', typography.fontMono)
+
+  const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`)
+
+  const x = d3.scaleBand().domain(runs.map((r) => r.variant)).range([0, inner.w]).padding(0.45)
+  const y = d3.scaleLinear().domain([0, 0.55]).range([inner.h, 0]).nice()
+
+  // Grid
+  g.append('g')
+    .call(d3.axisLeft(y).ticks(5).tickSize(-inner.w).tickFormat(() => ''))
+    .call((sel) => sel.select('.domain').remove())
+    .call((sel) => sel.selectAll('line').attr('stroke', colors.border).attr('stroke-dasharray', '3,3'))
+
+  // Bars
+  g.selectAll('.bar')
+    .data(runs)
+    .join('rect')
+    .attr('class', 'bar')
+    .attr('x', (d) => x(d.variant)!)
+    .attr('y', (d) => y(d.branch_misses_per_op))
+    .attr('width', x.bandwidth())
+    .attr('height', (d) => inner.h - y(d.branch_misses_per_op))
+    .attr('fill', (d) => variantColor(d.variant))
+    .attr('rx', 4)
+    .attr('opacity', 0.9)
+
+  // Value labels
+  g.selectAll('.bar-label')
+    .data(runs)
+    .join('text')
+    .attr('class', 'bar-label')
+    .attr('x', (d) => x(d.variant)! + x.bandwidth() / 2)
+    .attr('y', (d) => y(d.branch_misses_per_op) - 8)
+    .attr('text-anchor', 'middle')
+    .attr('font-size', typography.labelSize)
+    .attr('fill', colors.textPrimary)
+    .text((d) => `${(d.branch_misses_per_op * 100).toFixed(1)}%`)
+
+  // X axis
+  g.append('g')
+    .attr('transform', `translate(0,${inner.h})`)
+    .call(d3.axisBottom(x).tickSize(0))
+    .call((sel) => sel.select('.domain').attr('stroke', colors.border))
+    .call((sel) =>
+      sel.selectAll('text')
+        .attr('font-size', typography.axisSize)
+        .attr('fill', colors.textSecondary)
+        .attr('dy', '1.4em')
+        .text((d) => (d as string).charAt(0).toUpperCase() + (d as string).slice(1))
+    )
+
+  // Y axis — formatted as percentage
+  g.append('g')
+    .call(d3.axisLeft(y).ticks(5).tickFormat((v) => `${(+v * 100).toFixed(0)}%`))
+    .call((sel) => sel.select('.domain').remove())
+    .call((sel) => sel.selectAll('text').attr('font-size', typography.axisSize).attr('fill', colors.textMuted))
+    .call((sel) => sel.selectAll('line').remove())
+
+  // Y axis label
+  svg.append('text')
+    .attr('transform', 'rotate(-90)')
+    .attr('x', -(margin.top + inner.h / 2))
+    .attr('y', 14)
+    .attr('text-anchor', 'middle')
+    .attr('font-size', 9)
+    .attr('fill', colors.textMuted)
+    .attr('font-family', typography.fontMono)
+    .text('branch misses / op')
+
+  // Footer label
+  svg.append('text')
+    .attr('x', margin.left + inner.w / 2)
+    .attr('y', H - 8)
+    .attr('text-anchor', 'middle')
+    .attr('font-size', 10)
+    .attr('fill', colors.textMuted)
+    .attr('font-family', typography.fontMono)
+    .text('branch misses / op  ·  N = 32 M')
 }
