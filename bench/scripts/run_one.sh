@@ -30,7 +30,7 @@ cleanup() {
     [[ -n "${TMPFILE}" ]] && rm -f "${TMPFILE}"
     [[ -n "${WDIR}"    ]] && rm -rf "${WDIR}"
     if [[ "${SHIELD_ACTIVE}" -eq 1 ]]; then
-        sudo cset shield --reset > /dev/null 2>&1 || true
+        sudo -E cset shield --reset > /dev/null 2>&1 || true
     fi
 }
 trap cleanup EXIT
@@ -78,29 +78,29 @@ if [[ "${SLUG}" == "03-simd-blackscholes" ]]; then
     fi
 
     echo "==> Running correctness check..."
-    sudo cset shield --cpu=4-7 --kthread=on > /dev/null
+    sudo -E cset shield --cpu=4-7 --kthread=on > /dev/null
     SHIELD_ACTIVE=1
-    sudo cset shield --exec -- "${VERIFY_BIN}" | grep -v '^cset:'
-    sudo cset shield --reset > /dev/null
+    sudo -E cset shield --exec -- "${VERIFY_BIN}" | grep -v '^cset:'
+    sudo -E cset shield --reset > /dev/null
     SHIELD_ACTIVE=0
 
     echo "==> Collecting machine info..."
-    sudo cset shield --cpu=4-7 --kthread=on > /dev/null
+    sudo -E cset shield --cpu=4-7 --kthread=on > /dev/null
     SHIELD_ACTIVE=1
-    MACHINE_JSON=$(sudo cset shield --exec -- "${BS_BINARY}" --machine-info \
+    MACHINE_JSON=$(sudo -E cset shield --exec -- "${BS_BINARY}" --machine-info \
         | grep -v '^cset:' | tr -d '\000-\010\013-\037\177')
 
     TMPFILE=$(mktemp /tmp/crucible_bench_XXXXXX.json)
-    sudo chmod 666 "${TMPFILE}"
+    sudo -E chmod 666 "${TMPFILE}"
 
     echo "==> Running benchmarks (20 repetitions per variant×size)..."
-    sudo cset shield --exec -- "${BS_BINARY}" \
+    sudo -E cset shield --exec -- "${BS_BINARY}" \
         --benchmark_format=json \
         --benchmark_repetitions=20 \
         --benchmark_report_aggregates_only=false \
         | grep -v '^cset:' > "${TMPFILE}"
 
-    sudo cset shield --reset > /dev/null
+    sudo -E cset shield --reset > /dev/null
     SHIELD_ACTIVE=0
 
     echo "==> Assembling output JSON (extended schema)..."
@@ -125,27 +125,27 @@ if [[ "${SLUG}" == "04-spsc-queue" ]]; then
     fi
 
     echo "==> Running stress test (10M items per variant, zero-loss check)..."
-    sudo cset shield --cpu=4-7 --kthread=on > /dev/null
+    sudo -E cset shield --cpu=4-7 --kthread=on > /dev/null
     SHIELD_ACTIVE=1
-    sudo cset shield --exec -- "${SPSC_BINARY}" --stress-test | grep -v '^cset:'
-    sudo cset shield --reset > /dev/null
+    sudo -E cset shield --exec -- "${SPSC_BINARY}" --stress-test | grep -v '^cset:'
+    sudo -E cset shield --reset > /dev/null
     SHIELD_ACTIVE=0
 
     echo "==> Collecting machine info..."
-    sudo cset shield --cpu=4-7 --kthread=on > /dev/null
+    sudo -E cset shield --cpu=4-7 --kthread=on > /dev/null
     SHIELD_ACTIVE=1
-    MACHINE_JSON=$(sudo cset shield --exec -- "${SPSC_BINARY}" --machine-info \
+    MACHINE_JSON=$(sudo -E cset shield --exec -- "${SPSC_BINARY}" --machine-info \
         | grep -v '^cset:' | tr -d '\000-\010\013-\037\177')
 
     WDIR=$(mktemp -d /tmp/crucible_spsc_XXXXXX)
 
     for VARIANT in lockfree-handrolled lockfree-boost mutex-condvar; do
         echo "==> Running variant: ${VARIANT} (5 × 1M items)..."
-        sudo cset shield --exec -- "${SPSC_BINARY}" "${VARIANT}" \
+        sudo -E cset shield --exec -- "${SPSC_BINARY}" "${VARIANT}" \
             | grep -v '^cset:' > "${WDIR}/${VARIANT}.json"
     done
 
-    sudo cset shield --reset > /dev/null
+    sudo -E cset shield --reset > /dev/null
     SHIELD_ACTIVE=0
 
     echo "==> Assembling output JSON..."
@@ -238,26 +238,26 @@ if [[ "${SLUG}" == "01-branch-prediction" ]]; then
 fi
 
 echo "==> Activating cset shield on cores 4-7..."
-sudo cset shield --cpu=4-7 --kthread=on > /dev/null
+sudo -E cset shield --cpu=4-7 --kthread=on > /dev/null
 SHIELD_ACTIVE=1
 
 echo "==> Collecting machine info..."
-MACHINE_JSON=$(sudo cset shield --exec -- "${BINARY}" --machine-info \
+MACHINE_JSON=$(sudo -E cset shield --exec -- "${BINARY}" --machine-info \
     | grep -v '^cset:' \
     | tr -d '\000-\010\013-\037\177')
 
 TMPFILE=$(mktemp /tmp/crucible_bench_XXXXXX.json)
-sudo chmod 666 "${TMPFILE}"
+sudo -E chmod 666 "${TMPFILE}"
 
 echo "==> Running benchmarks (20 repetitions per variant×size)..."
-sudo cset shield --exec -- "${BINARY}" \
+sudo -E cset shield --exec -- "${BINARY}" \
     --benchmark_format=json \
     --benchmark_repetitions=20 \
     --benchmark_report_aggregates_only=false \
     | grep -v '^cset:' > "${TMPFILE}"
 
 echo "==> Releasing cset shield..."
-sudo cset shield --reset > /dev/null
+sudo -E cset shield --reset > /dev/null
 SHIELD_ACTIVE=0
 
 echo "==> Assembling output JSON..."
