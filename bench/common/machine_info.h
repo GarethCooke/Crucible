@@ -62,7 +62,10 @@ inline std::string isolated_cpus_from_cmdline() {
     FILE* f = ::fopen("/proc/cmdline", "r");
     if (!f) return "";
     char line[4096] = {};
-    ::fgets(line, sizeof(line), f);
+    if (::fgets(line, sizeof(line), f) == nullptr) {
+        ::fclose(f);
+        return "";
+    }
     ::fclose(f);
     const char* tok = std::strstr(line, "isolcpus=");
     if (!tok) return "";
