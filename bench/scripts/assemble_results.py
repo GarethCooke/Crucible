@@ -14,6 +14,25 @@ from pathlib import Path
 from stats_utils import bench_stats
 
 
+def parse_bench_name(name: str) -> tuple[str, int]:
+    """Parse a Google Benchmark name like:
+        'BM_Sorted/1024/min_time:0.500'  -> ('sorted', 1024)
+        'BM_Sort_32M/min_time:2.000'     -> ('sort_32m', 0)
+        'BM_Branchless/10240'            -> ('branchless', 10240)
+    Returns (variant_lowercase, n). n=0 means no size argument.
+    """
+    parts = name.split('/')
+    variant = parts[0].removeprefix('BM_').lower()
+    n = 0
+    for p in parts[1:]:
+        try:
+            n = int(p)
+            break
+        except ValueError:
+            continue
+    return variant, n
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -34,9 +53,7 @@ def main() -> None:
         if b.get("run_type") != "iteration":
             continue
         name = b["name"]
-        parts = name.split("/")
-        variant_raw = parts[0].removeprefix("BM_").lower()
-        n = int(parts[1]) if len(parts) > 1 else 0
+        variant_raw, n = parse_bench_name(name)
         key = (variant_raw, n)
         groups.setdefault(key, []).append(b)
 
@@ -89,4 +106,11 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    if '--self-test' in sys.argv:
+        assert parse_bench_name('BM_Sorted/1024/min_time:0.500')  == ('sorted', 1024)
+        assert parse_bench_name('BM_Unsorted/33554432')           == ('unsorted', 33554432)
+        assert parse_bench_name('BM_Branchless/1024')             == ('branchless', 1024)
+        assert parse_bench_name('BM_Sort_32M/min_time:2.000')     == ('sort_32m', 0)
+        print('parse_bench_name: OK')
+    else:
+        main()

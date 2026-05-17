@@ -54,9 +54,11 @@ static int64_t sum_threshold(const std::vector<int32_t>& data) {
     return sum;
 }
 
-// Branchless variant: no attributes needed — GCC emits cmov for the ternary
-// at -O3. There is no data-dependent branch for the predictor to get wrong.
-__attribute__((noinline))
+// Match the branching variant's compiler discipline. Without this, GCC
+// auto-vectorises the loop into vpcmpgtd/vpand/vpaddd (verified at -O3
+// -march=znver2 with GCC 13.3) — a separate ~8x effect that muddles
+// what this demo measures. Demo 3 explores vectorisation properly.
+__attribute__((noinline, optimize("no-tree-vectorize")))
 static int64_t sum_threshold_branchless(const std::vector<int32_t>& data) {
     int64_t sum = 0;
     for (auto x : data) {

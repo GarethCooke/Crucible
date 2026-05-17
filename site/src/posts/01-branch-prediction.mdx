@@ -31,9 +31,10 @@ static int64_t sum_threshold(const std::vector<int32_t>& data) {
     }
     return sum;
 }`}
-  optimized={`// No attributes needed — GCC emits cmov for the ternary at -O3.
-// There is no data-dependent branch for the predictor to get wrong.
-__attribute__((noinline))
+  optimized={`// Same ternary that gives cmov on most compilers will also
+// auto-vectorise here — we keep it scalar to stay apples-to-apples
+// with the branching variants. Demo 3 covers SIMD properly.
+__attribute__((noinline, optimize("no-tree-vectorize")))
 static int64_t sum_threshold_branchless(const std::vector<int32_t>& data) {
     int64_t sum = 0;
     for (auto x : data) {
@@ -83,6 +84,11 @@ xxxx:  jne    xxxx               ; loop
 The `cmovg` (conditional move if greater) evaluates both the `sum += x` and
 `sum += 0` paths, writes the correct result, and moves on — no branch, no
 speculation, no pipeline flush on a misprediction.
+
+> Without the `no-tree-vectorize` attribute, GCC 13.3 at `-O3 -march=znver2` turns this same
+> ternary into `vpcmpgtd`/`vpand`/`vpaddd` — an 8-wide masked add that beats the cmov version
+> by a further ~8×. That's a different story (SIMD width, not branch behaviour), and gets its
+> own [post](/posts/03-simd-blackscholes).
 
 ## The numbers
 
@@ -205,6 +211,7 @@ bottleneck, consider removing it rather than feeding it predictable inputs.
 *All numbers: median ns/iteration, AMD Ryzen 7 3800X at 3.9 GHz base,
 governor = performance, Turbo Boost off, isolated cores 4–7, GCC 13.3 `-O3 -march=native`.*
 *`sum_threshold` compiled with `no-tree-vectorize`, `no-if-conversion`, `no-if-conversion2`
-to preserve the conditional jump. `sum_threshold_branchless` compiled at default `-O3` (cmov path).*
+to preserve the conditional jump. `sum_threshold_branchless` compiled with `no-tree-vectorize`
+to prevent auto-vectorisation (cmov path); both variants do identical scalar arithmetic.*
 *Sort cost measured with `PauseTiming()` to exclude the per-iteration copy.*
 *[Methodology →](/methodology)*

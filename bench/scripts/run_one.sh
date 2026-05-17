@@ -263,18 +263,21 @@ if [[ "${SLUG}" == "01-branch-prediction" ]]; then
         echo "       accept vectorisation and adjust the post prose accordingly." >&2
         exit 1
     fi
-    if echo "${BRANCHLESS_DISASM}" | grep -qE '\b(vpcmpgtd|vpand|vpaddd)\b'; then
-        echo "WARNING: sum_threshold_branchless was vectorised (vpcmpgtd/vpand/vpaddd found)." >&2
-        echo "         The post prose should discuss SIMD rather than cmov, OR add" >&2
-        echo "         __attribute__((optimize(\"no-tree-vectorize\"))) and rebuild." >&2
+    if echo "${BRANCHLESS_DISASM}" | grep -qE '\b(vpcmpgtd|vpand|vpaddd|vmovdqa)\b'; then
+        echo "FAIL: sum_threshold_branchless was vectorised." >&2
+        echo "      Compiler defeated the experiment — add optimize(\"no-tree-vectorize\")." >&2
+        exit 1
     fi
-    echo "    OK — cmov confirmed in sum_threshold_branchless."
+    echo "    OK · cmov confirmed in sum_threshold_branchless"
 
     # Append branchless asm to the disasm file (both inner loops committed together)
     printf "\n" >> "${DISASM_OUT}"
     echo "${BRANCHLESS_DISASM}" >> "${DISASM_OUT}"
     echo "    Disassembly (both variants) saved to ${DISASM_OUT}"
 fi
+
+echo "==> Running assembler self-test..."
+python3 "${BENCH_ROOT}/scripts/assemble_results.py" --self-test
 
 echo "==> Activating cset shield on cores 4-7..."
 sudo -E cset shield --cpu=4-7 --kthread=on > /dev/null
