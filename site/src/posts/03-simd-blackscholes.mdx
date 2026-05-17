@@ -1,13 +1,14 @@
 ---
-title: "Black-Scholes: same model, four implementations, ~30× spread"
+title: "Black-Scholes: same model, four implementations, ~10× spread"
 date: "2026-05-14"
-summary: "Roughly half the speedup comes from the math, not the SIMD. Scalar polynomial approximations beat libm before a single AVX2 instruction appears."
+summary: "Polynomial approximations buy 12% on their own — but they're the gate to a 9× SIMD win that libm's erfc can't reach."
 ---
 
 Same pricing model. Same input chain. Same machine. Four implementations — and the
-spread from slowest to fastest is around 30×. The surprising part: roughly half that
-gap comes from replacing `std::exp` and `std::erfc` with polynomial approximations,
-before a single SIMD instruction appears in the hot loop.
+spread from slowest to fastest is around 10×. The interesting part: most of the gap
+is SIMD, but you can't get there from libm. `std::erfc` doesn't vectorise. Swapping
+it for a polynomial approximation buys a modest 12% on its own — and is the gate
+that makes the SIMD wins reachable at all.
 
 ## The workload
 
@@ -88,46 +89,76 @@ polynomial helpers.
 
 ## Headline numbers
 
-<ThroughputBars slug="03-simd-blackscholes" targetN={1048576} title="Options priced per second at N=1M (higher is better)" />
+Two views of the same data: at N=16,384 the entire working set fits comfortably in
+L2 (per-core), giving the cleanest per-cycle compute comparison. At N=1,048,576
+the input is 20 MB — larger than the 16 MB L3 per CCX — but the workload is
+compute-bound anyway, so throughput per option is essentially identical to the
+L2-resident case.
+
+<ThroughputBars
+  slug="03-simd-blackscholes"
+  targetN={16384}
+  title="Options priced per second at N=16k — L2-resident, compute-bound (higher is better)"
+/>
+
+<ThroughputBars
+  slug="03-simd-blackscholes"
+  targetN={1048576}
+  title="Options priced per second at N=1M — fully amortised (higher is better)"
+/>
 
 ## Decomposing the speedup
 
-**Step 1 → 2: algorithm win.** Replacing `std::exp` / `std::erfc` with
-polynomial approximations is the first win, independent of SIMD. The key
-insight: libm's `expf` and `erfcf` are designed for full float precision
-(~1.2e-7 ULP error) across their entire domain. Black-Scholes only needs option
-prices accurate to ~1e-4 in absolute terms. A 6th-order Taylor polynomial for
-`exp` over `[-ln2/2, ln2/2]` (the range-reduced interval) achieves ~1.7e-7
-absolute error — sufficient, and computable without a branch-heavy libm dispatch
-path or lookup table.
+**Step 1 → 2: the algorithm gate.** Replacing `std::exp` / `std::erfc` with
+polynomial approximations gives a modest 12% standalone speedup (47.7 ns/option →
+42.7 ns/option at N=1M). On its own that's unremarkable. What it actually does is
+open the door to the SIMD wins below — there is no `_mm256_erfc_ps`. libm's `erfc`
+is a branch-and-lookup-table dispatch that doesn't translate to a SIMD register;
+you have to switch to a polynomial form before you can widen to four or eight
+lanes. The polynomial is the gate, not the prize.
+
+libm's `expf` and `erfcf` are designed for full float precision (~1.2e-7 ULP error)
+across their entire domain. Black-Scholes only needs option prices accurate to ~1e-4
+in absolute terms. A 6th-order Taylor polynomial for `exp` over `[-ln2/2, ln2/2]`
+(the range-reduced interval) achieves ~1.7e-7 absolute error — sufficient, and
+computable without a branch-heavy libm dispatch path or lookup table.
 
 The A&S §26.2.17 rational approximation for N(x) is similarly: 5 polynomial
 coefficients, published in 1964, max error < 7.5e-8. It outperforms a
 branchy libm `erfc` call in the hot path.
 
-This step improves throughput *before* the CPU sees a single wider instruction.
 Polynomial Horner evaluation pipelines well; libm calls break out of the
 inner loop.
 
-**Step 2 → 3: SSE width win.** Widening from 1 to 4 lanes with `__m128` gives
-a real throughput gain but below 4×. The bottlenecks: the `div` (S/K and the
-final σ√T division) and `sqrt` are not 4× cheaper in SSE — their throughput
-improves with width but their latency doesn't vanish. Memory bandwidth starts to
-matter at N = 1M (20 MB input, larger than the 512 KB L2 per core on Zen 2).
+**Step 2 → 3: SSE width win.** Widening from 1 to 4 lanes with `__m128` gives a
+4.1× throughput gain at N=1M — slightly above clean 4× width because the scalar
+variant carries some loop-overhead and pipeline-fill cost the SIMD variant
+amortises. The main brake on a higher ratio is that `div` and `sqrt` aren't 4×
+cheaper in SSE — their throughput improves with width but the latency-bound
+operations don't disappear.
 
-**Step 3 → 4: AVX2+FMA width win — and the Zen 2 µop-split caveat.**
+**Step 3 → 4: AVX2 + FMA — and the Zen 2 µop-split fingerprint.**
 
-*Prediction going in:* AVX2 will beat SSE, but by less than 2× on this machine.
-Zen 2 (Ryzen 3800X) implements 256-bit AVX2 instructions by splitting each into
-two 128-bit µops internally. One `vfmadd256ps` occupies two execution ports in
-the same cycle where Zen 3 would use one. This halves the theoretical peak
-throughput advantage of 8-wide vs 4-wide on this CPU family.
+*Going in:* Zen 2 implements 256-bit AVX2 by splitting each instruction into two
+128-bit µops internally. One `vfmadd256ps` consumes two execution-port slots
+where Zen 3 would consume one. On µop count alone, this halves the theoretical
+width advantage of 8-wide AVX2 over 4-wide SSE. The prediction was that AVX2
+would land *under* 2× SSE on this CPU.
 
-*Reported result:* At N = 16,384 (compute-bound, fits in L2): AVX2+FMA reaches **1.96×** SSE throughput — confirming the Zen 2 µop-split prediction of under 2×. At N = 1,048,576 (bandwidth-limited): the ratio widens to **2.25×**; AVX2's 32-byte loads reduce memory-transaction count, partially offsetting the bandwidth ceiling.
+*What actually landed:* at N=16,384 — the cleanest comparison, with the working
+set in L2 and per-iteration overhead amortised — AVX2/SSE is **1.995×**. Right at
+the threshold, exactly as the µop-split argument predicts. At N=1,048,576 the
+ratio rises to **2.252×** as the fixed per-iteration harness cost dissolves
+further.
 
-AVX2-vs-SSE ratios at N = 16k (compute-bound, fits in L2) and N = 1M
-(bandwidth-limited) will tell different stories. The 16k result isolates the
-SIMD throughput; the 1M result shows how memory bandwidth caps the gain.
+The IPC counters expose the µop split directly: SSE retires 1.21 instructions per
+cycle, AVX2 retires 0.91 — a 0.75 ratio, almost exactly what you'd expect if each
+AVX2 instruction occupies two issue slots. But each retired AVX2 instruction is
+also doing ~2.5× the work of a retired SSE instruction (8 lanes plus FMA's two
+flops per multiply-add, vs 4 lanes of separate mul + add). Multiply those out:
+0.75 × 2.5 ≈ 1.9× — and the rest is small effects (register pressure, scheduling,
+amortisation). The headline ratio doesn't come from AVX2 magically being 2× SSE;
+it comes from FMA reclaiming what µop split costs you.
 
 ## Precision
 
@@ -167,6 +198,24 @@ once those exist, vectorising them is a small step. Using Sleef only for variant
 
 ## What this doesn't show
 
+- **GFLOPS for `scalar_libm`** is computed against the polynomial-variant flop
+  count (98 flops/option). libm's `erfc` is internally far more than that —
+  branch-heavy dispatch, lookup tables, and conditional polynomial branches. The
+  reported 2.05 GFLOPS for `scalar_libm` is therefore "throughput-equivalent
+  flops if libm did the same math as the polynomial variant," not a measurement
+  of libm's actual flop rate. Treat it as a *throughput* number, not a
+  *computational density* number.
+- **Per-iteration harness overhead.** At N=1024 every variant runs ~5–6× slower
+  per option than at N=1M because the perf-counter start/stop and function-call
+  cost per iteration is fixed and amortises across N. Small-N numbers are
+  measurement-floor-bound, not compute-bound. The charts above use N≥16k for
+  this reason; the full sweep including N=1024 is in the JSON for
+  reproducibility.
+- **% of theoretical peak.** Zen 2 base-clock theoretical peak for 256-bit FMA
+  is roughly 62 GFLOPS per core (2 FMA pipes × 1 256-bit FMA per 2 cycles × 8
+  lanes × 2 flops × 3.9 GHz). The AVX2 variant lands at 27 GFLOPS = ~44% of
+  peak. Division, square root, and the polynomial cascades (which can't all
+  pipeline as pure FMA) are the gap.
 - **AVX-512**: deferred to a rented-bare-metal post. AVX-512 would allow 16-wide
   float computation in a single instruction and properly single-issue 512-bit ops
   on recent server CPUs. Numbers here won't extrapolate.
@@ -194,6 +243,7 @@ Polynomial helpers: [bench/demos/03-simd-blackscholes/poly.h](bench/demos/03-sim
 
 ---
 
-*AMD Ryzen 7 3800X, Zen 2, 3.9 GHz base, governor = performance, turbo enabled,
-SMT off (BIOS), GCC 13, per-variant ISA flags as documented in CMakeLists.txt.*
+*AMD Ryzen 7 3800X, Zen 2, 3.9 GHz base, governor = performance, turbo disabled
+(verified via cpupower), SMT off (BIOS), cores 0–7 isolated, benchmarks pinned
+to 4–7, GCC 13, per-variant ISA flags as documented in CMakeLists.txt.*
 *[Methodology →](/methodology)*

@@ -290,5 +290,5 @@
       "compile_flags": "-O3 -msse4.2 -mno-avx -mno-avx2 -mno-fma"
     }
   ],
-  "notes": "Four variants of European call option pricing under Black-Scholes. Speedup decomposed into algorithm win (poly vs libm) and SIMD width win (SSE 4-wide \u2192 AVX2+FMA 8-wide). Zen 2 \u03bcop-split: AVX2/SSE < 2\u00d7 predicted."
+  "notes": "Four variants of European call option pricing under Black-Scholes. Speedup decomposed into algorithm gate (poly vs libm, 12%) and SIMD width (SSE 4-wide, AVX2+FMA 8-wide). Zen 2 \u03bcop-split visible in IPC (SSE 1.21, AVX2 0.91); FMA recovers most of the lost width. AVX2/SSE = 1.995\u00d7 at N=16k, 2.252\u00d7 at N=1M."
 }
