@@ -56,6 +56,23 @@ inline std::string shell_multiline(const char* cmd) {
     return safe;
 }
 
+// Read the kernel's effective isolated CPU set from /sys/devices/system/cpu/isolated.
+// Returns the trimmed contents (e.g. "1-7") or empty string if unavailable.
+inline std::string isolated_cpus_from_sys() {
+    FILE* f = ::fopen("/sys/devices/system/cpu/isolated", "r");
+    if (!f) return "";
+    char buf[256] = {};
+    if (::fgets(buf, sizeof(buf), f) == nullptr) {
+        ::fclose(f);
+        return "";
+    }
+    ::fclose(f);
+    std::string val(buf);
+    while (!val.empty() && (val.back() == '\n' || val.back() == '\r' || val.back() == ' '))
+        val.pop_back();
+    return val;
+}
+
 // Parse isolcpus= value directly from /proc/cmdline.
 // Returns the verbatim value (e.g. "1-7") or empty string if not present.
 inline std::string isolated_cpus_from_cmdline() {
@@ -134,10 +151,15 @@ inline std::string machine_info_json() {
     // Null means the caller did not verify — avoids asserting unobserved facts.
     const auto turbo_env = shell("echo \"$CRUCIBLE_TURBO\"");
 
-    // isolated_cpus: parse from /proc/cmdline for accuracy; the cgroup affinity
-    // seen via sched_getaffinity reflects the cset shield, not the isolcpus= parameter.
-    const auto iso_cpus  = detail::isolated_cpus_from_cmdline();
-    const auto iso_source = iso_cpus.empty() ? "cgroup" : "cmdline";
+    // isolated_cpus: parse requested value from /proc/cmdline; read effective value
+    // from /sys/devices/system/cpu/isolated (kernel's view, may exclude core 0).
+    const auto iso_requested = detail::isolated_cpus_from_cmdline();
+    const auto iso_effective = detail::isolated_cpus_from_sys();
+    const auto iso_source = (!iso_requested.empty() && !iso_effective.empty())
+                            ? "cmdline+probe"
+                            : (!iso_requested.empty() ? "cmdline" : "cgroup");
+    // iso_cpus: backward-compat field; prefer effective when available
+    const auto iso_cpus = !iso_effective.empty() ? iso_effective : iso_requested;
 
     // cpu_affinity: actual cpuset the process is running on (taskset, cset, or unrestricted)
     const auto cpu_affinity = detail::cpu_affinity_string();
@@ -163,10 +185,12 @@ inline std::string machine_info_json() {
         "\"kernel\":\""               + kernel   + "\","
         "\"governor\":\""             + governor + "\","
         "\"turbo\":"                  + turbo_field + ","
-        "\"isolated_cpus\":\""        + iso_cpus + "\","
-        "\"isolated_cpus_source\":\"" + iso_source + "\","
-        "\"cpu_affinity\":\""         + cpu_affinity + "\","
-        "\"lscpu_extended\":\""       + lscpu_ext + "\"";
+        "\"isolated_cpus\":\""              + iso_cpus      + "\","
+        "\"isolated_cpus_requested\":\""    + iso_requested + "\","
+        + (iso_effective.empty() ? "" : "\"isolated_cpus_effective\":\"" + iso_effective + "\",")
+        + "\"isolated_cpus_source\":\""     + iso_source    + "\","
+        "\"cpu_affinity\":\""               + cpu_affinity  + "\","
+        "\"lscpu_extended\":\""             + lscpu_ext     + "\"";
 }
 
 } // namespace crucible

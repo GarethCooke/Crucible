@@ -63,8 +63,8 @@ struct BenchConfig {
     Mode     mode          = Mode::Paced;
     uint64_t rate_hz       = 1'000'000;   // paced / headline rate
     uint64_t rate_from_hz  = 100'000;     // sweep start
-    uint64_t rate_to_hz    = 25'000'000;  // sweep end
-    int      steps         = 8;           // sweep steps
+    uint64_t rate_to_hz    = 50'000'000;  // sweep end
+    int      steps         = 12;          // sweep steps
     bool     verify_warmup = false;
 };
 
@@ -245,11 +245,11 @@ static RunResult run_lockfree_handrolled(double ns_per_cycle, uint64_t rate_hz,
         struct timespec t0{};
         clock_gettime(CLOCK_MONOTONIC_RAW, &t0);
 
-        uint64_t next_release = rdtscp_ordered();
+        uint64_t next_release_cycles = rdtscp_ordered();
         for (size_t i = 0; i < ITEMS_MEASURED; ++i) {
             if (period_cycles > 0) {
-                while (rdtscp_ordered() < next_release) { _mm_pause(); }
-                next_release += period_cycles;
+                while (__rdtsc() < next_release_cycles) { _mm_pause(); }
+                next_release_cycles += period_cycles;
             }
             MarketTick t{uint32_t(i & 0xFFFF), 1, uint64_t(i)};
             enq_ts[i] = rdtscp_ordered();
@@ -325,11 +325,11 @@ static RunResult run_lockfree_boost(double ns_per_cycle, uint64_t rate_hz,
         struct timespec t0{};
         clock_gettime(CLOCK_MONOTONIC_RAW, &t0);
 
-        uint64_t next_release = rdtscp_ordered();
+        uint64_t next_release_cycles = rdtscp_ordered();
         for (size_t i = 0; i < ITEMS_MEASURED; ++i) {
             if (period_cycles > 0) {
-                while (rdtscp_ordered() < next_release) { _mm_pause(); }
-                next_release += period_cycles;
+                while (__rdtsc() < next_release_cycles) { _mm_pause(); }
+                next_release_cycles += period_cycles;
             }
             MarketTick t{uint32_t(i & 0xFFFF), 1, uint64_t(i)};
             enq_ts[i] = rdtscp_ordered();
@@ -427,11 +427,11 @@ static RunResult run_mutex_condvar(double ns_per_cycle, uint64_t rate_hz,
         struct timespec t0{};
         clock_gettime(CLOCK_MONOTONIC_RAW, &t0);
 
-        uint64_t next_release = rdtscp_ordered();
+        uint64_t next_release_cycles = rdtscp_ordered();
         for (size_t i = 0; i < ITEMS_MEASURED; ++i) {
             if (period_cycles > 0) {
-                while (rdtscp_ordered() < next_release) { _mm_pause(); }
-                next_release += period_cycles;
+                while (__rdtsc() < next_release_cycles) { _mm_pause(); }
+                next_release_cycles += period_cycles;
             }
             MarketTick t{uint32_t(i & 0xFFFF), 1, uint64_t(i)};
             enq_ts[i] = rdtscp_ordered();
@@ -496,9 +496,7 @@ static std::string emit_json_string(const char* variant,
     const double p99    = static_cast<double>(h.percentile(99.0));
     const double iqr    = p75 - p25;
 
-    const std::string rate_field = (offered_rate_hz > 0)
-        ? std::to_string(offered_rate_hz)
-        : "null";
+    const std::string rate_field = std::to_string(offered_rate_hz);
 
     // Build into dynamic std::string: counts_json() alone is ~769 chars for 384 buckets,
     // which silently truncated the old hdr[1024] and produced invalid JSON.
