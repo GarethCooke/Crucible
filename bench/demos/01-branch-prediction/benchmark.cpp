@@ -54,11 +54,12 @@ static int64_t sum_threshold(const std::vector<int32_t>& data) {
     return sum;
 }
 
-// Match the branching variant's compiler discipline. Without this, GCC
-// auto-vectorises the loop into vpcmpgtd/vpand/vpaddd (verified at -O3
-// -march=znver2 with GCC 13.3) — a separate ~8x effect that muddles
-// what this demo measures. Demo 3 explores vectorisation properly.
-__attribute__((noinline, optimize("no-tree-vectorize")))
+// Match the branching variant's compiler discipline. Without both flags, GCC
+// auto-vectorises: no-tree-vectorize disables the loop vectoriser; the ternary
+// form also triggers the SLP vectoriser (a separate pass), so no-tree-slp-vectorize
+// is required too. Both produce vpcmpgtd/vpand/vpaddd at -O3 -march=znver2 (GCC 13.3)
+// — a separate ~8x effect that muddles what this demo measures. Demo 3 covers SIMD.
+__attribute__((noinline, optimize("no-tree-vectorize", "no-tree-slp-vectorize")))
 static int64_t sum_threshold_branchless(const std::vector<int32_t>& data) {
     int64_t sum = 0;
     for (auto x : data) {
