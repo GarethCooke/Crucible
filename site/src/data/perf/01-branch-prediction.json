@@ -9,182 +9,181 @@
     "ram_gb": 31,
     "ram_speed_mhz": null,
     "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
-    "compiler_flags": "-O3 -march=native",
     "kernel": "6.8.0-111-generic",
     "governor": "performance",
-    "turbo": true,
-    "isolated_cpus": "",
+    "turbo": null,
+    "isolated_cpus": "0-7",
     "cpu_affinity": "4-7"
   },
-  "captured_at": "2026-05-16T13:17:10Z",
+  "captured_at": "2026-05-17T07:13:50Z",
   "runs": [
     {
       "variant": "sorted",
       "n": 1024,
-      "iterations": 29007,
+      "iterations": 34733,
       "ns_per_op": {
-        "median": 24138.3291,
-        "min": 24086.1321,
-        "p99": 24179.2269,
-        "iqr": 28.6248
+        "median": 20344.2846,
+        "min": 20193.841,
+        "p99": 20373.0394,
+        "iqr": 41.4717
       },
-      "ops_per_sec": 42427231,
-      "branch_misses_per_op": 0.0078,
-      "instructions_per_cycle": 2.061
+      "ops_per_sec": 50336323,
+      "branch_misses_per_op": 0.0088,
+      "instructions_per_cycle": 2.877
     },
     {
       "variant": "sorted",
       "n": 10240,
-      "iterations": 22368,
+      "iterations": 27867,
       "ns_per_op": {
-        "median": 31285.2952,
-        "min": 31231.5789,
-        "p99": 31308.1023,
-        "iqr": 12.1777
+        "median": 25092.3741,
+        "min": 25055.0899,
+        "p99": 25143.4802,
+        "iqr": 31.6137
       },
-      "ops_per_sec": 327325876,
-      "branch_misses_per_op": 0.0008,
-      "instructions_per_cycle": 2.156
+      "ops_per_sec": 408099362,
+      "branch_misses_per_op": 0.0009,
+      "instructions_per_cycle": 3.206
     },
     {
       "variant": "sorted",
       "n": 102400,
-      "iterations": 6849,
+      "iterations": 9741,
       "ns_per_op": {
-        "median": 99899.5757,
-        "min": 98792.8518,
-        "p99": 102126.403,
-        "iqr": 2423.873
+        "median": 72442.2791,
+        "min": 72318.6008,
+        "p99": 72758.9117,
+        "iqr": 245.2064
       },
-      "ops_per_sec": 1025451246,
+      "ops_per_sec": 1414009799,
       "branch_misses_per_op": 0.0001,
-      "instructions_per_cycle": 2.24
+      "instructions_per_cycle": 3.286
     },
     {
       "variant": "sorted",
       "n": 1048576,
-      "iterations": 991,
+      "iterations": 1268,
       "ns_per_op": {
-        "median": 706191.3259,
-        "min": 703258.4521,
-        "p99": 708836.1741,
-        "iqr": 1714.4359
+        "median": 555554.7244,
+        "min": 547866.817,
+        "p99": 557995.9388,
+        "iqr": 5763.4172
       },
-      "ops_per_sec": 1484956390,
+      "ops_per_sec": 1888381372,
       "branch_misses_per_op": 0.0,
-      "instructions_per_cycle": 2.57
+      "instructions_per_cycle": 3.275
     },
     {
       "variant": "sorted",
       "n": 10485760,
-      "iterations": 97,
+      "iterations": 117,
       "ns_per_op": {
-        "median": 7202538.732,
-        "min": 7041964.0515,
-        "p99": 7255213.0594,
-        "iqr": 85057.6881
+        "median": 5849846.7009,
+        "min": 5590484.5897,
+        "p99": 6110469.7975,
+        "iqr": 76714.1923
       },
-      "ops_per_sec": 1457402619,
+      "ops_per_sec": 1792787494,
       "branch_misses_per_op": 0.0,
-      "instructions_per_cycle": 2.447
+      "instructions_per_cycle": 3.009
     },
     {
       "variant": "sorted",
       "n": 33554432,
-      "iterations": 30,
+      "iterations": 38,
       "ns_per_op": {
-        "median": 22981626.25,
-        "min": 22446463.7,
-        "p99": 23151587.107,
-        "iqr": 376445.7917
+        "median": 18516851.0263,
+        "min": 18036460.5789,
+        "p99": 19437862.4792,
+        "iqr": 267241.5132
       },
-      "ops_per_sec": 1460675912,
+      "ops_per_sec": 1812142051,
       "branch_misses_per_op": 0.0,
-      "instructions_per_cycle": 2.444
+      "instructions_per_cycle": 3.028
     },
     {
       "variant": "unsorted",
       "n": 1024,
-      "iterations": 26223,
+      "iterations": 32859,
       "ns_per_op": {
-        "median": 26630.2263,
-        "min": 26575.6699,
-        "p99": 26675.4316,
-        "iqr": 47.4329
+        "median": 21205.1856,
+        "min": 21162.6763,
+        "p99": 21263.3394,
+        "iqr": 30.6094
       },
-      "ops_per_sec": 38459068,
-      "branch_misses_per_op": 0.279,
-      "instructions_per_cycle": 0.625
+      "ops_per_sec": 48292411,
+      "branch_misses_per_op": 0.0107,
+      "instructions_per_cycle": 1.699
     },
     {
       "variant": "unsorted",
       "n": 10240,
-      "iterations": 11258,
+      "iterations": 14743,
       "ns_per_op": {
-        "median": 62163.2389,
-        "min": 62087.8401,
-        "p99": 62244.7635,
-        "iqr": 39.1185
+        "median": 47235.1447,
+        "min": 47044.9645,
+        "p99": 47491.2459,
+        "iqr": 77.978
       },
-      "ops_per_sec": 164746048,
-      "branch_misses_per_op": 0.4722,
-      "instructions_per_cycle": 0.448
+      "ops_per_sec": 216809674,
+      "branch_misses_per_op": 0.3016,
+      "instructions_per_cycle": 0.64
     },
     {
       "variant": "unsorted",
       "n": 102400,
-      "iterations": 1661,
+      "iterations": 1720,
       "ns_per_op": {
-        "median": 420919.9509,
-        "min": 420619.1011,
-        "p99": 421395.9991,
-        "iqr": 383.7709
+        "median": 403886.4613,
+        "min": 402801.9128,
+        "p99": 406738.4636,
+        "iqr": 2681.0913
       },
-      "ops_per_sec": 243289860,
-      "branch_misses_per_op": 0.5008,
-      "instructions_per_cycle": 0.431
+      "ops_per_sec": 253663753,
+      "branch_misses_per_op": 0.4974,
+      "instructions_per_cycle": 0.446
     },
     {
       "variant": "unsorted",
       "n": 1048576,
-      "iterations": 172,
+      "iterations": 178,
       "ns_per_op": {
-        "median": 4080661.9506,
-        "min": 4074415.1628,
-        "p99": 4084272.7166,
-        "iqr": 3828.4549
+        "median": 3889763.691,
+        "min": 3880712.3258,
+        "p99": 3949279.1154,
+        "iqr": 10472.3624
       },
-      "ops_per_sec": 256980998,
-      "branch_misses_per_op": 0.4994,
-      "instructions_per_cycle": 0.432
+      "ops_per_sec": 269589245,
+      "branch_misses_per_op": 0.5004,
+      "instructions_per_cycle": 0.452
     },
     {
       "variant": "unsorted",
       "n": 10485760,
-      "iterations": 17,
+      "iterations": 18,
       "ns_per_op": {
-        "median": 40562926.7941,
-        "min": 40487365.8824,
-        "p99": 40632485.1741,
-        "iqr": 41544.1765
+        "median": 39323508.6667,
+        "min": 39102628.5,
+        "p99": 39568657.0567,
+        "iqr": 238946.5694
       },
-      "ops_per_sec": 258562494,
+      "ops_per_sec": 266684628,
       "branch_misses_per_op": 0.5,
-      "instructions_per_cycle": 0.432
+      "instructions_per_cycle": 0.445
     },
     {
       "variant": "unsorted",
       "n": 33554432,
-      "iterations": 5,
+      "iterations": 6,
       "ns_per_op": {
-        "median": 129702773.9,
-        "min": 129429270.6,
-        "p99": 129931307.476,
-        "iqr": 130947.35
+        "median": 125265020.25,
+        "min": 123999398.5,
+        "p99": 126555510.3183,
+        "iqr": 1044889.9583
       },
-      "ops_per_sec": 258736129,
-      "branch_misses_per_op": 0.5,
-      "instructions_per_cycle": 0.432
+      "ops_per_sec": 267881234,
+      "branch_misses_per_op": 0.5001,
+      "instructions_per_cycle": 0.447
     }
   ],
   "notes": "Branch predictor learns sorted patterns; unsorted forces ~50% mispredicts."
