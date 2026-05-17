@@ -500,7 +500,9 @@ static std::string emit_json_string(const char* variant,
         ? std::to_string(offered_rate_hz)
         : "null";
 
-    char hdr[1024];
+    // Build into dynamic std::string: counts_json() alone is ~769 chars for 384 buckets,
+    // which silently truncated the old hdr[1024] and produced invalid JSON.
+    char hdr[512];  // scalar fields only — bounded; 384 chars worst-case
     std::snprintf(hdr, sizeof(hdr),
         "{"
         "\"variant\":\"%s\","
@@ -517,12 +519,7 @@ static std::string emit_json_string(const char* variant,
           "\"percentile_convention\":\"log2_bucket_midpoint\","
           "\"bucket_count\":%zu,"
           "\"min_bucket_ns\":1,"
-          "\"counts\":%s,"
-          "\"stats\":%s"
-        "},"
-        "\"top_bucket_count\":%zu,"
-        "\"calibration_drift_pct\":%.4f"
-        "}",
+          "\"counts\":",
         variant,
         mode_str,
         rate_field.c_str(),
@@ -532,13 +529,27 @@ static std::string emit_json_string(const char* variant,
         NUM_RUNS,
         median, min_ns, p99, iqr,
         ops_per_sec,
-        crucible::HISTOGRAM_BUCKET_COUNT,
-        h.counts_json().c_str(),
-        h.stats_json().c_str(),
+        crucible::HISTOGRAM_BUCKET_COUNT);
+
+    char trailer[64];
+    std::snprintf(trailer, sizeof(trailer),
+        "},"
+        "\"top_bucket_count\":%zu,"
+        "\"calibration_drift_pct\":%.4f"
+        "}",
         r.top_bucket_count,
         calibration_drift_pct);
 
-    return std::string(hdr);
+    std::string result;
+    result.reserve(512 + crucible::HISTOGRAM_BUCKET_COUNT * 8 + 256);
+    result += hdr;
+    result += h.counts_json();
+    result += ",\"stats\":";
+    result += h.stats_json();
+    result += trailer;
+
+    assert(!result.empty() && result.back() == '}');
+    return result;
 }
 
 // ─── Main ────────────────────────────────────────────────────────────────────
