@@ -75,3 +75,16 @@ CRUCIBLE_PRINT_AFFINITY=1 \
 - SMT off: `cat /sys/devices/system/cpu/smt/active` → `0` (set in BIOS)
 - `kernel.perf_event_paranoid=1`: `sudo sysctl kernel.perf_event_paranoid=1`
 - `linux-tools-$(uname -r)` installed
+
+## Re-capturing
+
+Before re-capturing, delete the existing data file so the parser produces a clean
+JSON from the patched pipeline:
+
+```bash
+rm site/src/data/perf/02-false-sharing-pnl.json
+./bench/scripts/run_one.sh 02-false-sharing
+```
+
+The first invocation in the loop will initialise the file with the canonical
+methodology notes; subsequent invocations append per-variant runs.

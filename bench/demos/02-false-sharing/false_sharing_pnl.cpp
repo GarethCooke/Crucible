@@ -228,6 +228,10 @@ static void run_benchmark(
 // ─── Registration + main ─────────────────────────────────────────────────────
 
 int main(int argc, char** argv) {
+    if (argc > 1 && std::string(argv[1]) == "--machine-info") {
+        std::cout << "{" << crucible::machine_info_json() << "}" << std::endl;
+        return 0;
+    }
     check_smt_off();
     init_fills();
 

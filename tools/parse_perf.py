@@ -22,6 +22,7 @@ import json
 import sys
 import os
 from pathlib import Path
+from datetime import datetime, timezone
 
 # Shared statistics module (bench/scripts/stats_utils.py)
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
@@ -147,6 +148,8 @@ def main():
                     choices=["intra-ccx", "cross-ccx"])
     ap.add_argument("--threads",   required=True, type=int)
     ap.add_argument("--padded",    required=True, type=int, choices=[0, 1])
+    ap.add_argument("--machine-info-json", required=True, type=Path,
+                    help="Path to JSON file produced by `<bench-binary> --machine-info`")
     args = ap.parse_args()
 
     variant     = "padded" if args.padded else "unpadded"
@@ -192,6 +195,9 @@ def main():
         ),
     }
 
+    with open(args.machine_info_json) as f:
+        machine_info = json.load(f)
+
     # Load or initialise the output JSON
     if args.out.exists():
         with open(args.out) as f:
@@ -201,10 +207,20 @@ def main():
             "demo": "02-false-sharing-pnl",
             "title": "False sharing: padded vs unpadded P&L accumulators",
             "machine": {},
-            "captured_at": "PLACEHOLDER",
+            "captured_at": "",
             "runs": [],
-            "notes": "",
+            "notes": (
+                "Captured on AMD Ryzen 7 3800X, Zen 2, governor=performance, turbo off, "
+                "SMT off, isolated cpus 1-7 (cpu0 cannot be kernel-isolated). "
+                "Fill stream: 1024 doubles (8 KB), mt19937 seed 42, uniform [-1, 1]. "
+                "Compiler: GCC 13, -O3 -march=native."
+            ),
         }
+
+    # Always overwrite machine block and stamp captured_at — both come from the
+    # current capture session, not from preserved file state.
+    data["machine"] = machine_info
+    data["captured_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     # Upsert: replace existing run matching placement+threads+variant
     runs = data.get("runs", [])

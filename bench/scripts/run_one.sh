@@ -196,6 +196,14 @@ if [[ "${SLUG}" == "02-false-sharing" ]]; then
 
     WDIR=$(mktemp -d /tmp/crucible_fs_XXXXXX)
 
+    echo "==> Collecting machine info..."
+    MACHINE_INFO_JSON="${WDIR}/machine-info.json"
+    "${FS_BINARY}" --machine-info > "${MACHINE_INFO_JSON}"
+    if ! jq -e '.cpu and .turbo != null' "${MACHINE_INFO_JSON}" > /dev/null; then
+        echo "FATAL: machine-info dump invalid; check ${FS_BINARY} --machine-info" >&2
+        exit 1
+    fi
+
     run_variant() {
         local placement="$1" threads="$2" padded="$3"
         local padded_str="unpadded"; [[ "$padded" -eq 1 ]] && padded_str="padded"
@@ -207,7 +215,8 @@ if [[ "${SLUG}" == "02-false-sharing" ]]; then
             --perf  "${WDIR}/${slug_v}.perf.json" \
             --bench "${WDIR}/${slug_v}.bench.json" \
             --out   "${OUT_JSON}" \
-            --placement "${placement}" --threads "${threads}" --padded "${padded}"
+            --placement "${placement}" --threads "${threads}" --padded "${padded}" \
+            --machine-info-json "${MACHINE_INFO_JSON}"
     }
 
     for t in 1 2 4; do
