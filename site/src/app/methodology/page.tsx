@@ -64,30 +64,19 @@ export default function MethodologyPage() {
         className="rounded-xl border p-5 mb-12 font-mono text-sm space-y-1"
         style={{ borderColor: 'var(--border-color)', background: 'var(--bg-card)', color: 'var(--text-secondary)' }}
       >
-        <div><span style={{ color: 'var(--text-muted)' }}>CPU</span>       <span className="ml-4">AMD Ryzen 7 3800X — 8 cores / 16 threads, Zen 2</span></div>
+        <div><span style={{ color: 'var(--text-muted)' }}>CPU</span>       <span className="ml-4">AMD Ryzen 7 3800X (Zen 2) — 8C/16T silicon, SMT disabled, 8 logical CPUs exposed during benchmarks</span></div>
         <div><span style={{ color: 'var(--text-muted)' }}>RAM</span>       <span className="ml-4">32 GB DDR4-3200</span></div>
         <div><span style={{ color: 'var(--text-muted)' }}>Board</span>     <span className="ml-4">ASUS ROG STRIX B550-F GAMING</span></div>
         <div><span style={{ color: 'var(--text-muted)' }}>OS</span>        <span className="ml-4">Ubuntu Server LTS (dual-boot)</span></div>
         <div><span style={{ color: 'var(--text-muted)' }}>Boot</span>      <span className="ml-4">isolcpus=0-7 nohz_full=0-7 rcu_nocbs=0-7; benchmarks pin to cores 4–7 via taskset</span></div>
         <div><span style={{ color: 'var(--text-muted)' }}>BIOS</span>      <span className="ml-4">Core Performance Boost disabled, SMT disabled</span></div>
-        <div className="pt-2 border-t" style={{ borderColor: 'var(--border-color)' }}>
-          <span style={{ color: 'var(--text-muted)' }}>ISA</span>
-          <span className="ml-4">SSE4.2 · AVX · AVX2 · FMA · <strong style={{ color: 'var(--text-primary)' }}>no AVX-512</strong></span>
-        </div>
+        <div className="pt-2 border-t" style={{ borderColor: 'var(--border-color)' }}><span style={{ color: 'var(--text-muted)' }}>ISA</span>       <span className="ml-4">SSE4.2 · AVX · AVX2 · FMA · <strong style={{ color: 'var(--text-primary)' }}>no AVX-512</strong></span></div>
       </div>
       <p className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>
         Zen 2 implements 256-bit AVX2 as two 128-bit µops — called out explicitly in any SIMD post.
         Full <code style={{ color: 'var(--cyan)' }}>lscpu --extended</code> output, kernel version, and
         compiler version are committed to the repo alongside each benchmark result.
       </p>
-      <p className="text-sm mb-12" style={{ color: 'var(--text-muted)' }}>
-        <strong style={{ color: 'var(--text-secondary)' }}>Boot parameters.</strong>{' '}
-        Cores 0–7 are isolated from the kernel scheduler&rsquo;s load-balancing domains via{' '}
-        <code>isolcpus=0-7 nohz_full=0-7 rcu_nocbs=0-7</code> boot parameters. Benchmarks pin
-        to cores 4–7 within the isolated set via <code>taskset</code>; cores 0–3 absorb residual
-        kernel housekeeping that the isolation directives don&rsquo;t redirect elsewhere.
-      </p>
-
       {/* ── Four commitments ──────────────────────────────────────────────── */}
       <h2 className="font-sans font-semibold text-sm uppercase tracking-widest mb-2" style={{ color: 'var(--text-muted)' }}>
         Four non-negotiable commitments
@@ -109,30 +98,27 @@ export default function MethodologyPage() {
         </Commitment>
         <Commitment n={3} title="Core isolation">
           Cores 0–7 are isolated at the kernel level via <code>isolcpus=0-7 nohz_full=0-7 rcu_nocbs=0-7</code>{' '}
-          boot parameters. Within that isolated set, benchmarks are additionally pinned to cores
-          4–7 via <code>taskset</code> (invoked by the per-demo wrapper scripts), with cores 0–3
-          absorbing any residual kernel housekeeping the isolation directives cannot redirect. The
-          wrapper also steers IRQ affinity to non-benchmark cores via{' '}
-          <code>/proc/irq/*/smp_affinity</code> for the duration of each run.{' '}
+          boot parameters — scoped to a dedicated GRUB entry (&ldquo;Ubuntu (benchmark &mdash; cores 0-7 isolated)&rdquo;)
+          distinct from the standard development entry. Within that isolated set, benchmarks are
+          additionally pinned to cores 4–7 via <code>taskset</code> (invoked by the per-demo wrapper
+          scripts), with cores 0–3 absorbing any residual kernel housekeeping the isolation
+          directives cannot redirect.{' '}
           SMT is disabled at the BIOS level — verified via{' '}
           <code>/sys/devices/system/cpu/smt/active</code> returning <code>0</code> and{' '}
           <code>lscpu</code> reporting 8 CPUs — to remove SMT-sibling resource sharing (L1,
-          L2, execution ports, frontend) from all measurements. Actual shielded core IDs are
-          recorded in each demo&rsquo;s JSON <code>machine.cpu_affinity</code> field.
+          L2, execution ports, frontend) from all measurements. Isolated CPU IDs are
+          recorded in each demo&rsquo;s JSON <code>machine.isolated_cpus</code> field.
           <br /><br />
           <strong style={{ color: 'var(--text-secondary)' }}>Cross-CCX results.</strong>{' '}
-          Runs that span both CCXs (cores 0–3 and 4–7) use the full kernel-isolated set:
-          the machine boots with <code>isolcpus=0-7 nohz_full=0-7 rcu_nocbs=0-7</code>,
-          so all eight cores are excluded from the scheduler&rsquo;s load-balancing domains.
-          Benchmarks pin to cores 4–7 for intra-CCX runs; cross-CCX runs additionally use
-          cores 0–3 within the isolated set. Cpu 0 still carries the system timer and other
-          unmovable kernel work that <code>isolcpus=</code> cannot fully evict, so cross-CCX
-          measurements carry slightly higher ambient noise than intra-CCX measurements and
-          are labelled accordingly in every post.
+          Cpu 0 still carries the system timer and other unmovable kernel work that{' '}
+          <code>isolcpus=</code> cannot fully evict, so cross-CCX measurements (cores 0–3
+          and 4–7 both in the isolated set) carry slightly higher ambient noise than
+          intra-CCX measurements and are labelled accordingly in every post.
         </Commitment>
         <Commitment n={4} title="Statistical reporting">
-          Each benchmark runs ≥20 repetitions after warmup. Every chart states which statistic
-          it shows:
+          Each benchmark runs ≥20 outer repetitions (Google Benchmark{' '}
+          <code>--benchmark_repetitions</code>); aggregates are computed across those
+          repetitions. Every chart states which statistic it shows:
           <ul className="mt-2 space-y-1 list-disc list-inside">
             <li><strong>Median</strong> — typical-case latency</li>
             <li><strong>Min</strong> — best the hardware can do (cache warm, predictor trained)</li>
