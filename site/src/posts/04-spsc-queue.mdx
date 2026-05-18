@@ -140,17 +140,17 @@ lock-free; the tail is what separates them.
   variants={["lockfree-handrolled", "lockfree-boost", "mutex-condvar"]}
 />
 
-Each line shows p50, p99, and p99.9 across twelve log-spaced offered-load points
-from 100 kHz to 50 MHz. The mutex variant saturates first, around 9 MHz offered
-load — its consumer can't drain fast enough beyond that and the queue fills toward
-capacity. Once saturated, latency scales as `queue_depth × consumer_period` rather
-than per-op cost plus wake-up overhead, producing the steep climb visible on the
-right of the mutex curves.
+Each line shows p50, p99, and p99.9 across twelve log-spaced offered-load points from 100 kHz to 50 MHz. There are two different saturation mechanisms visible on this chart, and they're worth separating.
 
-The lock-free variants stay flat much further. The hand-rolled implementation
-saturates around 16 MHz; Boost around 28 MHz. Their consumers spin on the
-producer's `tail_` store via cache coherence and proceed without kernel involvement,
-so they keep up until the producer's per-push cost itself becomes the bottleneck.
+**Mutex saturates around 9 MHz the way classical queueing theory predicts.** The consumer can't drain fast enough, the queue fills toward its 1024-entry capacity, and latency climbs to `queue_depth × consumer_period` — about 190 µs once depth pins at the ceiling. The mutex p50 line above 9 MHz is a near-horizontal plateau because depth is also a near-horizontal plateau at capacity.
+
+**Boost saturates around 28 MHz by the same mechanism**, just further to the right because its consumer is faster. Queue depth climbs to ~200 items at the top of the swept range; p50 climbs to ~10 µs.
+
+**The hand-rolled variant doesn't saturate this way at all.** Throughput caps at ~14.7 M/s starting around 16 MHz offered load, but p50 stays near its 132 ns floor across the entire sweep — at 50 MHz target, p50 is still 264 ns and queue depth is still ~4. Its consumer drains items so quickly that the queue never deepens. The bottleneck is the producer side: each `try_push` plus the surrounding spin and timestamp costs more than the inter-arrival period the pacer is requesting, so the achieved rate caps at the producer's own throughput. Same outcome as the others — the variant can't keep up with the offered load — but expressed as a throughput ceiling rather than a latency wall.
+
+The practical implication is the same in all three cases: offering more than the system can sustain produces dropped or delayed items. The mutex and Boost variants signal it through latency that climbs by orders of magnitude. The hand-rolled variant signals it through a hard throughput cap with latency that barely moves. Either way, sizing the consumer below the actual offered load matters more than implementation choice.
+
+One artefact worth naming: the hand-rolled p99.9 line has a single spike at the 16 MHz sweep point — about 42 µs, against a baseline of ~200 ns either side. This is the transition load where the producer occasionally hits queue-full and spins on `try_push` long enough to be counted in the tail; at lower loads the queue never fills, at higher loads the producer is consistently pacer-limited by its own cost and the queue stays small. The spike is reproducible at this offered rate but transient across the sweep — present at one point, gone at the next.
 
 One wrinkle visible on the left of the chart: the mutex p99.9 curve has a hump at
 very low offered load — its tail is _worse_ at 100 kHz than at 1 MHz. This is the
@@ -174,6 +174,8 @@ Saturated throughput: the producer runs flat-out with no pacing. The gap between
 lock-free and mutex is smaller than the tail gap — often within a small multiple.
 The mutex fast path (lock uncontested, no condvar wake-up) is cheap. The cost
 shows up as determinism, not rate.
+
+A nuance on the throughput numbers above: they reflect _steady-state_ behaviour with the producer flat-out and the queue at capacity. For Boost specifically, this slightly understates peak rate — the load sweep shows it transiently reaching ~19.8 M/s when the queue is at intermediate depth, before settling into the lower steady-state rate as the queue fills. The hand-rolled variant doesn't show this gap because its queue never reaches capacity (see the saturation discussion above). Mutex doesn't show it because its steady-state and transient rates are both bound by condvar wake-up cost, which doesn't vary with queue depth.
 
 **The lock-free win is about determinism, not raw rate.**
 
@@ -232,7 +234,7 @@ kernel-boundary cost, not queue depth. The mutex fast path is fast — its cold 
 involves a syscall and a scheduler decision, and those outliers appear precisely when
 the market is moving fastest. The load-sweep chart shows where that breakdown begins:
 the mutex p99 turns upward well before the lock-free variants, because the scheduler
-cannot keep pace before the lock-free consumer can.
+can't keep pace with the producer long before the lock-free consumer reaches its own ceiling.
 
 ---
 
