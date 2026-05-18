@@ -33,9 +33,10 @@ Producer pinned to core 4, consumer to core 5 — both on CCX1 of the Ryzen 7
 3800X, sharing an L3 slice. Same-CCX only; cross-CCX is deferred.
 
 **The producer is paced at 1 M items/sec for the headline measurements**, well
-below the sustainable throughput of any variant. This keeps the queue near-empty
-in all three cases, so reported latency reflects per-op queue cost plus (for the
-mutex variant) condvar wake-up time.
+below the sustainable throughput of any variant. The lock-free variants leave the
+queue effectively empty at this load; the mutex variant runs about 1.8 items deep
+on average. Reported latency reflects per-op queue cost plus (for the mutex variant)
+condvar wake-up time — depth contribution is under 2 µs even in the mutex case.
 
 ## The code
 
@@ -214,9 +215,9 @@ in its hot path that the 50-line version misses.
   traffic crosses the Infinity Fabric; latency increases. Deferred to a future
   topology post.
 - **MPSC / MPMC**: single-producer single-consumer only.
-- **Offered loads near saturation exhaustively**: the load-sweep section shows
-  eight points covering well below and well past saturation. Behaviour between
-  those points is interpolated, not measured.
+- **Offered loads near saturation exhaustively**: the load-sweep section covers a
+  500× range from well below to well past saturation. Behaviour between sweep
+  points is interpolated, not measured.
 - **Fixed item size**: 16-byte `MarketTick`. Queue behaviour may differ with
   larger items (cache-line straddling, prefetch patterns).
 - **The spin-check-without-condvar mutex variant**: separating wake-up cost from
@@ -225,12 +226,13 @@ in its hot path that the 50-line version misses.
 ## Takeaway
 
 The lock-free SPSC ring buffer wins on the shape of the tail. At 1 MHz offered load
-the queue is near-empty in all variants; the latency difference is the kernel boundary,
-not queue depth. The mutex fast path is fast — its cold path involves a syscall and
-a scheduler decision, and those outliers appear precisely when the market is moving
-fastest. The load-sweep chart shows where that breakdown begins: the mutex p99 turns
-upward well before the lock-free variants, because the scheduler cannot keep pace
-before the lock-free consumer can.
+the lock-free variants leave the queue effectively empty; even the mutex variant only
+carries ~1.8 items on average, so the tens-of-microseconds latency gap is
+kernel-boundary cost, not queue depth. The mutex fast path is fast — its cold path
+involves a syscall and a scheduler decision, and those outliers appear precisely when
+the market is moving fastest. The load-sweep chart shows where that breakdown begins:
+the mutex p99 turns upward well before the lock-free variants, because the scheduler
+cannot keep pace before the lock-free consumer can.
 
 ---
 

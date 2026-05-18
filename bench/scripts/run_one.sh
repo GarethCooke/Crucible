@@ -118,7 +118,7 @@ fi
 # Three measurement modes per variant:
 #   paced     — producer paced at 1 MHz; queue stays near-empty (headline latency)
 #   saturated — producer flat-out; measures peak throughput
-#   sweep     — 8 log-spaced paced runs 100 kHz→25 MHz (latency-vs-load chart)
+#   sweep     — 12 log-spaced paced runs 100 kHz→50 MHz (latency-vs-load chart)
 # Assembles all runs into a single 04-spsc-queue.json via assemble_results_04.py.
 if [[ "${SLUG}" == "04-spsc-queue" ]]; then
     SPSC_BINARY="${BENCH_ROOT}/build/demos/04-spsc-queue/bench_04_spsc_queue"
@@ -153,9 +153,9 @@ if [[ "${SLUG}" == "04-spsc-queue" ]]; then
             --mode saturated \
             | grep -v '^cset:' > "${WDIR}/${VARIANT}-saturated.json"
 
-        echo "==> Running ${VARIANT}: sweep 100kHz→25MHz, 8 steps..."
+        echo "==> Running ${VARIANT}: sweep 100kHz→50MHz, 12 steps..."
         sudo -E cset shield --exec -- "${SPSC_BINARY}" "${VARIANT}" \
-            --mode sweep --rate-from 100000 --rate-to 25000000 --steps 8 \
+            --mode sweep --rate-from 100000 --rate-to 50000000 --steps 12 \
             | grep -v '^cset:' > "${WDIR}/${VARIANT}-sweep.json"
     done
 
