@@ -12,179 +12,272 @@
     "kernel": "6.8.0-111-generic",
     "governor": "performance",
     "turbo": false,
-    "isolated_cpus": "0-7",
-    "cpu_affinity": "4-7"
+    "isolated_cpus": "1-7",
+    "isolated_cpus_requested": "0-7",
+    "isolated_cpus_effective": "1-7",
+    "isolated_cpus_source": "cmdline+probe",
+    "cpu_affinity": "4-7",
+    "lscpu_extended": "CPU NODE SOCKET CORE L1d:L1i:L2:L3 ONLINE    MAXMHZ    MINMHZ       MHZ\n  0    0      0    0 0:0:0:0          yes 4560.0552 2200.0000 3899.8579\n  1    0      0    1 1:1:1:0          yes 4560.0552 2200.0000 3900.0000\n  2    0      0    2 2:2:2:0          yes 4560.0552 2200.0000 3900.0000\n  3    0      0    3 3:3:3:0          yes 4560.0552 2200.0000 3900.0000\n  4    0      0    4 4:4:4:1          yes 4560.0552 2200.0000 3900.0000\n  5    0      0    5 5:5:5:1          yes 4560.0552 2200.0000 3900.0000\n  6    0      0    6 6:6:6:1          yes 4560.0552 2200.0000 3900.0000\n  7    0      0    7 7:7:7:1          yes 4560.0552 2200.0000 3900.0000"
   },
-  "captured_at": "2026-05-17T08:35:48Z",
+  "captured_at": "2026-05-18T05:41:18Z",
   "runs": [
+    {
+      "variant": "branchless",
+      "n": 1024,
+      "iterations": 33394,
+      "ns_per_op": {
+        "median": 20921.2534,
+        "min": 20888.1725,
+        "p99": 20969.8883,
+        "iqr": 29.0837
+      },
+      "ops_per_sec": 48948582,
+      "branch_misses_per_op": 0.0078,
+      "instructions_per_cycle": 2.994
+    },
+    {
+      "variant": "branchless",
+      "n": 10240,
+      "iterations": 26016,
+      "ns_per_op": {
+        "median": 26892.6539,
+        "min": 26839.0249,
+        "p99": 26943.8966,
+        "iqr": 35.1495
+      },
+      "ops_per_sec": 380784019,
+      "branch_misses_per_op": 0.0008,
+      "instructions_per_cycle": 3.166
+    },
+    {
+      "variant": "branchless",
+      "n": 102400,
+      "iterations": 8102,
+      "ns_per_op": {
+        "median": 86351.3188,
+        "min": 86299.529,
+        "p99": 86387.1505,
+        "iqr": 37.7544
+      },
+      "ops_per_sec": 1185937213,
+      "branch_misses_per_op": 0.0001,
+      "instructions_per_cycle": 3.189
+    },
+    {
+      "variant": "branchless",
+      "n": 1048576,
+      "iterations": 1006,
+      "ns_per_op": {
+        "median": 695445.3728,
+        "min": 695277.4364,
+        "p99": 695591.9109,
+        "iqr": 113.1737
+      },
+      "ops_per_sec": 1507886593,
+      "branch_misses_per_op": 0.0,
+      "instructions_per_cycle": 3.19
+    },
+    {
+      "variant": "branchless",
+      "n": 10485760,
+      "iterations": 100,
+      "ns_per_op": {
+        "median": 7105178.03,
+        "min": 7028911.64,
+        "p99": 7247426.7047,
+        "iqr": 17829.8425
+      },
+      "ops_per_sec": 1475895809,
+      "branch_misses_per_op": 0.0,
+      "instructions_per_cycle": 3.042
+    },
+    {
+      "variant": "branchless",
+      "n": 33554432,
+      "iterations": 31,
+      "ns_per_op": {
+        "median": 22688279.6613,
+        "min": 22515081.6129,
+        "p99": 23061543.1381,
+        "iqr": 91740.1935
+      },
+      "ops_per_sec": 1479040051,
+      "branch_misses_per_op": 0.0,
+      "instructions_per_cycle": 3.039
+    },
     {
       "variant": "sorted",
       "n": 1024,
-      "iterations": 34610,
+      "iterations": 34537,
       "ns_per_op": {
-        "median": 20297.5442,
-        "min": 20247.2943,
-        "p99": 20335.5222,
-        "iqr": 29.8378
+        "median": 20364.7577,
+        "min": 20178.5602,
+        "p99": 20450.3603,
+        "iqr": 66.8763
       },
-      "ops_per_sec": 50461507,
+      "ops_per_sec": 50306285,
       "branch_misses_per_op": 0.0088,
-      "instructions_per_cycle": 2.891
+      "instructions_per_cycle": 2.896
     },
     {
       "variant": "sorted",
       "n": 10240,
-      "iterations": 27845,
+      "iterations": 27870,
       "ns_per_op": {
-        "median": 25126.6708,
-        "min": 25064.755,
-        "p99": 25168.5009,
-        "iqr": 30.5784
+        "median": 25113.042,
+        "min": 25066.7163,
+        "p99": 25146.4313,
+        "iqr": 26.761
       },
-      "ops_per_sec": 407591165,
+      "ops_per_sec": 407875701,
       "branch_misses_per_op": 0.0009,
-      "instructions_per_cycle": 3.208
+      "instructions_per_cycle": 3.21
     },
     {
       "variant": "sorted",
       "n": 102400,
-      "iterations": 9645,
+      "iterations": 9637,
       "ns_per_op": {
-        "median": 72573.1348,
-        "min": 71759.0173,
-        "p99": 73052.8983,
-        "iqr": 432.2384
+        "median": 73046.7882,
+        "min": 72828.8366,
+        "p99": 73138.3292,
+        "iqr": 131.7776
       },
-      "ops_per_sec": 1411028822,
+      "ops_per_sec": 1401958714,
       "branch_misses_per_op": 0.0001,
-      "instructions_per_cycle": 3.244
+      "instructions_per_cycle": 3.249
     },
     {
       "variant": "sorted",
       "n": 1048576,
-      "iterations": 1268,
+      "iterations": 1272,
       "ns_per_op": {
-        "median": 550558.114,
-        "min": 547840.3257,
-        "p99": 554874.0491,
-        "iqr": 2491.9265
+        "median": 550789.4237,
+        "min": 549304.6722,
+        "p99": 553005.9041,
+        "iqr": 970.5904
       },
-      "ops_per_sec": 1905420371,
+      "ops_per_sec": 1904212876,
       "branch_misses_per_op": 0.0,
-      "instructions_per_cycle": 3.305
+      "instructions_per_cycle": 3.303
     },
     {
       "variant": "sorted",
       "n": 10485760,
-      "iterations": 118,
+      "iterations": 125,
       "ns_per_op": {
-        "median": 5815532.8517,
-        "min": 5682742.1525,
-        "p99": 5852118.0332,
-        "iqr": 30725.1907
+        "median": 5824440.056,
+        "min": 5618837.84,
+        "p99": 5993397.4754,
+        "iqr": 110081.218
       },
-      "ops_per_sec": 1803717370,
+      "ops_per_sec": 1801114981,
       "branch_misses_per_op": 0.0,
-      "instructions_per_cycle": 3.026
+      "instructions_per_cycle": 3.023
     },
     {
       "variant": "sorted",
       "n": 33554432,
-      "iterations": 35,
+      "iterations": 38,
       "ns_per_op": {
-        "median": 18525770.5,
-        "min": 18034793.6571,
-        "p99": 18676886.2583,
-        "iqr": 150396.9357
+        "median": 18549246.3289,
+        "min": 18059872.2105,
+        "p99": 19139996.4418,
+        "iqr": 314236.9539
       },
-      "ops_per_sec": 1811344044,
+      "ops_per_sec": 1809653839,
       "branch_misses_per_op": 0.0,
-      "instructions_per_cycle": 3.027
+      "instructions_per_cycle": 3.024
     },
     {
       "variant": "unsorted",
       "n": 1024,
-      "iterations": 33051,
+      "iterations": 32888,
       "ns_per_op": {
-        "median": 21210.4234,
-        "min": 21171.4036,
-        "p99": 21270.9117,
-        "iqr": 28.4329
+        "median": 21284.9295,
+        "min": 21214.8044,
+        "p99": 21326.7224,
+        "iqr": 32.3483
       },
-      "ops_per_sec": 48280134,
+      "ops_per_sec": 48110999,
       "branch_misses_per_op": 0.0127,
-      "instructions_per_cycle": 1.671
+      "instructions_per_cycle": 1.612
     },
     {
       "variant": "unsorted",
       "n": 10240,
-      "iterations": 14707,
+      "iterations": 14581,
       "ns_per_op": {
-        "median": 47292.6598,
-        "min": 47168.462,
-        "p99": 47728.0517,
-        "iqr": 210.0315
+        "median": 47857.4125,
+        "min": 47736.4299,
+        "p99": 47923.5041,
+        "iqr": 63.2916
       },
-      "ops_per_sec": 216531272,
-      "branch_misses_per_op": 0.301,
-      "instructions_per_cycle": 0.639
+      "ops_per_sec": 213990295,
+      "branch_misses_per_op": 0.3028,
+      "instructions_per_cycle": 0.626
     },
     {
       "variant": "unsorted",
       "n": 102400,
-      "iterations": 1724,
+      "iterations": 1736,
       "ns_per_op": {
-        "median": 405716.319,
-        "min": 404660.9751,
-        "p99": 407141.9472,
-        "iqr": 1148.5112
+        "median": 401916.1616,
+        "min": 401321.8047,
+        "p99": 403441.7671,
+        "iqr": 642.7144
       },
-      "ops_per_sec": 252430456,
-      "branch_misses_per_op": 0.4975,
-      "instructions_per_cycle": 0.444
+      "ops_per_sec": 254796601,
+      "branch_misses_per_op": 0.4976,
+      "instructions_per_cycle": 0.449
     },
     {
       "variant": "unsorted",
       "n": 1048576,
-      "iterations": 178,
+      "iterations": 176,
       "ns_per_op": {
-        "median": 3931881.8848,
-        "min": 3921845.6854,
-        "p99": 3960409.1049,
-        "iqr": 9781.427
+        "median": 3950212.429,
+        "min": 3940377.8068,
+        "p99": 3986346.4953,
+        "iqr": 34121.9574
       },
-      "ops_per_sec": 266735702,
+      "ops_per_sec": 265462548,
       "branch_misses_per_op": 0.5005,
-      "instructions_per_cycle": 0.447
+      "instructions_per_cycle": 0.445
     },
     {
       "variant": "unsorted",
       "n": 10485760,
       "iterations": 18,
       "ns_per_op": {
-        "median": 39414854.7778,
-        "min": 38747386.5556,
-        "p99": 39579760.2356,
-        "iqr": 330025.4861
+        "median": 38918624.0833,
+        "min": 38639921.1111,
+        "p99": 39133943.5139,
+        "iqr": 247038.2083
       },
-      "ops_per_sec": 266079845,
+      "ops_per_sec": 269708593,
       "branch_misses_per_op": 0.5,
-      "instructions_per_cycle": 0.444
+      "instructions_per_cycle": 0.45
     },
     {
       "variant": "unsorted",
       "n": 33554432,
       "iterations": 6,
       "ns_per_op": {
-        "median": 126049867.75,
-        "min": 125316374.6667,
-        "p99": 126776250.4317,
-        "iqr": 804228.6667
+        "median": 123807593.0833,
+        "min": 123529509.8333,
+        "p99": 124050840.4867,
+        "iqr": 322802.625
       },
-      "ops_per_sec": 266433036,
-      "branch_misses_per_op": 0.5001,
-      "instructions_per_cycle": 0.444
+      "ops_per_sec": 271105553,
+      "branch_misses_per_op": 0.5,
+      "instructions_per_cycle": 0.452
     }
   ],
-  "notes": "Branch predictor learns sorted patterns; unsorted forces ~50% mispredicts."
+  "notes": "Branch predictor learns sorted patterns; unsorted forces ~50% mispredicts.",
+  "sort_cost_32m": {
+    "ns_per_op": 31.0881,
+    "wall_seconds": 1.043,
+    "iterations": 3
+  }
 }
