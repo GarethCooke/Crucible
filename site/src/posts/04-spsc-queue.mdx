@@ -1,6 +1,6 @@
 ---
 title: "Same queue API. Different tail by orders of magnitude."
-date: "2026-05-14"
+date: "2026-05-18"
 summary: "End-to-end enqueue→dequeue, market-data thread to strategy thread. Lock-free SPSC vs mutex + condvar. At moderate offered load, all three variants look similar at the median. The tail and the breakdown rate are where they diverge."
 ---
 
@@ -141,14 +141,14 @@ lock-free; the tail is what separates them.
 />
 
 Each line shows p50, p99, and p99.9 across twelve log-spaced offered-load points
-from 100 kHz to 50 MHz. The mutex variant saturates first, around 6 MHz offered
-load — beyond that, its consumer can't drain fast enough and the queue fills toward
+from 100 kHz to 50 MHz. The mutex variant saturates first, around 9 MHz offered
+load — its consumer can't drain fast enough beyond that and the queue fills toward
 capacity. Once saturated, latency scales as `queue_depth × consumer_period` rather
 than per-op cost plus wake-up overhead, producing the steep climb visible on the
 right of the mutex curves.
 
 The lock-free variants stay flat much further. The hand-rolled implementation
-saturates around 16–20 MHz; Boost is similar. Their consumers spin on the
+saturates around 16 MHz; Boost around 28 MHz. Their consumers spin on the
 producer's `tail_` store via cache coherence and proceed without kernel involvement,
 so they keep up until the producer's per-push cost itself becomes the bottleneck.
 
