@@ -28,6 +28,7 @@
 #include <string>
 #include <thread>
 #include <vector>
+#include <iostream>
 
 #include <benchmark/benchmark.h>
 #include "machine_info.h"
