@@ -12,24 +12,28 @@
     "kernel": "6.8.0-111-generic",
     "governor": "performance",
     "turbo": false,
-    "isolated_cpus": "0-7",
-    "cpu_affinity": "4-7"
+    "isolated_cpus": "1-7",
+    "isolated_cpus_requested": "0-7",
+    "isolated_cpus_effective": "1-7",
+    "isolated_cpus_source": "cmdline+probe",
+    "cpu_affinity": "4-7",
+    "lscpu_extended": "CPU NODE SOCKET CORE L1d:L1i:L2:L3 ONLINE    MAXMHZ    MINMHZ       MHZ\n  0    0      0    0 0:0:0:0          yes 4560.0552 2200.0000 3894.7310\n  1    0      0    1 1:1:1:0          yes 4560.0552 2200.0000 3900.0000\n  2    0      0    2 2:2:2:0          yes 4560.0552 2200.0000 3900.0000\n  3    0      0    3 3:3:3:0          yes 4560.0552 2200.0000 3900.0000\n  4    0      0    4 4:4:4:1          yes 4560.0552 2200.0000 3900.0000\n  5    0      0    5 5:5:5:1          yes 4560.0552 2200.0000 3900.0000\n  6    0      0    6 6:6:6:1          yes 4560.0552 2200.0000 3900.0000\n  7    0      0    7 7:7:7:1          yes 4560.0552 2200.0000 3900.0000"
   },
-  "captured_at": "2026-05-17T08:31:53Z",
+  "captured_at": "2026-05-18T21:11:47Z",
   "runs": [
     {
       "variant": "avx2fma",
       "n": 1024,
-      "iterations": 28580,
+      "iterations": 28016,
       "ns_per_op": {
-        "median": 24506.7763,
-        "min": 24468.339,
-        "p99": 24573.2415,
-        "iqr": 25.3384
+        "median": 24957.8428,
+        "min": 24901.1001,
+        "p99": 25000.0893,
+        "iqr": 26.0859
       },
-      "ops_per_sec": 41785558,
+      "ops_per_sec": 41034676,
       "instructions_per_cycle": 0.91,
-      "gflops": 5.223,
+      "gflops": 5.129,
       "max_abs_error_vs_scalar_libm": 5.817e-05,
       "variant_isa": "avx2+fma",
       "compile_flags": "-O3 -mavx -mavx2 -mfma"
@@ -37,16 +41,16 @@
     {
       "variant": "avx2fma",
       "n": 16384,
-      "iterations": 7363,
+      "iterations": 7328,
       "ns_per_op": {
-        "median": 95036.6699,
-        "min": 94986.2963,
-        "p99": 95075.1121,
-        "iqr": 29.7262
+        "median": 95523.1772,
+        "min": 95443.3736,
+        "p99": 95549.6732,
+        "iqr": 24.5634
       },
-      "ops_per_sec": 172397803,
-      "instructions_per_cycle": 0.909,
-      "gflops": 21.55,
+      "ops_per_sec": 171522110,
+      "instructions_per_cycle": 0.91,
+      "gflops": 21.44,
       "max_abs_error_vs_scalar_libm": 5.817e-05,
       "variant_isa": "avx2+fma",
       "compile_flags": "-O3 -mavx -mavx2 -mfma"
@@ -54,16 +58,16 @@
     {
       "variant": "avx2fma",
       "n": 262144,
-      "iterations": 573,
+      "iterations": 572,
       "ns_per_op": {
-        "median": 1221544.4075,
-        "min": 1221317.7679,
-        "p99": 1221835.2147,
-        "iqr": 232.9847
+        "median": 1222957.6495,
+        "min": 1222659.5175,
+        "p99": 1223198.1157,
+        "iqr": 225.4336
       },
-      "ops_per_sec": 214604231,
-      "instructions_per_cycle": 0.91,
-      "gflops": 26.826,
+      "ops_per_sec": 214361003,
+      "instructions_per_cycle": 0.909,
+      "gflops": 26.795,
       "max_abs_error_vs_scalar_libm": 5.817e-05,
       "variant_isa": "avx2+fma",
       "compile_flags": "-O3 -mavx -mavx2 -mfma"
@@ -73,14 +77,14 @@
       "n": 1048576,
       "iterations": 145,
       "ns_per_op": {
-        "median": 4839269.9138,
-        "min": 4837684.9655,
-        "p99": 4840670.2148,
-        "iqr": 1517.8966
+        "median": 4840352.9897,
+        "min": 4839486.0759,
+        "p99": 4841306.6857,
+        "iqr": 550.3241
       },
-      "ops_per_sec": 216689879,
+      "ops_per_sec": 216645894,
       "instructions_per_cycle": 0.909,
-      "gflops": 27.086,
+      "gflops": 27.081,
       "max_abs_error_vs_scalar_libm": 5.817e-05,
       "variant_isa": "avx2+fma",
       "compile_flags": "-O3 -mavx -mavx2 -mfma"
@@ -90,14 +94,14 @@
       "n": 1024,
       "iterations": 11646,
       "ns_per_op": {
-        "median": 60081.9972,
-        "min": 59988.7734,
-        "p99": 60177.0735,
-        "iqr": 55.9595
+        "median": 60261.31,
+        "min": 60150.9535,
+        "p99": 60403.9892,
+        "iqr": 74.7647
       },
-      "ops_per_sec": 17044174,
-      "instructions_per_cycle": 1.946,
-      "gflops": 1.67,
+      "ops_per_sec": 16993902,
+      "instructions_per_cycle": 1.941,
+      "gflops": 1.665,
       "max_abs_error_vs_scalar_libm": 0.0,
       "variant_isa": "sse4.2",
       "compile_flags": "-O3 -fno-tree-vectorize -mno-avx -mno-avx2 -mno-fma -msse4.2"
@@ -105,16 +109,16 @@
     {
       "variant": "scalarlibm",
       "n": 16384,
-      "iterations": 875,
+      "iterations": 876,
       "ns_per_op": {
-        "median": 800003.872,
-        "min": 799859.5211,
-        "p99": 800429.2727,
-        "iqr": 117.2503
+        "median": 799407.3379,
+        "min": 799222.105,
+        "p99": 799572.3917,
+        "iqr": 148.5205
       },
-      "ops_per_sec": 20481081,
-      "instructions_per_cycle": 1.626,
-      "gflops": 2.007,
+      "ops_per_sec": 20496241,
+      "instructions_per_cycle": 1.628,
+      "gflops": 2.009,
       "max_abs_error_vs_scalar_libm": 0.0,
       "variant_isa": "sse4.2",
       "compile_flags": "-O3 -fno-tree-vectorize -mno-avx -mno-avx2 -mno-fma -msse4.2"
@@ -124,14 +128,14 @@
       "n": 262144,
       "iterations": 56,
       "ns_per_op": {
-        "median": 12513987.9554,
-        "min": 12513162.125,
-        "p99": 12517285.3709,
-        "iqr": 1103.1696
+        "median": 12509188.3125,
+        "min": 12507043.7679,
+        "p99": 12512409.8621,
+        "iqr": 2727.5625
       },
-      "ops_per_sec": 20948669,
-      "instructions_per_cycle": 1.625,
-      "gflops": 2.053,
+      "ops_per_sec": 20956509,
+      "instructions_per_cycle": 1.626,
+      "gflops": 2.054,
       "max_abs_error_vs_scalar_libm": 0.0,
       "variant_isa": "sse4.2",
       "compile_flags": "-O3 -fno-tree-vectorize -mno-avx -mno-avx2 -mno-fma -msse4.2"
@@ -141,14 +145,14 @@
       "n": 1048576,
       "iterations": 14,
       "ns_per_op": {
-        "median": 50009435.6786,
-        "min": 50001935.0714,
-        "p99": 50019540.1421,
-        "iqr": 4807.1786
+        "median": 49977089.2143,
+        "min": 49962599.0714,
+        "p99": 49986911.07,
+        "iqr": 7209.7321
       },
-      "ops_per_sec": 20968703,
-      "instructions_per_cycle": 1.625,
-      "gflops": 2.055,
+      "ops_per_sec": 20983161,
+      "instructions_per_cycle": 1.626,
+      "gflops": 2.056,
       "max_abs_error_vs_scalar_libm": 0.0,
       "variant_isa": "sse4.2",
       "compile_flags": "-O3 -fno-tree-vectorize -mno-avx -mno-avx2 -mno-fma -msse4.2"
@@ -156,16 +160,16 @@
     {
       "variant": "scalarpoly",
       "n": 1024,
-      "iterations": 11379,
+      "iterations": 11324,
       "ns_per_op": {
-        "median": 61465.7486,
-        "min": 61435.4102,
-        "p99": 61540.5423,
-        "iqr": 40.839
+        "median": 61866.971,
+        "min": 61765.0495,
+        "p99": 61949.5958,
+        "iqr": 70.3572
       },
-      "ops_per_sec": 16660631,
-      "instructions_per_cycle": 1.544,
-      "gflops": 1.633,
+      "ops_per_sec": 16554104,
+      "instructions_per_cycle": 1.546,
+      "gflops": 1.622,
       "max_abs_error_vs_scalar_libm": 6.485e-05,
       "variant_isa": "sse4.2",
       "compile_flags": "-O3 -fno-tree-vectorize -mno-avx -mno-avx2 -mno-fma -msse4.2"
@@ -173,16 +177,16 @@
     {
       "variant": "scalarpoly",
       "n": 16384,
-      "iterations": 977,
+      "iterations": 973,
       "ns_per_op": {
-        "median": 716469.0553,
-        "min": 716351.3818,
-        "p99": 716972.0668,
-        "iqr": 89.0706
+        "median": 719550.444,
+        "min": 719072.2467,
+        "p99": 720829.6184,
+        "iqr": 546.6184
       },
-      "ops_per_sec": 22868337,
-      "instructions_per_cycle": 1.477,
-      "gflops": 2.241,
+      "ops_per_sec": 22772129,
+      "instructions_per_cycle": 1.472,
+      "gflops": 2.232,
       "max_abs_error_vs_scalar_libm": 6.485e-05,
       "variant_isa": "sse4.2",
       "compile_flags": "-O3 -fno-tree-vectorize -mno-avx -mno-avx2 -mno-fma -msse4.2"
@@ -192,14 +196,14 @@
       "n": 262144,
       "iterations": 62,
       "ns_per_op": {
-        "median": 11210127.2823,
-        "min": 11207819.0968,
-        "p99": 11212941.1052,
-        "iqr": 1674.6169
+        "median": 11242747.6613,
+        "min": 11238509.5968,
+        "p99": 11249242.4344,
+        "iqr": 3213.125
       },
-      "ops_per_sec": 23385580,
-      "instructions_per_cycle": 1.471,
-      "gflops": 2.292,
+      "ops_per_sec": 23318063,
+      "instructions_per_cycle": 1.466,
+      "gflops": 2.285,
       "max_abs_error_vs_scalar_libm": 6.485e-05,
       "variant_isa": "sse4.2",
       "compile_flags": "-O3 -fno-tree-vectorize -mno-avx -mno-avx2 -mno-fma -msse4.2"
@@ -209,14 +213,14 @@
       "n": 1048576,
       "iterations": 16,
       "ns_per_op": {
-        "median": 44812414.0,
-        "min": 44807564.5625,
-        "p99": 44860921.9487,
-        "iqr": 4062.6406
+        "median": 44922965.0313,
+        "min": 44898026.6875,
+        "p99": 44953690.3225,
+        "iqr": 13037.0625
       },
-      "ops_per_sec": 23400500,
-      "instructions_per_cycle": 1.47,
-      "gflops": 2.293,
+      "ops_per_sec": 23342931,
+      "instructions_per_cycle": 1.466,
+      "gflops": 2.288,
       "max_abs_error_vs_scalar_libm": 6.485e-05,
       "variant_isa": "sse4.2",
       "compile_flags": "-O3 -fno-tree-vectorize -mno-avx -mno-avx2 -mno-fma -msse4.2"
@@ -224,16 +228,16 @@
     {
       "variant": "sse2",
       "n": 1024,
-      "iterations": 22983,
+      "iterations": 22631,
       "ns_per_op": {
-        "median": 30402.5653,
-        "min": 30377.0071,
-        "p99": 30466.3237,
-        "iqr": 36.7945
+        "median": 30871.5129,
+        "min": 30792.0234,
+        "p99": 30981.4522,
+        "iqr": 47.2053
       },
-      "ops_per_sec": 33684932,
+      "ops_per_sec": 33179802,
       "instructions_per_cycle": 1.212,
-      "gflops": 4.211,
+      "gflops": 4.147,
       "max_abs_error_vs_scalar_libm": 6.485e-05,
       "variant_isa": "sse4.2",
       "compile_flags": "-O3 -msse4.2 -mno-avx -mno-avx2 -mno-fma"
@@ -241,16 +245,16 @@
     {
       "variant": "sse2",
       "n": 16384,
-      "iterations": 3692,
+      "iterations": 3682,
       "ns_per_op": {
-        "median": 189595.0328,
-        "min": 189563.1934,
-        "p99": 189638.6391,
-        "iqr": 27.8428
+        "median": 190108.6357,
+        "min": 190044.6401,
+        "p99": 190143.9474,
+        "iqr": 31.8012
       },
-      "ops_per_sec": 86417804,
+      "ops_per_sec": 86185314,
       "instructions_per_cycle": 1.214,
-      "gflops": 10.802,
+      "gflops": 10.773,
       "max_abs_error_vs_scalar_libm": 6.485e-05,
       "variant_isa": "sse4.2",
       "compile_flags": "-O3 -msse4.2 -mno-avx -mno-avx2 -mno-fma"
@@ -260,14 +264,14 @@
       "n": 262144,
       "iterations": 256,
       "ns_per_op": {
-        "median": 2736603.377,
-        "min": 2736071.3086,
-        "p99": 2737320.4416,
-        "iqr": 544.1074
+        "median": 2737641.0332,
+        "min": 2737282.1289,
+        "p99": 2737922.2146,
+        "iqr": 190.3555
       },
-      "ops_per_sec": 95796817,
+      "ops_per_sec": 95757906,
       "instructions_per_cycle": 1.213,
-      "gflops": 11.975,
+      "gflops": 11.97,
       "max_abs_error_vs_scalar_libm": 6.485e-05,
       "variant_isa": "sse4.2",
       "compile_flags": "-O3 -msse4.2 -mno-avx -mno-avx2 -mno-fma"
@@ -277,18 +281,18 @@
       "n": 1048576,
       "iterations": 64,
       "ns_per_op": {
-        "median": 10898923.7969,
-        "min": 10895640.5625,
-        "p99": 10902200.7147,
-        "iqr": 2447.2695
+        "median": 10901089.2812,
+        "min": 10897340.3906,
+        "p99": 10904202.0786,
+        "iqr": 1617.0313
       },
-      "ops_per_sec": 96213758,
+      "ops_per_sec": 96196277,
       "instructions_per_cycle": 1.213,
-      "gflops": 12.027,
+      "gflops": 12.025,
       "max_abs_error_vs_scalar_libm": 6.485e-05,
       "variant_isa": "sse4.2",
       "compile_flags": "-O3 -msse4.2 -mno-avx -mno-avx2 -mno-fma"
     }
   ],
-  "notes": "Four variants of European call option pricing under Black-Scholes. Speedup decomposed into algorithm gate (poly vs libm, 12%) and SIMD width (SSE 4-wide, AVX2+FMA 8-wide). Zen 2 \u03bcop-split visible in IPC (SSE 1.21, AVX2 0.91); FMA recovers most of the lost width. AVX2/SSE = 1.995\u00d7 at N=16k, 2.252\u00d7 at N=1M."
+  "notes": "Four variants of European call option pricing under Black-Scholes. Speedup decomposed into algorithm win (poly vs libm) and SIMD width win (SSE 4-wide \u2192 AVX2+FMA 8-wide). Zen 2 \u03bcop-split: AVX2/SSE < 2\u00d7 predicted."
 }
