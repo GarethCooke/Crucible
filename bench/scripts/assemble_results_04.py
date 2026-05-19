@@ -74,6 +74,29 @@ def load_runs(vpath: Path, tag: str) -> list:
     return data
 
 
+def _build_notes(runs: list) -> str:
+    sweep_runs = [r for r in runs if r.get("mode") == "sweep"]
+    sweep_suffix = ""
+    if sweep_runs:
+        rates = [r["offered_rate_hz"] for r in sweep_runs if r.get("offered_rate_hz") is not None]
+        if rates:
+            variants = {r.get("variant") for r in sweep_runs}
+            step_count = len(sweep_runs) // len(variants) if variants else len(sweep_runs)
+            sweep_suffix = (
+                f" Sweep: {step_count} log-spaced steps "
+                f"{min(rates)/1000:.0f} kHz→{max(rates)/1e6:.0f} MHz."
+            )
+    return (
+        "Producer pinned to core 4, consumer to core 5 (both CCX1 on Zen 2 3800X). "
+        "Same-CCX only — cross-CCX deferred. "
+        "Latency definition: rdtscp immediately before push → rdtscp immediately "
+        "after pop returns true, both outside synchronisation primitive. "
+        "5 × 1M items per run; histograms merged. "
+        "Paced mode: 1 MHz offered load."
+        + sweep_suffix
+    )
+
+
 def main() -> None:
     if len(sys.argv) != 5:
         print(__doc__, file=sys.stderr)
@@ -102,14 +125,7 @@ def main() -> None:
         "machine":     machine,
         "captured_at": captured_at,
         "runs":        runs,
-        "notes":       (
-            "Producer pinned to core 4, consumer to core 5 (both CCX1 on Zen 2 3800X). "
-            "Same-CCX only — cross-CCX deferred. "
-            "Latency definition: rdtscp immediately before push → rdtscp immediately "
-            "after pop returns true, both outside synchronisation primitive. "
-            "5 × 1M items per run; histograms merged. "
-            "Paced mode: 1 MHz offered load. Sweep: 8 log-spaced steps 100 kHz→25 MHz."
-        ),
+        "notes":       _build_notes(runs),
     }
 
     os.makedirs(out_path.parent, exist_ok=True)

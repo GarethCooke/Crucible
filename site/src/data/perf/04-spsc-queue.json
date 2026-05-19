@@ -17621,5 +17621,5 @@
       "calibration_drift_pct": 0.0
     }
   ],
-  "notes": "Producer pinned to core 4, consumer to core 5 (both CCX1 on Zen 2 3800X). Same-CCX only \u2014 cross-CCX deferred. Latency definition: rdtscp immediately before push \u2192 rdtscp immediately after pop returns true, both outside synchronisation primitive. 5 \u00d7 1M items per run; histograms merged. Paced mode: 1 MHz offered load. Sweep: 8 log-spaced steps 100 kHz\u219225 MHz."
+  "notes": "Producer pinned to core 4, consumer to core 5 (both CCX1 on Zen 2 3800X). Same-CCX only \u2014 cross-CCX deferred. Latency definition: rdtscp immediately before push \u2192 rdtscp immediately after pop returns true, both outside synchronisation primitive. 5 \u00d7 1M items per run; histograms merged. Paced mode: 1 MHz offered load. Sweep: 12 log-spaced steps 100 kHz\u219250 MHz."
 }

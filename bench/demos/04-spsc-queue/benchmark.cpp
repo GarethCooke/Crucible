@@ -738,7 +738,8 @@ int main(int argc, char* argv[]) {
             std::fprintf(stderr, "  sweep step %d/%d: %.0f Hz\n", s + 1, n, static_cast<double>(rate));
 
             const RunResult r = run_variant(variant, ns_per_cycle, rate, &wv);
-            const double drift = 0.0;  // per-step drift omitted; calibrate once outside loop
+            const double ns_per_cycle_step = calibrate_tsc();
+            const double drift = std::abs(ns_per_cycle_step - ns_per_cycle) / ns_per_cycle * 100.0;
 
             output += emit_json_string(argv[1], "sweep", rate, r, ns_per_cycle, drift);
             if (s + 1 < n) output += ",\n";
