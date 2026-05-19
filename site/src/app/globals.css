@@ -331,13 +331,12 @@ html.light .shiki span {
   font-weight: var(--shiki-light-font-weight, inherit) !important;
 }
 
-/* MDX prose code blocks (rehype-pretty-code) in light mode */
-html.light [data-rehype-pretty-code-figure] pre {
-  background: var(--bg-card) !important;
-}
-html.light [data-rehype-pretty-code-figure] code span {
-  color: var(--shiki-light) !important;
-}
+/* rehype-pretty-code dual-theme blocks: hide inactive theme                   */
+/* dark (default): show [data-theme=dark], hide [data-theme=light]             */
+[data-rehype-pretty-code-figure] pre[data-theme='light'] { display: none; }
+/* light mode: swap                                                             */
+html.light [data-rehype-pretty-code-figure] pre[data-theme='dark']  { display: none; }
+html.light [data-rehype-pretty-code-figure] pre[data-theme='light'] { display: block; }
 
 /* ── Animation ────────────────────────────────────────────────────────────── */
 @keyframes fadeUp {
