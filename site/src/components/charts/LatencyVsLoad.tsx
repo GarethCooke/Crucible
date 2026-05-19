@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react'
 import * as d3 from 'd3'
 import { colors, typography, palette } from './theme'
+import { ChartZoom } from './ChartZoom'
 
 // ─── Data types ───────────────────────────────────────────────────────────────
 
@@ -81,14 +82,16 @@ export function LatencyVsLoadChart({ runs, variants }: Props) {
   }, [runs, variants])
 
   return (
-    <figure className="my-8">
-      <div
-        className="rounded-xl border overflow-hidden"
-        style={{ background: colors.bg, borderColor: colors.border }}
-      >
-        <svg ref={ref} className="w-full" style={{ display: 'block' }} />
-      </div>
-    </figure>
+    <ChartZoom>
+      <figure className="my-8">
+        <div
+          className="rounded-xl border overflow-hidden"
+          style={{ background: colors.bg, borderColor: colors.border }}
+        >
+          <svg ref={ref} className="w-full" style={{ display: 'block' }} />
+        </div>
+      </figure>
+    </ChartZoom>
   )
 }
 

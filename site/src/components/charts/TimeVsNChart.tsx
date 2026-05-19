@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react'
 import * as d3 from 'd3'
 import { colors, typography, variantColor } from './theme'
+import { ChartZoom } from './ChartZoom'
 
 export interface TimeVsNRun {
   variant: string
@@ -26,19 +27,21 @@ export function TimeVsNChart({ runs, stat = 'median', title }: Props) {
   }, [runs, stat])
 
   return (
-    <figure className="my-8">
-      {title && (
-        <figcaption className="text-xs mb-3 font-mono" style={{ color: colors.textMuted }}>
-          {title}
-        </figcaption>
-      )}
-      <div
-        className="rounded-xl border overflow-hidden"
-        style={{ background: colors.bg, borderColor: colors.border }}
-      >
-        <svg ref={ref} className="w-full" style={{ display: 'block' }} />
-      </div>
-    </figure>
+    <ChartZoom>
+      <figure className="my-8">
+        {title && (
+          <figcaption className="text-xs mb-3 font-mono" style={{ color: colors.textMuted }}>
+            {title}
+          </figcaption>
+        )}
+        <div
+          className="rounded-xl border overflow-hidden"
+          style={{ background: colors.bg, borderColor: colors.border }}
+        >
+          <svg ref={ref} className="w-full" style={{ display: 'block' }} />
+        </div>
+      </figure>
+    </ChartZoom>
   )
 }
 

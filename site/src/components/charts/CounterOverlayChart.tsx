@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react'
 import * as d3 from 'd3'
 import { colors, typography, variantColor } from './theme'
+import { ChartZoom } from './ChartZoom'
 
 export interface CounterRun {
   variant: string
@@ -43,19 +44,21 @@ export function CounterOverlayChart({ runs, metric, title }: Props) {
   }, [runs, metric])
 
   return (
-    <figure className="my-8">
-      {title && (
-        <figcaption className="text-xs mb-3 font-mono" style={{ color: colors.textMuted }}>
-          {title}
-        </figcaption>
-      )}
-      <div
-        className="rounded-xl border overflow-hidden"
-        style={{ background: colors.bg, borderColor: colors.border }}
-      >
-        <svg ref={ref} className="w-full" style={{ display: 'block' }} />
-      </div>
-    </figure>
+    <ChartZoom>
+      <figure className="my-8">
+        {title && (
+          <figcaption className="text-xs mb-3 font-mono" style={{ color: colors.textMuted }}>
+            {title}
+          </figcaption>
+        )}
+        <div
+          className="rounded-xl border overflow-hidden"
+          style={{ background: colors.bg, borderColor: colors.border }}
+        >
+          <svg ref={ref} className="w-full" style={{ display: 'block' }} />
+        </div>
+      </figure>
+    </ChartZoom>
   )
 }
 
@@ -230,19 +233,21 @@ export function BranchMissOverlayChart({ runs, title }: { runs: BranchMissRun[];
   }, [runs])
 
   return (
-    <figure className="my-8">
-      {title && (
-        <figcaption className="text-xs mb-3 font-mono" style={{ color: colors.textMuted }}>
-          {title}
-        </figcaption>
-      )}
-      <div
-        className="rounded-xl border overflow-hidden"
-        style={{ background: colors.bg, borderColor: colors.border }}
-      >
-        <svg ref={ref} className="w-full" style={{ display: 'block' }} />
-      </div>
-    </figure>
+    <ChartZoom>
+      <figure className="my-8">
+        {title && (
+          <figcaption className="text-xs mb-3 font-mono" style={{ color: colors.textMuted }}>
+            {title}
+          </figcaption>
+        )}
+        <div
+          className="rounded-xl border overflow-hidden"
+          style={{ background: colors.bg, borderColor: colors.border }}
+        >
+          <svg ref={ref} className="w-full" style={{ display: 'block' }} />
+        </div>
+      </figure>
+    </ChartZoom>
   )
 }
 
