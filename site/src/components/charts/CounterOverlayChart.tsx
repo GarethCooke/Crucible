@@ -3,8 +3,10 @@
 import { useEffect, useRef } from 'react'
 import * as d3 from 'd3'
 import { getColors, typography, variantColor } from './theme'
+import { appendGrid, appendLegendRects } from './d3helpers'
 import { useTheme } from '@/hooks/useTheme'
 import { ChartZoom } from './ChartZoom'
+import { ChartShell } from './ChartShell'
 
 export interface CounterRun {
   variant: string
@@ -46,23 +48,9 @@ export function CounterOverlayChart({ runs, metric, title }: Props) {
     render(ref.current, runs, metric)
   }, [runs, metric, theme])
 
-  const colors = getColors()
-
   return (
     <ChartZoom>
-      <figure className="my-8">
-        {title && (
-          <figcaption className="text-xs mb-3 font-mono" style={{ color: colors.textMuted }}>
-            {title}
-          </figcaption>
-        )}
-        <div
-          className="rounded-xl border overflow-hidden"
-          style={{ background: colors.bg, borderColor: colors.border }}
-        >
-          <svg ref={ref} className="w-full" style={{ display: 'block' }} />
-        </div>
-      </figure>
+      <ChartShell ref={ref} title={title} ariaLabel={title ?? METRIC_LABELS[metric]} />
     </ChartZoom>
   )
 }
@@ -102,22 +90,8 @@ function render(el: SVGSVGElement, runs: CounterRun[], metric: Metric) {
   const vals = runs.map((r) => r.counters[metric])
   const y = d3.scaleLinear().domain([0, d3.max(vals)! * 1.3]).range([inner.h, 0]).nice()
 
-  // Grid
-  g.append('g')
-    .call(
-      d3.axisLeft(y)
-        .ticks(5)
-        .tickSize(-inner.w)
-        .tickFormat(() => '')
-    )
-    .call((sel) => sel.select('.domain').remove())
-    .call((sel) =>
-      sel.selectAll('line')
-        .attr('stroke', colors.border)
-        .attr('stroke-dasharray', '3,3')
-    )
+  appendGrid(g, y, inner, { gridline: colors.border })
 
-  // Bars
   const grouped = d3.group(runs, (d) => d.threads)
   grouped.forEach((threadRuns, threads) => {
     const gx = x0(`${threads}t`)!
@@ -137,7 +111,6 @@ function render(el: SVGSVGElement, runs: CounterRun[], metric: Metric) {
         .attr('rx', 4)
         .attr('opacity', 0.9)
 
-      // Value label
       g.append('text')
         .attr('x', bx + bw / 2)
         .attr('y', by - 6)
@@ -148,7 +121,6 @@ function render(el: SVGSVGElement, runs: CounterRun[], metric: Metric) {
     })
   })
 
-  // X axis
   g.append('g')
     .attr('transform', `translate(0,${inner.h})`)
     .call(d3.axisBottom(x0).tickSize(0))
@@ -160,7 +132,6 @@ function render(el: SVGSVGElement, runs: CounterRun[], metric: Metric) {
         .attr('dy', '1.4em')
     )
 
-  // X axis label
   svg.append('text')
     .attr('x', margin.left + inner.w / 2)
     .attr('y', H - 8)
@@ -170,7 +141,6 @@ function render(el: SVGSVGElement, runs: CounterRun[], metric: Metric) {
     .attr('font-family', typography.fontMono)
     .text('threads')
 
-  // Y axis
   const yFormat = metric === 'cache_miss_ratio'
     ? (v: d3.NumberValue) => `${(+v * 100).toFixed(0)}%`
     : (v: d3.NumberValue) => `${v}`
@@ -184,7 +154,6 @@ function render(el: SVGSVGElement, runs: CounterRun[], metric: Metric) {
     )
     .call((sel) => sel.selectAll('line').remove())
 
-  // Y axis label
   svg.append('text')
     .attr('transform', 'rotate(-90)')
     .attr('x', -(margin.top + inner.h / 2))
@@ -195,7 +164,6 @@ function render(el: SVGSVGElement, runs: CounterRun[], metric: Metric) {
     .attr('font-family', typography.fontMono)
     .text(METRIC_LABELS[metric])
 
-  // Tooltip title
   svg.append('text')
     .attr('x', margin.left)
     .attr('y', margin.top - 10)
@@ -204,27 +172,10 @@ function render(el: SVGSVGElement, runs: CounterRun[], metric: Metric) {
     .attr('font-family', typography.fontMono)
     .text(METRIC_LABELS[metric])
 
-  // Legend
-  const legendX = margin.left + inner.w + 8
-  ;[
+  appendLegendRects(svg, [
     { label: 'Unpadded', color: variantColor('unpadded') },
     { label: 'Padded',   color: variantColor('padded') },
-  ].forEach(({ label, color }, i) => {
-    svg.append('rect')
-      .attr('x', legendX)
-      .attr('y', margin.top + i * 18)
-      .attr('width', 10)
-      .attr('height', 10)
-      .attr('fill', color)
-      .attr('rx', 2)
-    svg.append('text')
-      .attr('x', legendX + 14)
-      .attr('y', margin.top + i * 18 + 9)
-      .attr('font-size', 10)
-      .attr('fill', colors.textSecondary)
-      .attr('font-family', typography.fontMono)
-      .text(label)
-  })
+  ], { x: margin.left + inner.w + 8, y: margin.top }, { textSecondary: colors.textSecondary })
 }
 
 // ─── Branch-miss overlay (branch-prediction demo) ────────────────────────────
@@ -240,23 +191,9 @@ export function BranchMissOverlayChart({ runs, title }: { runs: BranchMissRun[];
     renderBranchMiss(ref.current, runs)
   }, [runs, theme])
 
-  const colors = getColors()
-
   return (
     <ChartZoom>
-      <figure className="my-8">
-        {title && (
-          <figcaption className="text-xs mb-3 font-mono" style={{ color: colors.textMuted }}>
-            {title}
-          </figcaption>
-        )}
-        <div
-          className="rounded-xl border overflow-hidden"
-          style={{ background: colors.bg, borderColor: colors.border }}
-        >
-          <svg ref={ref} className="w-full" style={{ display: 'block' }} />
-        </div>
-      </figure>
+      <ChartShell ref={ref} title={title} ariaLabel={title ?? 'Branch miss rate'} />
     </ChartZoom>
   )
 }
@@ -280,13 +217,8 @@ function renderBranchMiss(el: SVGSVGElement, runs: BranchMissRun[]) {
   const x = d3.scaleBand().domain(runs.map((r) => r.variant)).range([0, inner.w]).padding(0.45)
   const y = d3.scaleLinear().domain([0, 0.55]).range([inner.h, 0]).nice()
 
-  // Grid
-  g.append('g')
-    .call(d3.axisLeft(y).ticks(5).tickSize(-inner.w).tickFormat(() => ''))
-    .call((sel) => sel.select('.domain').remove())
-    .call((sel) => sel.selectAll('line').attr('stroke', colors.border).attr('stroke-dasharray', '3,3'))
+  appendGrid(g, y, inner, { gridline: colors.border })
 
-  // Bars
   g.selectAll('.bar')
     .data(runs)
     .join('rect')
@@ -299,7 +231,6 @@ function renderBranchMiss(el: SVGSVGElement, runs: BranchMissRun[]) {
     .attr('rx', 4)
     .attr('opacity', 0.9)
 
-  // Value labels
   g.selectAll('.bar-label')
     .data(runs)
     .join('text')
@@ -311,7 +242,6 @@ function renderBranchMiss(el: SVGSVGElement, runs: BranchMissRun[]) {
     .attr('fill', colors.textPrimary)
     .text((d) => `${(d.branch_misses_per_op * 100).toFixed(1)}%`)
 
-  // X axis
   g.append('g')
     .attr('transform', `translate(0,${inner.h})`)
     .call(d3.axisBottom(x).tickSize(0))
@@ -324,14 +254,12 @@ function renderBranchMiss(el: SVGSVGElement, runs: BranchMissRun[]) {
         .text((d) => (d as string).charAt(0).toUpperCase() + (d as string).slice(1))
     )
 
-  // Y axis — formatted as percentage
   g.append('g')
     .call(d3.axisLeft(y).ticks(5).tickFormat((v) => `${(+v * 100).toFixed(0)}%`))
     .call((sel) => sel.select('.domain').remove())
     .call((sel) => sel.selectAll('text').attr('font-size', typography.axisSize).attr('fill', colors.textMuted))
     .call((sel) => sel.selectAll('line').remove())
 
-  // Y axis label
   svg.append('text')
     .attr('transform', 'rotate(-90)')
     .attr('x', -(margin.top + inner.h / 2))
@@ -342,7 +270,6 @@ function renderBranchMiss(el: SVGSVGElement, runs: BranchMissRun[]) {
     .attr('font-family', typography.fontMono)
     .text('branch misses / op')
 
-  // Footer label
   svg.append('text')
     .attr('x', margin.left + inner.w / 2)
     .attr('y', H - 8)

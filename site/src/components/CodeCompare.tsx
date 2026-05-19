@@ -1,5 +1,6 @@
 import { codeToHtml } from 'shiki'
 import { CodeComparePanels } from './CodeComparePanels'
+import { SYNTAX_THEME } from '@/lib/syntax'
 
 interface CodeCompareProps {
   lang?: string
@@ -19,7 +20,7 @@ export async function CodeCompare({
   const sharedOpts = {
     lang,
     themes: {
-      dark:  'github-dark-dimmed',
+      dark:  SYNTAX_THEME,
       light: 'github-light',
     } as const,
     transformers: [

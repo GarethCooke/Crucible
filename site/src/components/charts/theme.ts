@@ -49,3 +49,8 @@ export function variantColor(variant: string): string {
   if (variant in palette) return palette[variant as keyof typeof palette] as string
   return palette.series[0]
 }
+
+// Maps a numeric index to a series colour, cycling through the palette.
+export function variantColorByIndex(idx: number): string {
+  return palette.series[idx % palette.series.length] as string
+}

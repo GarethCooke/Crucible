@@ -309,6 +309,14 @@ body {
   padding-left: calc(1.5rem - 2px);
 }
 
+/* CodeCompare path (Shiki direct via highlightLines prop) */
+.highlighted {
+  background: oklch(65% 0.18 222 / 0.08);
+  border-left: 2px solid var(--cyan);
+  margin-left: -1.5rem;
+  padding-left: calc(1.5rem - 2px);
+}
+
 /* ── Shiki dual-theme switch ─────────────────────────────────────────────── */
 /* Dark colors are applied inline by default; light colors are stored as      */
 /* --shiki-light / --shiki-light-bg CSS vars. Activate them on html.light.   */

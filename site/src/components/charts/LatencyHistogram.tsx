@@ -2,36 +2,12 @@
 
 import { useEffect, useRef } from 'react'
 import * as d3 from 'd3'
-import { getColors, typography, palette } from './theme'
+import { getColors, typography, variantColorByIndex } from './theme'
+import { appendGrid, appendLegendLines, appendLegendRects } from './d3helpers'
 import { useTheme } from '@/hooks/useTheme'
 import { ChartZoom } from './ChartZoom'
-
-// ─── Data types ───────────────────────────────────────────────────────────────
-
-interface LatencyStats {
-  count: number
-  min: number
-  max: number
-  p50: number
-  p90: number
-  p99: number
-  p99_9: number
-}
-
-interface LatencyHistogramData {
-  scheme: string
-  bucket_count: number
-  min_bucket_ns: number
-  counts: number[]
-  stats: LatencyStats
-}
-
-export interface LatencyRun {
-  variant: string
-  latency_ns?: LatencyHistogramData
-  ns_per_op?: { median: number; min: number; p99: number; iqr: number }
-  ops_per_sec?: number
-}
+import { ChartShell } from './ChartShell'
+import type { LatencyHistogramData } from '@/lib/perf-types'
 
 // ─── Bucket boundary reconstruction ──────────────────────────────────────────
 // Matches histogram_bucket_lower() in bench/common/histogram.h.
@@ -44,19 +20,21 @@ function bucketLowerNs(i: number): number {
   return (1 << hb) | (sub << (hb - 4))
 }
 
-// ─── Colour assignment ────────────────────────────────────────────────────────
-
-function variantColorByIndex(idx: number): string {
-  return palette.series[idx % palette.series.length] as string
-}
-
 // ─── Props ────────────────────────────────────────────────────────────────────
+
+export interface LatencyRun {
+  variant: string
+  latency_ns?: LatencyHistogramData
+  ns_per_op?: { median: number; min: number; p99: number; iqr: number }
+  ops_per_sec?: number
+}
 
 interface Props {
   runs: LatencyRun[]
   variants?: string[]
   view?: 'ccdf' | 'pdf'
   markers?: Array<'p50' | 'p99' | 'p99_9'>
+  title?: string
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -66,6 +44,7 @@ export function LatencyHistogramChart({
   variants,
   view = 'ccdf',
   markers = ['p50', 'p99', 'p99_9'],
+  title,
 }: Props) {
   const ref = useRef<SVGSVGElement>(null)
   const theme = useTheme()
@@ -89,18 +68,9 @@ export function LatencyHistogramChart({
     }
   }, [runs, variants, view, markers, theme])
 
-  const colors = getColors()
-
   return (
     <ChartZoom>
-      <figure className="my-8">
-        <div
-          className="rounded-xl border overflow-hidden"
-          style={{ background: colors.bg, borderColor: colors.border }}
-        >
-          <svg ref={ref} className="w-full" style={{ display: 'block' }} />
-        </div>
-      </figure>
+      <ChartShell ref={ref} title={title} ariaLabel={title ?? 'Latency histogram'} />
     </ChartZoom>
   )
 }
@@ -128,7 +98,6 @@ function renderCCDF(
 
   const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`)
 
-  // Build CCDF data per variant.
   type Point = { x: number; y: number }
   const series: Array<{ variant: string; color: string; points: Point[] }> = []
 
@@ -149,7 +118,7 @@ function renderCCDF(
       if (cnt === 0) continue
       cumulative += cnt
       const x = bucketLowerNs(i)
-      const y = 1 - (cumulative - cnt) / total  // CCDF = fraction with latency >= bucket lower
+      const y = 1 - (cumulative - cnt) / total
       if (x > 0) {
         points.push({ x, y })
         if (x < globalMinX) globalMinX = x
@@ -157,14 +126,12 @@ function renderCCDF(
         if (y < globalMinY && y > 0) globalMinY = y
       }
     }
-    // Final point at maxval
     points.push({ x: h.stats.max, y: 1 / total })
     series.push({ variant: run.variant, color, points })
   }
 
   if (series.length === 0) return
 
-  // Floor at a sensible power of 10, at most 1e-6
   const yFloor = Math.max(1e-6, Math.pow(10, Math.floor(Math.log10(globalMinY))))
 
   const x = d3.scaleLog()
@@ -177,14 +144,8 @@ function renderCCDF(
     .range([inner.h, 0])
     .clamp(true)
 
-  // Grid lines
-  g.append('g')
-    .attr('class', 'grid')
-    .call(d3.axisLeft(y).ticks(6, '~g').tickSize(-inner.w).tickFormat(() => ''))
-    .call((s) => s.select('.domain').remove())
-    .call((s) => s.selectAll('line').attr('stroke', colors.border).attr('stroke-dasharray', '3,3'))
+  appendGrid(g, y, inner, { gridline: colors.border })
 
-  // Lines
   const line = d3.line<{ x: number; y: number }>()
     .x((d) => x(d.x))
     .y((d) => y(Math.max(yFloor, d.y)))
@@ -199,7 +160,6 @@ function renderCCDF(
       .attr('d', line)
   })
 
-  // Markers on the headline variant (first entry)
   const headline = runs[0].latency_ns!
   const markerValues: Record<string, number> = {
     p50:   headline.stats.p50,
@@ -230,7 +190,6 @@ function renderCCDF(
       .text(`${markerLabels[m]} ${ns} ns`)
   })
 
-  // X axis
   g.append('g')
     .attr('transform', `translate(0,${inner.h})`)
     .call(d3.axisBottom(x).ticks(6, '~s').tickSize(0))
@@ -250,7 +209,6 @@ function renderCCDF(
     .attr('font-family', typography.fontMono)
     .text('latency (ns, log scale)')
 
-  // Y axis
   g.append('g')
     .call(d3.axisLeft(y).ticks(6, '~g'))
     .call((s) => s.select('.domain').remove())
@@ -270,21 +228,9 @@ function renderCCDF(
     .attr('font-family', typography.fontMono)
     .text('P(latency ≥ x)  — CCDF (log scale)')
 
-  // Legend
-  const legendX = margin.left + inner.w + 8
-  series.forEach(({ variant, color }, i) => {
-    svg.append('line')
-      .attr('x1', legendX).attr('x2', legendX + 18)
-      .attr('y1', margin.top + i * 18 + 5).attr('y2', margin.top + i * 18 + 5)
-      .attr('stroke', color).attr('stroke-width', 2)
-    svg.append('text')
-      .attr('x', legendX + 22)
-      .attr('y', margin.top + i * 18 + 9)
-      .attr('font-size', 10)
-      .attr('fill', colors.textSecondary)
-      .attr('font-family', typography.fontMono)
-      .text(variant)
-  })
+  appendLegendLines(svg, series.map(({ variant, color }) => ({ label: variant, color })),
+    { x: margin.left + inner.w + 8, y: margin.top },
+    { textSecondary: colors.textSecondary })
 }
 
 // ─── PDF renderer ─────────────────────────────────────────────────────────────
@@ -347,13 +293,8 @@ function renderPDF(
     .range([inner.h, 0])
     .clamp(true)
 
-  // Grid
-  g.append('g')
-    .call(d3.axisLeft(y).ticks(5, '~g').tickSize(-inner.w).tickFormat(() => ''))
-    .call((s) => s.select('.domain').remove())
-    .call((s) => s.selectAll('line').attr('stroke', colors.border).attr('stroke-dasharray', '3,3'))
+  appendGrid(g, y, inner, { gridline: colors.border })
 
-  // Areas + strokes per variant
   allSeries.forEach(({ segs, color }) => {
     const area = d3.area<Segment>()
       .x0((d) => x(d.x0))
@@ -378,7 +319,6 @@ function renderPDF(
       .attr('d', linePath)
   })
 
-  // X axis
   g.append('g')
     .attr('transform', `translate(0,${inner.h})`)
     .call(d3.axisBottom(x).ticks(6, '~s').tickSize(0))
@@ -398,7 +338,6 @@ function renderPDF(
     .attr('font-family', typography.fontMono)
     .text('latency (ns, log scale)')
 
-  // Y axis
   g.append('g')
     .call(d3.axisLeft(y).ticks(5, '~g'))
     .call((s) => s.select('.domain').remove())
@@ -418,19 +357,7 @@ function renderPDF(
     .attr('font-family', typography.fontMono)
     .text('sample count (log scale)')
 
-  // Legend
-  const legendX = margin.left + inner.w + 8
-  allSeries.forEach(({ variant, color }, i) => {
-    svg.append('rect')
-      .attr('x', legendX).attr('y', margin.top + i * 18)
-      .attr('width', 18).attr('height', 10)
-      .attr('fill', color).attr('fill-opacity', 0.35).attr('rx', 2)
-    svg.append('text')
-      .attr('x', legendX + 22)
-      .attr('y', margin.top + i * 18 + 9)
-      .attr('font-size', 10)
-      .attr('fill', colors.textSecondary)
-      .attr('font-family', typography.fontMono)
-      .text(variant)
-  })
+  appendLegendRects(svg, allSeries.map(({ variant, color }) => ({ label: variant, color })),
+    { x: margin.left + inner.w + 8, y: margin.top },
+    { textSecondary: colors.textSecondary })
 }

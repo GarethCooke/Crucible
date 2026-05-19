@@ -2,38 +2,19 @@
 
 import { useEffect, useRef } from 'react'
 import * as d3 from 'd3'
-import { getColors, typography, palette } from './theme'
+import { getColors, typography, variantColorByIndex } from './theme'
+import { appendGrid, appendLegendLines } from './d3helpers'
 import { useTheme } from '@/hooks/useTheme'
 import { ChartZoom } from './ChartZoom'
-
-// ─── Data types ───────────────────────────────────────────────────────────────
-
-interface LatencyStats {
-  count: number
-  min: number
-  max: number
-  p50: number
-  p90: number
-  p99: number
-  p99_9: number
-}
-
-interface LatencyHistogramData {
-  stats: LatencyStats
-}
+import { ChartShell } from './ChartShell'
+import type { LatencyStats, LatencyStatsOnly } from '@/lib/perf-types'
 
 export interface SweepRun {
   variant: string
   mode?: string
   offered_rate_hz?: number
-  latency_ns?: LatencyHistogramData
+  latency_ns?: LatencyStatsOnly
   ops_per_sec?: number
-}
-
-// ─── Colour assignment ────────────────────────────────────────────────────────
-
-function variantColorByIndex(idx: number): string {
-  return palette.series[idx % palette.series.length] as string
 }
 
 // Dash patterns to distinguish p50 / p99 / p99.9 lines within each variant
@@ -51,16 +32,13 @@ const STAT_LABEL: Record<string, string> = {
 
 const STATS_SHOWN = ['p50', 'p99', 'p99_9'] as const
 
-// ─── Props ────────────────────────────────────────────────────────────────────
-
 interface Props {
   runs: SweepRun[]
   variants?: string[]
+  title?: string
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
-
-export function LatencyVsLoadChart({ runs, variants }: Props) {
+export function LatencyVsLoadChart({ runs, variants, title }: Props) {
   const ref = useRef<SVGSVGElement>(null)
   const theme = useTheme()
 
@@ -84,23 +62,12 @@ export function LatencyVsLoadChart({ runs, variants }: Props) {
     render(ref.current, valid, orderedVariants)
   }, [runs, variants, theme])
 
-  const colors = getColors()
-
   return (
     <ChartZoom>
-      <figure className="my-8">
-        <div
-          className="rounded-xl border overflow-hidden"
-          style={{ background: colors.bg, borderColor: colors.border }}
-        >
-          <svg ref={ref} className="w-full" style={{ display: 'block' }} />
-        </div>
-      </figure>
+      <ChartShell ref={ref} title={title} ariaLabel={title ?? 'Latency vs offered load'} />
     </ChartZoom>
   )
 }
-
-// ─── Renderer ─────────────────────────────────────────────────────────────────
 
 function render(el: SVGSVGElement, runs: SweepRun[], orderedVariants: string[]) {
   const colors = getColors()
@@ -118,7 +85,6 @@ function render(el: SVGSVGElement, runs: SweepRun[], orderedVariants: string[]) 
 
   const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`)
 
-  // Group runs by variant
   const byVariant = new Map<string, SweepRun[]>()
   for (const r of runs) {
     const arr = byVariant.get(r.variant) ?? []
@@ -126,12 +92,10 @@ function render(el: SVGSVGElement, runs: SweepRun[], orderedVariants: string[]) 
     byVariant.set(r.variant, arr)
   }
 
-  // Sort each variant's points by offered_rate_hz
   for (const arr of byVariant.values()) {
     arr.sort((a, b) => (a.offered_rate_hz ?? 0) - (b.offered_rate_hz ?? 0))
   }
 
-  // Global x/y extents
   let xMin = Infinity, xMax = 0, yMin = Infinity, yMax = 0
   for (const arr of byVariant.values()) {
     for (const r of arr) {
@@ -140,7 +104,7 @@ function render(el: SVGSVGElement, runs: SweepRun[], orderedVariants: string[]) 
       if (hz < xMin) xMin = hz
       if (hz > xMax) xMax = hz
       for (const stat of STATS_SHOWN) {
-        const v = s[stat as keyof LatencyStats] as number
+        const v = s[stat as keyof typeof s] as number
         if (v > 0 && v < yMin) yMin = v
         if (v > yMax) yMax = v
       }
@@ -157,23 +121,12 @@ function render(el: SVGSVGElement, runs: SweepRun[], orderedVariants: string[]) 
     .range([inner.h, 0])
     .clamp(true)
 
-  // Grid
-  g.append('g')
-    .call(d3.axisLeft(y).ticks(6, '~g').tickSize(-inner.w).tickFormat(() => ''))
-    .call((s) => s.select('.domain').remove())
-    .call((s) => s.selectAll('line').attr('stroke', colors.border).attr('stroke-dasharray', '3,3'))
-
-  g.append('g')
-    .call(d3.axisBottom(x).ticks(6, '~s').tickSize(-inner.h).tickFormat(() => ''))
-    .attr('transform', `translate(0,${inner.h})`)
-    .call((s) => s.select('.domain').remove())
-    .call((s) => s.selectAll('line').attr('stroke', colors.border).attr('stroke-dasharray', '3,3'))
+  appendGrid(g, y, inner, { gridline: colors.border }, x)
 
   const lineGen = d3.line<[number, number]>()
     .x((d) => x(d[0]))
     .y((d) => y(Math.max(1, d[1])))
 
-  // Draw lines
   for (const [variantName, arr] of byVariant.entries()) {
     const varIdx = orderedVariants.indexOf(variantName)
     const color  = variantColorByIndex(varIdx < 0 ? 0 : varIdx)
@@ -194,7 +147,6 @@ function render(el: SVGSVGElement, runs: SweepRun[], orderedVariants: string[]) 
         .attr('opacity', stat === 'p99_9' ? 0.7 : 1)
         .attr('d', lineGen)
 
-      // Dots at each measured point
       g.selectAll(null)
         .data(points)
         .enter()
@@ -207,7 +159,6 @@ function render(el: SVGSVGElement, runs: SweepRun[], orderedVariants: string[]) 
     }
   }
 
-  // X axis
   g.append('g')
     .attr('transform', `translate(0,${inner.h})`)
     .call(d3.axisBottom(x).ticks(6, '~s').tickSize(0))
@@ -227,7 +178,6 @@ function render(el: SVGSVGElement, runs: SweepRun[], orderedVariants: string[]) 
     .attr('font-family', typography.fontMono)
     .text('offered load (items/sec, log scale)')
 
-  // Y axis
   g.append('g')
     .call(d3.axisLeft(y).ticks(6, '~g'))
     .call((s) => s.select('.domain').remove())
@@ -247,43 +197,21 @@ function render(el: SVGSVGElement, runs: SweepRun[], orderedVariants: string[]) 
     .attr('font-family', typography.fontMono)
     .text('latency (ns, log scale)')
 
-  // Legend — variant rows, then stat line-style key
+  // Legend — variant colour swatches then stat dash key
   const legendX = margin.left + inner.w + 10
-  let legendY = margin.top
 
-  // Variant colour swatches
-  orderedVariants.forEach((variantName, i) => {
-    if (!byVariant.has(variantName)) return
-    const color = variantColorByIndex(i)
-    svg.append('line')
-      .attr('x1', legendX).attr('x2', legendX + 18)
-      .attr('y1', legendY + 5).attr('y2', legendY + 5)
-      .attr('stroke', color).attr('stroke-width', 2)
-    svg.append('text')
-      .attr('x', legendX + 22)
-      .attr('y', legendY + 9)
-      .attr('font-size', 9)
-      .attr('fill', colors.textSecondary)
-      .attr('font-family', typography.fontMono)
-      .text(variantName)
-    legendY += 17
-  })
+  const variantItems = orderedVariants
+    .filter((v) => byVariant.has(v))
+    .map((v, i) => ({ label: v, color: variantColorByIndex(i) }))
 
-  // Stat dash key
-  legendY += 6
-  for (const stat of STATS_SHOWN) {
-    svg.append('line')
-      .attr('x1', legendX).attr('x2', legendX + 18)
-      .attr('y1', legendY + 5).attr('y2', legendY + 5)
-      .attr('stroke', colors.textMuted).attr('stroke-width', 1.5)
-      .attr('stroke-dasharray', STAT_DASH[stat])
-    svg.append('text')
-      .attr('x', legendX + 22)
-      .attr('y', legendY + 9)
-      .attr('font-size', 9)
-      .attr('fill', colors.textMuted)
-      .attr('font-family', typography.fontMono)
-      .text(STAT_LABEL[stat])
-    legendY += 16
-  }
+  appendLegendLines(svg, variantItems,
+    { x: legendX, y: margin.top, spacing: 17 },
+    { textSecondary: colors.textSecondary })
+
+  const statKeyY = margin.top + variantItems.length * 17 + 6
+  appendLegendLines(svg, STATS_SHOWN.map((stat) => ({
+    label: STAT_LABEL[stat],
+    color: colors.textMuted,
+    dash:  STAT_DASH[stat],
+  })), { x: legendX, y: statKeyY, spacing: 16 }, { textSecondary: colors.textMuted })
 }

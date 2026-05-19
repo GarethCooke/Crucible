@@ -1,9 +1,10 @@
 import { readFile } from 'fs/promises'
 import path from 'path'
 import { ThroughputBarsChart } from './charts/ThroughputBarsChart'
-import { LatencyHistogramChart, type LatencyRun } from './charts/LatencyHistogram'
-import { LatencyVsLoadChart, type SweepRun } from './charts/LatencyVsLoad'
+import { LatencyHistogramChart } from './charts/LatencyHistogram'
+import { LatencyVsLoadChart } from './charts/LatencyVsLoad'
 import { NoData } from './charts/NoData'
+import type { LatencyHistogramData } from '@/lib/perf-types'
 
 interface BenchmarkProps {
   slug: string
@@ -11,10 +12,8 @@ interface BenchmarkProps {
   variants?: string[]
   stat?: 'median' | 'min' | 'p99'
   n?: number
-  // mode/rate filtering — paced runs are the default when not specified
   mode?: 'paced' | 'saturated' | 'sweep'
   offered_rate_hz?: number
-  // latency-histogram props
   view?: 'ccdf' | 'pdf'
   markers?: Array<'p50' | 'p99' | 'p99_9'>
 }
@@ -28,7 +27,7 @@ interface RunRecord {
   ops_per_sec: number
   branch_misses_per_op?: number
   instructions_per_cycle?: number
-  latency_ns?: unknown
+  latency_ns?: LatencyHistogramData
 }
 
 interface PerfData {
@@ -47,20 +46,27 @@ function filterRuns(
   let filtered = runs
 
   if (mode !== undefined) {
-    // Keep runs whose mode matches, OR runs with no mode field (old data)
-    // preferring an exact match when present.
     const withMode = filtered.filter((r) => r.mode === mode)
-    filtered = withMode.length > 0 ? withMode : filtered.filter((r) => !r.mode)
+    if (withMode.length > 0) return applyRemainingFilters(withMode, offered_rate_hz, variants)
+    if (mode === 'sweep') return []  // sweep data must be explicitly tagged; no fallback
+    filtered = filtered.filter((r) => !r.mode)
   }
 
+  return applyRemainingFilters(filtered, offered_rate_hz, variants)
+}
+
+function applyRemainingFilters(
+  runs: RunRecord[],
+  offered_rate_hz: number | undefined,
+  variants: string[] | undefined,
+): RunRecord[] {
+  let filtered = runs
   if (offered_rate_hz !== undefined) {
     filtered = filtered.filter((r) => r.offered_rate_hz === offered_rate_hz)
   }
-
   if (variants !== undefined) {
     filtered = filtered.filter((r) => variants.includes(r.variant))
   }
-
   return filtered
 }
 
@@ -90,7 +96,6 @@ export async function Benchmark({
     )
   }
 
-  // For latency-vs-load, use sweep runs unfiltered by offered_rate_hz
   const sweepRuns =
     chart === 'latency-vs-load'
       ? filterRuns(data.runs, 'sweep', undefined, variants)
@@ -98,7 +103,17 @@ export async function Benchmark({
 
   const runs = filterRuns(data.runs, mode, offered_rate_hz, variants)
 
-  const noData = chart === 'latency-vs-load' ? sweepRuns.length === 0 : runs.length === 0
+  const hasLatencyData = runs.some((r) => r.latency_ns?.counts?.length)
+  const hasSweepData = sweepRuns.some(
+    (r) => r.offered_rate_hz != null && r.offered_rate_hz > 0 && r.latency_ns?.stats != null,
+  )
+
+  const noData =
+    chart === 'latency-histogram'
+      ? !hasLatencyData
+      : chart === 'latency-vs-load'
+      ? !hasSweepData
+      : runs.length === 0
 
   if (noData) {
     return (
@@ -116,10 +131,11 @@ export async function Benchmark({
   if (chart === 'latency-histogram') {
     return (
       <LatencyHistogramChart
-        runs={runs as LatencyRun[]}
+        runs={runs}
         variants={variants}
         view={view}
         markers={markers}
+        title={data.title}
       />
     )
   }
@@ -127,8 +143,9 @@ export async function Benchmark({
   if (chart === 'latency-vs-load') {
     return (
       <LatencyVsLoadChart
-        runs={sweepRuns as SweepRun[]}
+        runs={sweepRuns}
         variants={variants}
+        title={data.title}
       />
     )
   }

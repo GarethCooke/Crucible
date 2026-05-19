@@ -11,6 +11,7 @@ import { ThroughputBars } from '@/components/charts/ThroughputBars'
 import { CounterOverlay } from '@/components/charts/CounterOverlay'
 import { TimeVsN } from '@/components/charts/TimeVsN'
 import { getAllPosts } from '@/lib/posts'
+import { SYNTAX_THEME } from '@/lib/syntax'
 
 const components = { CodeCompare, Benchmark, ThroughputBars, CounterOverlay, TimeVsN }
 
@@ -118,7 +119,7 @@ export default async function PostPage({ params }: { params: { slug: string } })
                   rehypePrettyCode,
                   {
                     themes: {
-                      dark:  'github-dark-dimmed',
+                      dark:  SYNTAX_THEME,
                       light: 'github-light',
                     },
                     keepBackground: false,

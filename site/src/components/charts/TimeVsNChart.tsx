@@ -3,8 +3,10 @@
 import { useEffect, useRef } from 'react'
 import * as d3 from 'd3'
 import { getColors, typography, variantColor } from './theme'
+import { appendGrid, appendLegendLines } from './d3helpers'
 import { useTheme } from '@/hooks/useTheme'
 import { ChartZoom } from './ChartZoom'
+import { ChartShell } from './ChartShell'
 
 export interface TimeVsNRun {
   variant: string
@@ -29,23 +31,9 @@ export function TimeVsNChart({ runs, stat = 'median', title }: Props) {
     render(ref.current, runs, stat)
   }, [runs, stat, theme])
 
-  const colors = getColors()
-
   return (
     <ChartZoom>
-      <figure className="my-8">
-        {title && (
-          <figcaption className="text-xs mb-3 font-mono" style={{ color: colors.textMuted }}>
-            {title}
-          </figcaption>
-        )}
-        <div
-          className="rounded-xl border overflow-hidden"
-          style={{ background: colors.bg, borderColor: colors.border }}
-        >
-          <svg ref={ref} className="w-full" style={{ display: 'block' }} />
-        </div>
-      </figure>
+      <ChartShell ref={ref} title={title} ariaLabel={title ?? 'Time vs N benchmark'} />
     </ChartZoom>
   )
 }
@@ -75,13 +63,8 @@ function render(el: SVGSVGElement, runs: TimeVsNRun[], stat: 'median' | 'min' | 
   const allY = runs.map(nsPerElem)
   const y = d3.scaleLinear().domain([0, d3.max(allY)! * 1.15]).range([inner.h, 0]).nice()
 
-  // Grid lines
-  g.append('g')
-    .call(d3.axisLeft(y).ticks(5).tickSize(-inner.w).tickFormat(() => ''))
-    .call((sel) => sel.select('.domain').remove())
-    .call((sel) => sel.selectAll('line').attr('stroke', colors.border).attr('stroke-dasharray', '3,3'))
+  appendGrid(g, y, inner, { gridline: colors.border })
 
-  // Lines + markers per variant
   const line = d3.line<TimeVsNRun>()
     .x((d) => x(d.n))
     .y((d) => y(nsPerElem(d)))
@@ -110,12 +93,11 @@ function render(el: SVGSVGElement, runs: TimeVsNRun[], stat: 'median' | 'min' | 
   })
 
   // Annotate the largest gap between sorted and unsorted
-  // Find the N where the ratio is maximal (excluding N=1024 where cache effects dominate)
-  const sorted    = runs.filter((r) => r.variant === 'sorted')
-  const unsorted  = runs.filter((r) => r.variant === 'unsorted')
+  const sorted   = runs.filter((r) => r.variant === 'sorted')
+  const unsorted = runs.filter((r) => r.variant === 'unsorted')
   if (sorted.length > 0 && unsorted.length > 0) {
     let maxRatio = 0, maxN = 0
-    ns.slice(1).forEach((n) => {  // skip smallest N
+    ns.slice(1).forEach((n) => {
       const s = sorted.find((r) => r.n === n)
       const u = unsorted.find((r) => r.n === n)
       if (s && u) {
@@ -147,7 +129,6 @@ function render(el: SVGSVGElement, runs: TimeVsNRun[], stat: 'median' | 'min' | 
     }
   }
 
-  // X axis — log scale, N values labelled with SI suffixes
   const xAxis = d3.axisBottom(x)
     .tickValues(ns)
     .tickSize(0)
@@ -178,7 +159,6 @@ function render(el: SVGSVGElement, runs: TimeVsNRun[], stat: 'median' | 'min' | 
     .attr('font-family', typography.fontMono)
     .text('N (elements)  ·  log scale')
 
-  // Y axis
   g.append('g')
     .call(d3.axisLeft(y).ticks(5).tickFormat((v) => `${(+v).toFixed(2)} ns`))
     .call((sel) => sel.select('.domain').remove())
@@ -195,25 +175,8 @@ function render(el: SVGSVGElement, runs: TimeVsNRun[], stat: 'median' | 'min' | 
     .attr('font-family', typography.fontMono)
     .text(`${stat} ns / element`)
 
-  // Legend (right side)
-  const legendX = margin.left + inner.w + 8
-  variants.forEach((v, i) => {
-    const col = variantColor(v)
-    svg.append('line')
-      .attr('x1', legendX).attr('x2', legendX + 16)
-      .attr('y1', margin.top + i * 20 + 5)
-      .attr('y2', margin.top + i * 20 + 5)
-      .attr('stroke', col)
-      .attr('stroke-width', 2)
-    svg.append('circle')
-      .attr('cx', legendX + 8).attr('cy', margin.top + i * 20 + 5)
-      .attr('r', 3).attr('fill', col)
-    svg.append('text')
-      .attr('x', legendX + 20)
-      .attr('y', margin.top + i * 20 + 9)
-      .attr('font-size', 10)
-      .attr('fill', colors.textSecondary)
-      .attr('font-family', typography.fontMono)
-      .text(v.charAt(0).toUpperCase() + v.slice(1))
-  })
+  appendLegendLines(svg, variants.map((v) => ({
+    label: v.charAt(0).toUpperCase() + v.slice(1),
+    color: variantColor(v),
+  })), { x: margin.left + inner.w + 8, y: margin.top, spacing: 20 }, { textSecondary: colors.textSecondary })
 }

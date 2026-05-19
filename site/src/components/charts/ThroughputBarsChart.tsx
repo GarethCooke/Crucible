@@ -3,8 +3,10 @@
 import { useEffect, useRef } from 'react'
 import * as d3 from 'd3'
 import { getColors, typography, variantColor } from './theme'
+import { appendGrid, appendLegendRects } from './d3helpers'
 import { useTheme } from '@/hooks/useTheme'
 import { ChartZoom } from './ChartZoom'
+import { ChartShell } from './ChartShell'
 
 // ─── Run types ───────────────────────────────────────────────────────────────
 
@@ -73,23 +75,9 @@ export function ThroughputBarsChart({ runs, stat = 'median', targetN, title }: P
     }
   }, [runs, stat, targetN, theme])
 
-  const colors = getColors()
-
   return (
     <ChartZoom>
-      <figure className="my-8">
-        {title && (
-          <figcaption className="text-xs mb-3 font-mono" style={{ color: colors.textMuted }}>
-            {title}
-          </figcaption>
-        )}
-        <div
-          className="rounded-xl border overflow-hidden"
-          style={{ background: colors.bg, borderColor: colors.border }}
-        >
-          <svg ref={ref} className="w-full" style={{ display: 'block' }} />
-        </div>
-      </figure>
+      <ChartShell ref={ref} title={title} ariaLabel={title ?? 'Throughput benchmark'} />
     </ChartZoom>
   )
 }
@@ -126,7 +114,7 @@ function renderLegacy(
   const vals = data.map((d) => d.ns_per_op[stat] ?? d.ns_per_op.median)
   const y = d3.scaleLinear().domain([0, d3.max(vals)! * 1.25]).range([inner.h, 0]).nice()
 
-  appendGrid(g, y, inner)
+  appendGrid(g, y, inner, { gridline: colors.border })
 
   g.selectAll('.bar')
     .data(data)
@@ -206,7 +194,7 @@ function renderGrouped(
   const vals = runs.map((d) => d.ns_per_op[stat] ?? d.ns_per_op.median)
   const y = d3.scaleLinear().domain([0, d3.max(vals)! * 1.3]).range([inner.h, 0]).nice()
 
-  appendGrid(g, y, inner)
+  appendGrid(g, y, inner, { gridline: colors.border })
 
   const grouped = d3.group(runs, (d) => d.threads)
   grouped.forEach((threadRuns, threads) => {
@@ -227,7 +215,6 @@ function renderGrouped(
         .attr('rx', 4)
         .attr('opacity', 0.9)
 
-      // Value label above bar
       g.append('text')
         .attr('x', bx + bw / 2)
         .attr('y', by - 6)
@@ -236,7 +223,6 @@ function renderGrouped(
         .attr('fill', colors.textPrimary)
         .text(`${nsVal.toFixed(1)}`)
 
-      // Cache-miss annotation inside/below value label
       if (run.counters) {
         g.append('text')
           .attr('x', bx + bw / 2)
@@ -261,7 +247,6 @@ function renderGrouped(
         .attr('dy', '1.4em')
     )
 
-  // X axis label
   svg.append('text')
     .attr('x', margin.left + inner.w / 2)
     .attr('y', H - 8)
@@ -271,7 +256,6 @@ function renderGrouped(
     .attr('font-family', typography.fontMono)
     .text(`threads  ·  ${stat} ns/op`)
 
-  // Y axis
   g.append('g')
     .call(d3.axisLeft(y).ticks(5).tickFormat((v) => `${v} ns`))
     .call((sel) => sel.select('.domain').remove())
@@ -282,53 +266,13 @@ function renderGrouped(
     )
     .call((sel) => sel.selectAll('line').remove())
 
-  // Legend (top-right)
-  const legendX = margin.left + inner.w + 8
-  const legendItems = [
+  appendLegendRects(svg, [
     { label: 'Unpadded', color: variantColor('unpadded') },
     { label: 'Padded',   color: variantColor('padded') },
-  ]
-  legendItems.forEach(({ label, color }, i) => {
-    svg.append('rect')
-      .attr('x', legendX)
-      .attr('y', margin.top + i * 18)
-      .attr('width', 10)
-      .attr('height', 10)
-      .attr('fill', color)
-      .attr('rx', 2)
-    svg.append('text')
-      .attr('x', legendX + 14)
-      .attr('y', margin.top + i * 18 + 9)
-      .attr('font-size', 10)
-      .attr('fill', colors.textSecondary)
-      .attr('font-family', typography.fontMono)
-      .text(label)
-  })
+  ], { x: margin.left + inner.w + 8, y: margin.top }, { textSecondary: colors.textSecondary })
 }
 
 // ─── Shared helpers ───────────────────────────────────────────────────────────
-
-function appendGrid(
-  g: d3.Selection<SVGGElement, unknown, null, undefined>,
-  y: d3.ScaleLinear<number, number>,
-  inner: { w: number; h: number },
-) {
-  const colors = getColors()
-  g.append('g')
-    .attr('class', 'grid')
-    .call(
-      d3.axisLeft(y)
-        .ticks(5)
-        .tickSize(-inner.w)
-        .tickFormat(() => '')
-    )
-    .call((sel) => sel.select('.domain').remove())
-    .call((sel) =>
-      sel.selectAll('line')
-        .attr('stroke', colors.border)
-        .attr('stroke-dasharray', '3,3')
-    )
-}
 
 function appendAxesLegacy(
   g: d3.Selection<SVGGElement, unknown, null, undefined>,
