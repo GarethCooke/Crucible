@@ -117,7 +117,10 @@ export default async function PostPage({ params }: { params: { slug: string } })
                 [
                   rehypePrettyCode,
                   {
-                    theme: 'github-dark-dimmed',
+                    themes: {
+                      dark:  'github-dark-dimmed',
+                      light: 'github-light',
+                    },
                     keepBackground: false,
                   },
                 ],

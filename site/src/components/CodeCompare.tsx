@@ -18,7 +18,10 @@ export async function CodeCompare({
 }: CodeCompareProps) {
   const sharedOpts = {
     lang,
-    theme: 'github-dark-dimmed' as const,
+    themes: {
+      dark:  'github-dark-dimmed',
+      light: 'github-light',
+    } as const,
     transformers: [
       {
         line(node: { properties: { class?: string; style?: string } }, line: number) {

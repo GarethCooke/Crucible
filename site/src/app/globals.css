@@ -309,6 +309,28 @@ body {
   padding-left: calc(1.5rem - 2px);
 }
 
+/* ── Shiki dual-theme switch ─────────────────────────────────────────────── */
+/* Dark colors are applied inline by default; light colors are stored as      */
+/* --shiki-light / --shiki-light-bg CSS vars. Activate them on html.light.   */
+html.light .shiki {
+  background-color: var(--shiki-light-bg) !important;
+  color: var(--shiki-light) !important;
+}
+html.light .shiki span {
+  color: var(--shiki-light) !important;
+  background-color: var(--shiki-light-bg, transparent) !important;
+  font-style: var(--shiki-light-font-style, inherit) !important;
+  font-weight: var(--shiki-light-font-weight, inherit) !important;
+}
+
+/* MDX prose code blocks (rehype-pretty-code) in light mode */
+html.light [data-rehype-pretty-code-figure] pre {
+  background: var(--bg-card) !important;
+}
+html.light [data-rehype-pretty-code-figure] code span {
+  color: var(--shiki-light) !important;
+}
+
 /* ── Animation ────────────────────────────────────────────────────────────── */
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(16px); }
