@@ -72,7 +72,9 @@ static int64_t sum_threshold_branchless(const std::vector<int32_t>& data) {
 // Benchmarks
 // ---------------------------------------------------------------------------
 
-static void BM_impl(benchmark::State& state, bool sorted) {
+using ThresholdFn = int64_t(*)(const std::vector<int32_t>&);
+
+static void BM_impl(benchmark::State& state, ThresholdFn fn, bool sorted) {
     const int64_t n = state.range(0);
     const auto data = sorted ? make_sorted(n) : make_shuffled(n);
 
@@ -81,7 +83,7 @@ static void BM_impl(benchmark::State& state, bool sorted) {
 
     for (auto _ : state) {
         perf.start();
-        auto result = sum_threshold(data);
+        auto result = fn(data);
         benchmark::DoNotOptimize(result);
         perf.stop();
         total += perf.read();
@@ -93,31 +95,10 @@ static void BM_impl(benchmark::State& state, bool sorted) {
     state.SetItemsProcessed(ops);
 }
 
-static void BM_Sorted(benchmark::State& state)   { BM_impl(state, true);  }
-static void BM_Unsorted(benchmark::State& state) { BM_impl(state, false); }
-
-// Branchless variant on shuffled (adversarial) input — shows that on the
-// same worst-case ordering, removing the branch removes the mispredict penalty.
-static void BM_Branchless(benchmark::State& state) {
-    const int64_t n = state.range(0);
-    const auto data = make_shuffled(n);
-
-    crucible::PerfCounters perf;
-    crucible::PerfCounters::Counts total{};
-
-    for (auto _ : state) {
-        perf.start();
-        auto result = sum_threshold_branchless(data);
-        benchmark::DoNotOptimize(result);
-        perf.stop();
-        total += perf.read();
-    }
-
-    const int64_t ops = static_cast<int64_t>(state.iterations()) * n;
-    state.counters["branch_misses_per_op"] = total.branch_misses_per_op(ops);
-    state.counters["ipc"]                  = total.ipc();
-    state.SetItemsProcessed(ops);
-}
+static void BM_Sorted(benchmark::State& state)   { BM_impl(state, sum_threshold,            true);  }
+static void BM_Unsorted(benchmark::State& state) { BM_impl(state, sum_threshold,            false); }
+// Shuffled adversarial input — same ordering as BM_Unsorted, removes branch mispredict penalty.
+static void BM_Branchless(benchmark::State& state){ BM_impl(state, sum_threshold_branchless, false); }
 
 // Sort-cost measurement: measures std::sort over a freshly-shuffled 32M vector.
 // PauseTiming excludes the per-iteration copy; only the sort is timed.

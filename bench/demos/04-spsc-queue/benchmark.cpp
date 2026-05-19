@@ -185,11 +185,26 @@ static void bin_run(const std::vector<uint64_t>& enq_ts,
     result.hist.merge(run_hist);
 }
 
-// ─── Variant: lockfree-handrolled ────────────────────────────────────────────
+// ─── M8: wall-clock accumulation helper ──────────────────────────────────────
 
-static RunResult run_lockfree_handrolled(double ns_per_cycle, uint64_t rate_hz,
-                                          WarmupVerify* wv) {
-    using Queue = SPSCQueue<MarketTick, QUEUE_DEPTH>;
+static inline void accumulate_wall_time(RunResult& r,
+                                        const timespec& t0,
+                                        const timespec& t1) {
+    r.wall_ns_total += static_cast<double>(
+        (t1.tv_sec - t0.tv_sec) * 1'000'000'000LL + (t1.tv_nsec - t0.tv_nsec));
+}
+
+// ─── M9: shared run scaffold ──────────────────────────────────────────────────
+// Policy interface:
+//   reset()                              — reinit queue/state for a fresh run
+//   consume(deq_ts, warmup_consumed)     — consumer thread body (warmup + measure)
+//   produce_warmup()                     — push ITEMS_WARMUP warmup items
+//   produce_measured(enq_ts, period_cyc) — push ITEMS_MEASURED items with TSC pacing
+//   signal_producer_done()               — notify consumer of EOF (no-op for lock-free)
+
+template <typename Policy>
+static RunResult run_spsc_variant(double ns_per_cycle, uint64_t rate_hz,
+                                   WarmupVerify* wv, Policy policy) {
     const uint64_t period_cycles = pacing_period_cycles(rate_hz, ns_per_cycle);
 
     RunResult result;
@@ -197,7 +212,9 @@ static RunResult run_lockfree_handrolled(double ns_per_cycle, uint64_t rate_hz,
     std::vector<uint64_t> deq_ts(ITEMS_MEASURED);
 
     for (size_t run = 0; run < NUM_RUNS; ++run) {
-        Queue q;
+        policy.reset();
+        std::fill(deq_ts.begin(), deq_ts.end(), uint64_t{0});
+
         std::atomic<bool>   consumer_ready{false};
         std::atomic<bool>   start_signal{false};
         std::atomic<size_t> warmup_consumed{0};
@@ -206,265 +223,231 @@ static RunResult run_lockfree_handrolled(double ns_per_cycle, uint64_t rate_hz,
             pin_to_core(CONSUMER_CORE);
             consumer_ready.store(true, std::memory_order_release);
             while (!start_signal.load(std::memory_order_acquire)) {}
-
-            // Warmup — signal each item consumed so producer can drain-check
-            size_t warmup_done = 0;
-            while (warmup_done < ITEMS_WARMUP) {
-                MarketTick t;
-                if (q.try_pop(t)) {
-                    ++warmup_done;
-                    warmup_consumed.store(warmup_done, std::memory_order_release);
-                }
-            }
-
-            // Measurement
-            size_t measured = 0;
-            while (measured < ITEMS_MEASURED) {
-                MarketTick t;
-                if (q.try_pop(t)) {
-                    deq_ts[t.seq] = rdtscp_ordered();
-                    ++measured;
-                }
-            }
+            policy.consume(deq_ts, warmup_consumed);
         });
 
         pin_to_core(PRODUCER_CORE);
         while (!consumer_ready.load(std::memory_order_acquire)) {}
         start_signal.store(true, std::memory_order_release);
 
-        // Warmup
-        for (size_t i = 0; i < ITEMS_WARMUP; ++i) {
-            MarketTick t{uint32_t(i), 1, WARMUP_SEQ};
-            while (!q.try_push(t)) {}
-        }
-        // Wait for consumer to drain all warmup before starting measurement
-        while (warmup_consumed.load(std::memory_order_acquire) < ITEMS_WARMUP) {
+        policy.produce_warmup();
+        while (warmup_consumed.load(std::memory_order_acquire) < ITEMS_WARMUP)
             std::this_thread::yield();
-        }
 
         struct timespec t0{};
         clock_gettime(CLOCK_MONOTONIC_RAW, &t0);
 
-        uint64_t next_release_cycles = rdtscp_ordered();
-        for (size_t i = 0; i < ITEMS_MEASURED; ++i) {
-            if (period_cycles > 0) {
-                while (__rdtsc() < next_release_cycles) { _mm_pause(); }
-                next_release_cycles += period_cycles;
-            }
-            MarketTick t{uint32_t(i & 0xFFFF), 1, uint64_t(i)};
-            enq_ts[i] = rdtscp_ordered();
-            while (!q.try_push(t)) {}
-        }
+        policy.produce_measured(enq_ts, period_cycles);
+        policy.signal_producer_done();
 
         consumer.join();
 
         struct timespec t1{};
         clock_gettime(CLOCK_MONOTONIC_RAW, &t1);
-        result.wall_ns_total += static_cast<double>(
-            (t1.tv_sec - t0.tv_sec) * 1'000'000'000LL + (t1.tv_nsec - t0.tv_nsec));
+        accumulate_wall_time(result, t0, t1);
 
         bin_run(enq_ts, deq_ts, ns_per_cycle, result, wv);
     }
     return result;
 }
 
-// ─── Variant: lockfree-boost ─────────────────────────────────────────────────
+// ─── Policy: lockfree-handrolled ─────────────────────────────────────────────
 
-static RunResult run_lockfree_boost(double ns_per_cycle, uint64_t rate_hz,
-                                     WarmupVerify* wv) {
+struct HandrolledPolicy {
+    using Queue = SPSCQueue<MarketTick, QUEUE_DEPTH>;
+    std::unique_ptr<Queue> q;
+
+    void reset() { q = std::make_unique<Queue>(); }
+
+    void consume(std::vector<uint64_t>& deq_ts, std::atomic<size_t>& warmup_consumed) {
+        size_t warmup_done = 0;
+        while (warmup_done < ITEMS_WARMUP) {
+            MarketTick t;
+            if (q->try_pop(t)) {
+                ++warmup_done;
+                warmup_consumed.store(warmup_done, std::memory_order_release);
+            }
+        }
+        size_t measured = 0;
+        while (measured < ITEMS_MEASURED) {
+            MarketTick t;
+            if (q->try_pop(t)) {
+                deq_ts[t.seq] = rdtscp_ordered();
+                ++measured;
+            }
+        }
+    }
+
+    void produce_warmup() {
+        for (size_t i = 0; i < ITEMS_WARMUP; ++i) {
+            MarketTick t{uint32_t(i), 1, WARMUP_SEQ};
+            while (!q->try_push(t)) {}
+        }
+    }
+
+    void produce_measured(std::vector<uint64_t>& enq_ts, uint64_t period_cycles) {
+        uint64_t next_release = rdtscp_ordered();
+        for (size_t i = 0; i < ITEMS_MEASURED; ++i) {
+            if (period_cycles > 0) {
+                while (__rdtsc() < next_release) { _mm_pause(); }
+                next_release += period_cycles;
+            }
+            MarketTick t{uint32_t(i & 0xFFFF), 1, uint64_t(i)};
+            enq_ts[i] = rdtscp_ordered();
+            while (!q->try_push(t)) {}
+        }
+    }
+
+    void signal_producer_done() {}
+};
+
+// ─── Policy: lockfree-boost ───────────────────────────────────────────────────
+
+struct BoostPolicy {
     using Queue = boost::lockfree::spsc_queue<
         MarketTick, boost::lockfree::capacity<QUEUE_DEPTH>>;
-    const uint64_t period_cycles = pacing_period_cycles(rate_hz, ns_per_cycle);
+    std::unique_ptr<Queue> q;
 
-    RunResult result;
-    std::vector<uint64_t> enq_ts(ITEMS_MEASURED);
-    std::vector<uint64_t> deq_ts(ITEMS_MEASURED);
+    void reset() { q = std::make_unique<Queue>(); }
 
-    for (size_t run = 0; run < NUM_RUNS; ++run) {
-        Queue q;
-        std::atomic<bool>   consumer_ready{false};
-        std::atomic<bool>   start_signal{false};
-        std::atomic<size_t> warmup_consumed{0};
-
-        std::thread consumer([&] {
-            pin_to_core(CONSUMER_CORE);
-            consumer_ready.store(true, std::memory_order_release);
-            while (!start_signal.load(std::memory_order_acquire)) {}
-
-            size_t warmup_done = 0;
-            while (warmup_done < ITEMS_WARMUP) {
-                MarketTick t;
-                if (q.pop(t)) {
-                    ++warmup_done;
-                    warmup_consumed.store(warmup_done, std::memory_order_release);
-                }
+    void consume(std::vector<uint64_t>& deq_ts, std::atomic<size_t>& warmup_consumed) {
+        size_t warmup_done = 0;
+        while (warmup_done < ITEMS_WARMUP) {
+            MarketTick t;
+            if (q->pop(t)) {
+                ++warmup_done;
+                warmup_consumed.store(warmup_done, std::memory_order_release);
             }
-
-            size_t measured = 0;
-            while (measured < ITEMS_MEASURED) {
-                MarketTick t;
-                if (q.pop(t)) {
-                    deq_ts[t.seq] = rdtscp_ordered();
-                    ++measured;
-                }
+        }
+        size_t measured = 0;
+        while (measured < ITEMS_MEASURED) {
+            MarketTick t;
+            if (q->pop(t)) {
+                deq_ts[t.seq] = rdtscp_ordered();
+                ++measured;
             }
-        });
+        }
+    }
 
-        pin_to_core(PRODUCER_CORE);
-        while (!consumer_ready.load(std::memory_order_acquire)) {}
-        start_signal.store(true, std::memory_order_release);
-
+    void produce_warmup() {
         for (size_t i = 0; i < ITEMS_WARMUP; ++i) {
             MarketTick t{uint32_t(i), 1, WARMUP_SEQ};
-            while (!q.push(t)) {}
+            while (!q->push(t)) {}
         }
-        while (warmup_consumed.load(std::memory_order_acquire) < ITEMS_WARMUP) {
-            std::this_thread::yield();
-        }
+    }
 
-        struct timespec t0{};
-        clock_gettime(CLOCK_MONOTONIC_RAW, &t0);
-
-        uint64_t next_release_cycles = rdtscp_ordered();
+    void produce_measured(std::vector<uint64_t>& enq_ts, uint64_t period_cycles) {
+        uint64_t next_release = rdtscp_ordered();
         for (size_t i = 0; i < ITEMS_MEASURED; ++i) {
             if (period_cycles > 0) {
-                while (__rdtsc() < next_release_cycles) { _mm_pause(); }
-                next_release_cycles += period_cycles;
+                while (__rdtsc() < next_release) { _mm_pause(); }
+                next_release += period_cycles;
             }
             MarketTick t{uint32_t(i & 0xFFFF), 1, uint64_t(i)};
             enq_ts[i] = rdtscp_ordered();
-            while (!q.push(t)) {}
+            while (!q->push(t)) {}
         }
-
-        consumer.join();
-
-        struct timespec t1{};
-        clock_gettime(CLOCK_MONOTONIC_RAW, &t1);
-        result.wall_ns_total += static_cast<double>(
-            (t1.tv_sec - t0.tv_sec) * 1'000'000'000LL + (t1.tv_nsec - t0.tv_nsec));
-
-        bin_run(enq_ts, deq_ts, ns_per_cycle, result, wv);
     }
-    return result;
-}
 
-// ─── Variant: mutex-condvar (bounded) ────────────────────────────────────────
+    void signal_producer_done() {}
+};
+
+// ─── Policy: mutex-condvar (bounded) ─────────────────────────────────────────
 // Uses two condition variables for symmetric back-pressure:
 //   cv_not_empty — consumer waits here when queue is empty
 //   cv_not_full  — producer waits here when queue is at QUEUE_DEPTH capacity
-// This matches lock-free back-pressure semantics and prevents unbounded queue growth.
 
-static RunResult run_mutex_condvar(double ns_per_cycle, uint64_t rate_hz,
-                                    WarmupVerify* wv) {
-    const uint64_t period_cycles = pacing_period_cycles(rate_hz, ns_per_cycle);
-
-    RunResult result;
-    std::vector<uint64_t> enq_ts(ITEMS_MEASURED);
-    std::vector<uint64_t> deq_ts(ITEMS_MEASURED);
-
-    for (size_t run = 0; run < NUM_RUNS; ++run) {
+struct MutexCondvarPolicy {
+    struct State {
         std::queue<MarketTick>  q;
         std::mutex              mtx;
         std::condition_variable cv_not_empty;
         std::condition_variable cv_not_full;
-        bool producer_done_flag = false;
+        bool                    producer_done_flag = false;
+    };
+    std::unique_ptr<State> s;
 
-        std::atomic<bool>   consumer_ready{false};
-        std::atomic<bool>   start_signal{false};
-        std::atomic<size_t> warmup_consumed{0};
+    void reset() { s = std::make_unique<State>(); }
 
-        std::thread consumer([&] {
-            pin_to_core(CONSUMER_CORE);
-            consumer_ready.store(true, std::memory_order_release);
-            while (!start_signal.load(std::memory_order_acquire)) {}
+    void consume(std::vector<uint64_t>& deq_ts, std::atomic<size_t>& warmup_consumed) {
+        size_t warmup_done = 0;
+        size_t processed   = 0;
+        const size_t total = ITEMS_WARMUP + ITEMS_MEASURED;
 
-            size_t warmup_done = 0;
-            size_t measured    = 0;
-            size_t processed   = 0;
-            const size_t total = ITEMS_WARMUP + ITEMS_MEASURED;
-
-            while (processed < total) {
-                MarketTick t;
-                {
-                    std::unique_lock<std::mutex> lk(mtx);
-                    cv_not_empty.wait(lk, [&] { return !q.empty() || producer_done_flag; });
-                    if (q.empty()) break;
-                    t = q.front();
-                    q.pop();
-                }
-                // Notify producer that space is available — outside lock
-                cv_not_full.notify_one();
-
-                if (t.seq < ITEMS_MEASURED) {
-                    // Timestamp after lock release — symmetric with lock-free path
-                    deq_ts[t.seq] = rdtscp_ordered();
-                    ++measured;
-                } else {
-                    ++warmup_done;
-                    warmup_consumed.store(warmup_done, std::memory_order_release);
-                }
-                ++processed;
+        while (processed < total) {
+            MarketTick t;
+            {
+                std::unique_lock<std::mutex> lk(s->mtx);
+                s->cv_not_empty.wait(lk, [&] { return !s->q.empty() || s->producer_done_flag; });
+                if (s->q.empty()) break;
+                t = s->q.front();
+                s->q.pop();
             }
-        });
+            s->cv_not_full.notify_one();
 
-        pin_to_core(PRODUCER_CORE);
-        while (!consumer_ready.load(std::memory_order_acquire)) {}
-        start_signal.store(true, std::memory_order_release);
+            if (t.seq < ITEMS_MEASURED) {
+                deq_ts[t.seq] = rdtscp_ordered();
+            } else {
+                ++warmup_done;
+                warmup_consumed.store(warmup_done, std::memory_order_release);
+            }
+            ++processed;
+        }
+    }
 
-        // Warmup (bounded: respect queue capacity)
+    void produce_warmup() {
         for (size_t i = 0; i < ITEMS_WARMUP; ++i) {
             {
-                std::unique_lock<std::mutex> lk(mtx);
-                cv_not_full.wait(lk, [&] { return q.size() < QUEUE_DEPTH; });
-                q.push({uint32_t(i), 1, WARMUP_SEQ});
+                std::unique_lock<std::mutex> lk(s->mtx);
+                s->cv_not_full.wait(lk, [&] { return s->q.size() < QUEUE_DEPTH; });
+                s->q.push({uint32_t(i), 1, WARMUP_SEQ});
             }
-            cv_not_empty.notify_one();
+            s->cv_not_empty.notify_one();
         }
-        while (warmup_consumed.load(std::memory_order_acquire) < ITEMS_WARMUP) {
-            std::this_thread::yield();
-        }
+    }
 
-        struct timespec t0{};
-        clock_gettime(CLOCK_MONOTONIC_RAW, &t0);
-
-        uint64_t next_release_cycles = rdtscp_ordered();
+    void produce_measured(std::vector<uint64_t>& enq_ts, uint64_t period_cycles) {
+        uint64_t next_release = rdtscp_ordered();
         for (size_t i = 0; i < ITEMS_MEASURED; ++i) {
             if (period_cycles > 0) {
-                while (__rdtsc() < next_release_cycles) { _mm_pause(); }
-                next_release_cycles += period_cycles;
+                while (__rdtsc() < next_release) { _mm_pause(); }
+                next_release += period_cycles;
             }
             MarketTick t{uint32_t(i & 0xFFFF), 1, uint64_t(i)};
             enq_ts[i] = rdtscp_ordered();
             {
-                std::unique_lock<std::mutex> lk(mtx);
-                cv_not_full.wait(lk, [&] { return q.size() < QUEUE_DEPTH; });
-                q.push(t);
+                std::unique_lock<std::mutex> lk(s->mtx);
+                s->cv_not_full.wait(lk, [&] { return s->q.size() < QUEUE_DEPTH; });
+                s->q.push(t);
             }
-            cv_not_empty.notify_one();
+            s->cv_not_empty.notify_one();
         }
-
-        {
-            std::lock_guard<std::mutex> lk(mtx);
-            producer_done_flag = true;
-        }
-        cv_not_empty.notify_all();
-
-        consumer.join();
-
-        struct timespec t1{};
-        clock_gettime(CLOCK_MONOTONIC_RAW, &t1);
-        result.wall_ns_total += static_cast<double>(
-            (t1.tv_sec - t0.tv_sec) * 1'000'000'000LL + (t1.tv_nsec - t0.tv_nsec));
-
-        // Skip items whose deq_ts was not recorded (shouldn't happen in correct run)
-        for (size_t i = 0; i < ITEMS_MEASURED; ++i) {
-            if (deq_ts[i] == 0) {
-                std::fprintf(stderr, "WARN: deq_ts[%zu] == 0 (item not consumed?)\n", i);
-            }
-        }
-        bin_run(enq_ts, deq_ts, ns_per_cycle, result, wv);
     }
-    return result;
+
+    void signal_producer_done() {
+        {
+            std::lock_guard<std::mutex> lk(s->mtx);
+            s->producer_done_flag = true;
+        }
+        s->cv_not_empty.notify_all();
+    }
+};
+
+// ─── Variant dispatch functions ───────────────────────────────────────────────
+
+static RunResult run_lockfree_handrolled(double ns_per_cycle, uint64_t rate_hz,
+                                          WarmupVerify* wv) {
+    return run_spsc_variant(ns_per_cycle, rate_hz, wv, HandrolledPolicy{});
+}
+
+static RunResult run_lockfree_boost(double ns_per_cycle, uint64_t rate_hz,
+                                     WarmupVerify* wv) {
+    return run_spsc_variant(ns_per_cycle, rate_hz, wv, BoostPolicy{});
+}
+
+static RunResult run_mutex_condvar(double ns_per_cycle, uint64_t rate_hz,
+                                    WarmupVerify* wv) {
+    return run_spsc_variant(ns_per_cycle, rate_hz, wv, MutexCondvarPolicy{});
 }
 
 // ─── Dispatch ────────────────────────────────────────────────────────────────

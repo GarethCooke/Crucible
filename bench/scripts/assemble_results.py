@@ -11,7 +11,7 @@ import os
 import sys
 from pathlib import Path
 
-from stats_utils import bench_stats
+from stats_utils import bench_stats, build_groups
 
 
 def parse_bench_name(name: str) -> tuple[str, int]:
@@ -48,14 +48,11 @@ def main() -> None:
 
     machine = json.loads(args.machine_json)
 
-    groups: dict = {}
-    for b in raw.get("benchmarks", []):
-        if b.get("run_type") != "iteration":
-            continue
-        name = b["name"]
-        variant_raw, n = parse_bench_name(name)
-        key = (variant_raw, n)
-        groups.setdefault(key, []).append(b)
+    def _parse(name: str):
+        v, n = parse_bench_name(name)
+        return {"variant": v, "n": n}
+
+    groups = build_groups(raw.get("benchmarks", []), _parse)
 
     # BM_Sort_32M is a standalone benchmark (no /N suffix) — extract separately.
     sort_cost_32m = None

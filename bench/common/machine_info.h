@@ -12,20 +12,25 @@ namespace crucible {
 
 namespace detail {
 
-inline std::string shell(const char* cmd) {
+// Shared popen/fgets/pclose/trim plumbing used by shell() and shell_multiline().
+inline std::string shell_capture(const char* cmd) {
     std::array<char, 512> buf;
     std::string out;
     FILE* fp = ::popen(cmd, "r");
-    if (!fp) return "";
+    if (!fp) return out;
     while (std::fgets(buf.data(), static_cast<int>(buf.size()), fp))
         out += buf.data();
     ::pclose(fp);
     while (!out.empty() && (out.back() == '\n' || out.back() == '\r'))
         out.pop_back();
-    // Escape for JSON: strip control chars, escape backslash and double-quote
+    return out;
+}
+
+// Escape for single-line JSON: drop control chars, escape \ and ".
+inline std::string shell(const char* cmd) {
     std::string safe;
-    for (unsigned char c : out) {
-        if (c < 0x20 || c == 0x7f) continue;  // drop all ASCII control chars
+    for (unsigned char c : shell_capture(cmd)) {
+        if (c < 0x20 || c == 0x7f) continue;
         if (c == '\\') { safe += "\\\\"; continue; }
         if (c == '"')  { safe += "\\\""; continue; }
         safe += static_cast<char>(c);
@@ -35,17 +40,8 @@ inline std::string shell(const char* cmd) {
 
 // Like shell() but preserves newlines as \n and tabs as spaces — for multiline output.
 inline std::string shell_multiline(const char* cmd) {
-    std::array<char, 512> buf;
-    std::string out;
-    FILE* fp = ::popen(cmd, "r");
-    if (!fp) return "";
-    while (std::fgets(buf.data(), static_cast<int>(buf.size()), fp))
-        out += buf.data();
-    ::pclose(fp);
-    while (!out.empty() && (out.back() == '\n' || out.back() == '\r'))
-        out.pop_back();
     std::string safe;
-    for (unsigned char c : out) {
+    for (unsigned char c : shell_capture(cmd)) {
         if (c == '\n' || c == '\r') { safe += "\\n"; continue; }
         if (c == '\t')              { safe += ' ';   continue; }
         if (c < 0x20 || c == 0x7f) continue;
