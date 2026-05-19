@@ -1,6 +1,7 @@
 import { readFile } from 'fs/promises'
 import path from 'path'
 import { ThroughputBarsChart, type Run } from './ThroughputBarsChart'
+import { NoData } from './NoData'
 
 interface Props {
   /** Load data from site/src/data/perf/<slug>.json when provided. */
@@ -33,13 +34,10 @@ export async function ThroughputBars({
       if (!title) title = data.title
     } catch {
       return (
-        <div
-          className="my-8 rounded-xl border p-4 text-sm font-mono"
-          style={{ borderColor: 'rgba(255,255,255,0.07)', color: '#435270' }}
-        >
-          No data found for <span style={{ color: 'oklch(65% 0.18 222)' }}>{slug}</span>.
+        <NoData>
+          No data found for <span>{slug}</span>.
           Run <code>tools/perf_capture.sh</code> on the reference machine.
-        </div>
+        </NoData>
       )
     }
   }

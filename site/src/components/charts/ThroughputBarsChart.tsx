@@ -2,7 +2,8 @@
 
 import { useEffect, useRef } from 'react'
 import * as d3 from 'd3'
-import { colors, typography, variantColor } from './theme'
+import { getColors, typography, variantColor } from './theme'
+import { useTheme } from '@/hooks/useTheme'
 import { ChartZoom } from './ChartZoom'
 
 // ─── Run types ───────────────────────────────────────────────────────────────
@@ -59,8 +60,10 @@ interface Props {
 
 export function ThroughputBarsChart({ runs, stat = 'median', targetN, title }: Props) {
   const ref = useRef<SVGSVGElement>(null)
+  const theme = useTheme()
 
   useEffect(() => {
+    const colors = getColors()
     if (!ref.current || runs.length === 0) return
     d3.select(ref.current).selectAll('*').remove()
     if (isThreadRun(runs[0])) {
@@ -68,7 +71,9 @@ export function ThroughputBarsChart({ runs, stat = 'median', targetN, title }: P
     } else {
       renderLegacy(ref.current, runs as LegacyRun[], stat, targetN)
     }
-  }, [runs, stat, targetN])
+  }, [runs, stat, targetN, theme])
+
+  const colors = getColors()
 
   return (
     <ChartZoom>
@@ -97,6 +102,7 @@ function renderLegacy(
   stat: 'median' | 'min' | 'p99',
   targetN?: number,
 ) {
+  const colors = getColors()
   const ns = Array.from(new Set(runs.map((r) => r.n))).sort((a, b) => a - b)
   const n = targetN ?? ns[ns.length - 1]
   const data = runs.filter((r) => r.n === n)
@@ -166,6 +172,7 @@ function renderGrouped(
   runs: ThreadRun[],
   stat: 'median' | 'min' | 'p99',
 ) {
+  const colors = getColors()
   const W = el.clientWidth || 600
   const H = 280
   const margin = { top: 32, right: 96, bottom: 64, left: 72 }
@@ -306,6 +313,7 @@ function appendGrid(
   y: d3.ScaleLinear<number, number>,
   inner: { w: number; h: number },
 ) {
+  const colors = getColors()
   g.append('g')
     .attr('class', 'grid')
     .call(
@@ -334,6 +342,7 @@ function appendAxesLegacy(
   stat: string,
   n: number,
 ) {
+  const colors = getColors()
   g.append('g')
     .attr('transform', `translate(0,${inner.h})`)
     .call(d3.axisBottom(x).tickSize(0))

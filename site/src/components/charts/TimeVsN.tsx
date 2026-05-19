@@ -1,6 +1,7 @@
 import { readFile } from 'fs/promises'
 import path from 'path'
 import { TimeVsNChart, type TimeVsNRun } from './TimeVsNChart'
+import { NoData } from './NoData'
 
 interface Props {
   slug: string
@@ -28,13 +29,10 @@ export async function TimeVsN({ slug, variants, stat = 'median', title }: Props)
     return <TimeVsNChart runs={runs} stat={stat} title={title} />
   } catch {
     return (
-      <div
-        className="my-8 rounded-xl border p-4 text-sm font-mono"
-        style={{ borderColor: 'rgba(255,255,255,0.07)', color: '#435270' }}
-      >
-        No data found for <span style={{ color: 'oklch(65% 0.18 222)' }}>{slug}</span>.
+      <NoData>
+        No data found for <span>{slug}</span>.
         Run <code>./bench/scripts/run_one.sh {slug}</code> on the reference machine.
-      </div>
+      </NoData>
     )
   }
 }

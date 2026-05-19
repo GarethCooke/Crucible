@@ -2,6 +2,7 @@ import { readFile } from 'fs/promises'
 import path from 'path'
 import { CounterOverlayChart, type CounterRun } from './CounterOverlayChart'
 import { BranchMissOverlayChart, type BranchMissRun } from './CounterOverlayChart'
+import { NoData } from './NoData'
 
 type Metric =
   | 'cache_misses_per_op'
@@ -20,13 +21,10 @@ interface Props {
 export async function CounterOverlay({ slug, metric, placement, variants, title }: Props) {
   const filePath = path.join(process.cwd(), 'src/data/perf', `${slug}.json`)
   const noData = (
-    <div
-      className="my-8 rounded-xl border p-4 text-sm font-mono"
-      style={{ borderColor: 'rgba(255,255,255,0.07)', color: '#435270' }}
-    >
-      No data found for <span style={{ color: 'oklch(65% 0.18 222)' }}>{slug}</span>.
+    <NoData>
+      No data found for <span>{slug}</span>.
       Run <code>./bench/scripts/run_one.sh {slug}</code> on the reference machine.
-    </div>
+    </NoData>
   )
 
   if (metric === 'branch_misses_per_op') {

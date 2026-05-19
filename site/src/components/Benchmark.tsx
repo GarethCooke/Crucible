@@ -3,6 +3,7 @@ import path from 'path'
 import { ThroughputBarsChart } from './charts/ThroughputBarsChart'
 import { LatencyHistogramChart, type LatencyRun } from './charts/LatencyHistogram'
 import { LatencyVsLoadChart, type SweepRun } from './charts/LatencyVsLoad'
+import { NoData } from './charts/NoData'
 
 interface BenchmarkProps {
   slug: string
@@ -82,14 +83,10 @@ export async function Benchmark({
     data = JSON.parse(raw) as PerfData
   } catch {
     return (
-      <div
-        className="my-8 rounded-xl border p-4 text-sm font-mono"
-        style={{ borderColor: 'var(--border-color)', color: 'var(--text-muted)' }}
-      >
-        No benchmark data found for{' '}
-        <span style={{ color: 'var(--cyan)' }}>{slug}</span>. Run{' '}
+      <NoData>
+        No benchmark data found for <span>{slug}</span>. Run{' '}
         <code>./bench/scripts/run_one.sh {slug}</code> on the reference machine.
-      </div>
+      </NoData>
     )
   }
 
@@ -105,14 +102,10 @@ export async function Benchmark({
 
   if (noData) {
     return (
-      <div
-        className="my-8 rounded-xl border p-4 text-sm font-mono"
-        style={{ borderColor: 'var(--border-color)', color: 'var(--text-muted)' }}
-      >
-        No benchmark data found for{' '}
-        <span style={{ color: 'var(--cyan)' }}>{slug}</span>. Run{' '}
+      <NoData>
+        No benchmark data found for <span>{slug}</span>. Run{' '}
         <code>./bench/scripts/run_one.sh {slug}</code> on the reference machine.
-      </div>
+      </NoData>
     )
   }
 

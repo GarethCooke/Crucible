@@ -2,7 +2,8 @@
 
 import { useEffect, useRef } from 'react'
 import * as d3 from 'd3'
-import { colors, typography, variantColor } from './theme'
+import { getColors, typography, variantColor } from './theme'
+import { useTheme } from '@/hooks/useTheme'
 import { ChartZoom } from './ChartZoom'
 
 export interface CounterRun {
@@ -36,12 +37,16 @@ interface Props {
 
 export function CounterOverlayChart({ runs, metric, title }: Props) {
   const ref = useRef<SVGSVGElement>(null)
+  const theme = useTheme()
 
   useEffect(() => {
+    const colors = getColors()
     if (!ref.current || runs.length === 0) return
     d3.select(ref.current).selectAll('*').remove()
     render(ref.current, runs, metric)
-  }, [runs, metric])
+  }, [runs, metric, theme])
+
+  const colors = getColors()
 
   return (
     <ChartZoom>
@@ -63,6 +68,7 @@ export function CounterOverlayChart({ runs, metric, title }: Props) {
 }
 
 function render(el: SVGSVGElement, runs: CounterRun[], metric: Metric) {
+  const colors = getColors()
   const W = el.clientWidth || 600
   const H = 240
   const margin = { top: 32, right: 96, bottom: 64, left: 72 }
@@ -225,12 +231,16 @@ function render(el: SVGSVGElement, runs: CounterRun[], metric: Metric) {
 
 export function BranchMissOverlayChart({ runs, title }: { runs: BranchMissRun[]; title?: string }) {
   const ref = useRef<SVGSVGElement>(null)
+  const theme = useTheme()
 
   useEffect(() => {
+    const colors = getColors()
     if (!ref.current || runs.length === 0) return
     d3.select(ref.current).selectAll('*').remove()
     renderBranchMiss(ref.current, runs)
-  }, [runs])
+  }, [runs, theme])
+
+  const colors = getColors()
 
   return (
     <ChartZoom>
@@ -252,6 +262,7 @@ export function BranchMissOverlayChart({ runs, title }: { runs: BranchMissRun[];
 }
 
 function renderBranchMiss(el: SVGSVGElement, runs: BranchMissRun[]) {
+  const colors = getColors()
   const W = el.clientWidth || 600
   const H = 220
   const margin = { top: 32, right: 24, bottom: 56, left: 72 }

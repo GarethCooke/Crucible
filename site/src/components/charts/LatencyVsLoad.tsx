@@ -2,7 +2,8 @@
 
 import { useEffect, useRef } from 'react'
 import * as d3 from 'd3'
-import { colors, typography, palette } from './theme'
+import { getColors, typography, palette } from './theme'
+import { useTheme } from '@/hooks/useTheme'
 import { ChartZoom } from './ChartZoom'
 
 // ─── Data types ───────────────────────────────────────────────────────────────
@@ -61,8 +62,10 @@ interface Props {
 
 export function LatencyVsLoadChart({ runs, variants }: Props) {
   const ref = useRef<SVGSVGElement>(null)
+  const theme = useTheme()
 
   useEffect(() => {
+    const colors = getColors()
     if (!ref.current) return
 
     const orderedVariants = variants
@@ -79,7 +82,9 @@ export function LatencyVsLoadChart({ runs, variants }: Props) {
     if (valid.length === 0) return
 
     render(ref.current, valid, orderedVariants)
-  }, [runs, variants])
+  }, [runs, variants, theme])
+
+  const colors = getColors()
 
   return (
     <ChartZoom>
@@ -98,6 +103,7 @@ export function LatencyVsLoadChart({ runs, variants }: Props) {
 // ─── Renderer ─────────────────────────────────────────────────────────────────
 
 function render(el: SVGSVGElement, runs: SweepRun[], orderedVariants: string[]) {
+  const colors = getColors()
   const W = el.clientWidth || 680
   const H = 380
   const margin = { top: 32, right: 150, bottom: 60, left: 80 }

@@ -2,7 +2,8 @@
 
 import { useEffect, useRef } from 'react'
 import * as d3 from 'd3'
-import { colors, typography, palette } from './theme'
+import { getColors, typography, palette } from './theme'
+import { useTheme } from '@/hooks/useTheme'
 import { ChartZoom } from './ChartZoom'
 
 // ─── Data types ───────────────────────────────────────────────────────────────
@@ -67,8 +68,10 @@ export function LatencyHistogramChart({
   markers = ['p50', 'p99', 'p99_9'],
 }: Props) {
   const ref = useRef<SVGSVGElement>(null)
+  const theme = useTheme()
 
   useEffect(() => {
+    const colors = getColors()
     if (!ref.current) return
 
     const ordered = variants
@@ -84,7 +87,9 @@ export function LatencyHistogramChart({
     } else {
       renderPDF(ref.current, valid, ordered)
     }
-  }, [runs, variants, view, markers])
+  }, [runs, variants, view, markers, theme])
+
+  const colors = getColors()
 
   return (
     <ChartZoom>
@@ -108,6 +113,7 @@ function renderCCDF(
   markers: Array<'p50' | 'p99' | 'p99_9'>,
   allVariants: LatencyRun[],
 ) {
+  const colors = getColors()
   const W = el.clientWidth || 640
   const H = 360
   const margin = { top: 32, right: 120, bottom: 56, left: 72 }
@@ -288,6 +294,7 @@ function renderPDF(
   runs: LatencyRun[],
   allVariants: LatencyRun[],
 ) {
+  const colors = getColors()
   const W = el.clientWidth || 640
   const H = 320
   const margin = { top: 32, right: 120, bottom: 56, left: 72 }

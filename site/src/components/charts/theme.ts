@@ -13,15 +13,29 @@ export const palette = {
   series:   tokens.color.chart.series,
 } as const
 
-export const colors = {
-  bg:           tokens.color.dark.bgCard,
-  bgSecondary:  tokens.color.dark.bgSecondary,
-  textPrimary:  tokens.color.dark.textPrimary,
-  textSecondary:tokens.color.dark.textSecondary,
-  textMuted:    tokens.color.dark.textMuted,
-  border:       tokens.color.dark.border,
-  cyan:         tokens.color.dark.cyan,
-} as const
+export function getColors() {
+  if (typeof document === 'undefined') {
+    return {
+      bg:            tokens.color.dark.bgCard,
+      bgSecondary:   tokens.color.dark.bgSecondary,
+      textPrimary:   tokens.color.dark.textPrimary,
+      textSecondary: tokens.color.dark.textSecondary,
+      textMuted:     tokens.color.dark.textMuted,
+      border:        tokens.color.dark.border,
+      cyan:          tokens.color.dark.cyan,
+    }
+  }
+  const cs = getComputedStyle(document.documentElement)
+  return {
+    bg:            cs.getPropertyValue('--bg-card').trim(),
+    bgSecondary:   cs.getPropertyValue('--bg-secondary').trim(),
+    textPrimary:   cs.getPropertyValue('--text-primary').trim(),
+    textSecondary: cs.getPropertyValue('--text-secondary').trim(),
+    textMuted:     cs.getPropertyValue('--text-muted').trim(),
+    border:        cs.getPropertyValue('--border-color').trim(),
+    cyan:          cs.getPropertyValue('--cyan').trim(),
+  }
+}
 
 export const typography = {
   fontMono: tokens.font.mono,

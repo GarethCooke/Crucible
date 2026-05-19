@@ -2,7 +2,8 @@
 
 import { useEffect, useRef } from 'react'
 import * as d3 from 'd3'
-import { colors, typography, variantColor } from './theme'
+import { getColors, typography, variantColor } from './theme'
+import { useTheme } from '@/hooks/useTheme'
 import { ChartZoom } from './ChartZoom'
 
 export interface TimeVsNRun {
@@ -19,12 +20,16 @@ interface Props {
 
 export function TimeVsNChart({ runs, stat = 'median', title }: Props) {
   const ref = useRef<SVGSVGElement>(null)
+  const theme = useTheme()
 
   useEffect(() => {
+    const colors = getColors()
     if (!ref.current || runs.length === 0) return
     d3.select(ref.current).selectAll('*').remove()
     render(ref.current, runs, stat)
-  }, [runs, stat])
+  }, [runs, stat, theme])
+
+  const colors = getColors()
 
   return (
     <ChartZoom>
@@ -46,6 +51,7 @@ export function TimeVsNChart({ runs, stat = 'median', title }: Props) {
 }
 
 function render(el: SVGSVGElement, runs: TimeVsNRun[], stat: 'median' | 'min' | 'p99') {
+  const colors = getColors()
   const W = el.clientWidth || 700
   const H = 320
   const margin = { top: 32, right: 112, bottom: 56, left: 72 }
