@@ -3,15 +3,28 @@ import path from 'path'
 import { ThroughputBarsChart } from './charts/ThroughputBarsChart'
 import { LatencyHistogramChart } from './charts/LatencyHistogram'
 import { LatencyVsLoadChart } from './charts/LatencyVsLoad'
+import { CounterOverlay } from './charts/CounterOverlay'
+import { TimeVsN } from './charts/TimeVsN'
 import { NoData } from './charts/NoData'
 import type { LatencyHistogramData } from '@/lib/perf-types'
 
+type Metric = 'cache_misses_per_op' | 'cache_miss_ratio' | 'instructions_per_cycle' | 'branch_misses_per_op'
+
 interface BenchmarkProps {
   slug: string
-  chart?: 'throughput-bars' | 'latency-histogram' | 'latency-vs-load'
+  chart?: 'throughput-bars' | 'latency-histogram' | 'latency-vs-load' | 'counter-overlay' | 'time-vs-n'
   variants?: string[]
   stat?: 'median' | 'min' | 'p99'
+  /** Filter runs to a specific N value (throughput-bars). */
   n?: number
+  /** Alias for n — pass either. */
+  targetN?: number
+  /** Filter runs by placement label (false-sharing). */
+  placement?: string
+  /** Counter metric for chart="counter-overlay". */
+  metric?: Metric
+  /** Override the title from the JSON data file. */
+  title?: string
   mode?: 'paced' | 'saturated' | 'sweep'
   offered_rate_hz?: number
   view?: 'ccdf' | 'pdf'
@@ -76,11 +89,24 @@ export async function Benchmark({
   variants,
   stat = 'median',
   n,
+  targetN,
+  placement,
+  metric,
+  title: titleProp,
   mode,
   offered_rate_hz,
   view = 'ccdf',
   markers = ['p50', 'p99', 'p99_9'],
 }: BenchmarkProps) {
+  // Delegate chart types that have dedicated server components with their own data schemas.
+  if (chart === 'counter-overlay') {
+    return <CounterOverlay slug={slug} metric={metric!} placement={placement} variants={variants} />
+  }
+  if (chart === 'time-vs-n') {
+    return <TimeVsN slug={slug} variants={variants} stat={stat} />
+  }
+
+  const resolvedN = targetN ?? n
   const filePath = path.join(process.cwd(), 'src/data/perf', `${slug}.json`)
   let data: PerfData
 
@@ -101,7 +127,10 @@ export async function Benchmark({
       ? filterRuns(data.runs, 'sweep', undefined, variants)
       : []
 
-  const runs = filterRuns(data.runs, mode, offered_rate_hz, variants)
+  let runs = filterRuns(data.runs, mode, offered_rate_hz, variants)
+  if (placement) {
+    runs = runs.filter((r) => (r as { placement?: string }).placement === placement)
+  }
 
   const hasLatencyData = runs.some((r) => r.latency_ns?.counts?.length)
   const hasSweepData = sweepRuns.some(
@@ -125,7 +154,7 @@ export async function Benchmark({
   }
 
   if (chart === 'throughput-bars') {
-    return <ThroughputBarsChart runs={runs} stat={stat} targetN={n} title={data.title} />
+    return <ThroughputBarsChart runs={runs} stat={stat} targetN={resolvedN} title={titleProp ?? data.title} />
   }
 
   if (chart === 'latency-histogram') {

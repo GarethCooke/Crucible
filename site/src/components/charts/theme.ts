@@ -38,10 +38,12 @@ export function getColors() {
 }
 
 export const typography = {
-  fontMono: tokens.font.mono,
-  fontSans: tokens.font.sans,
-  axisSize:  tokens.chart.axisSize,
-  labelSize: tokens.chart.labelSize,
+  fontMono:       tokens.font.mono,
+  fontSans:       tokens.font.sans,
+  axisSize:       tokens.chart.axisSize,
+  labelSize:      tokens.chart.labelSize,
+  annotationSize: tokens.chart.annotationSize,
+  captionSize:    tokens.chart.captionSize,
 } as const
 
 // Maps a variant name to its colour. Falls back to the first series colour.

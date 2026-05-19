@@ -102,8 +102,9 @@ crucially no mispredict penalty even on adversarial input.
   stat="median"
 />
 
-<CounterOverlay
+<Benchmark
   slug="01-branch-prediction"
+  chart="counter-overlay"
   metric="branch_misses_per_op"
   variants={["sorted", "unsorted", "branchless"]}
 />
@@ -144,8 +145,9 @@ as the pipeline repeatedly flushes and restarts.
 The 6.7× headline is measured at N = 32 M (128 MiB), where both variants are
 DRAM-bound. Looking across all six sizes reveals a more interesting story:
 
-<TimeVsN
+<Benchmark
   slug="01-branch-prediction"
+  chart="time-vs-n"
   variants={["sorted", "unsorted", "branchless"]}
   stat="median"
 />

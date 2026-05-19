@@ -50,7 +50,7 @@ export async function CounterOverlay({ slug, metric, placement, variants, title 
       return noData
     }
     if (branchRuns.length === 0) return noData
-    return <BranchMissOverlayChart runs={branchRuns} title={title} />
+    return <BranchMissOverlayChart runs={branchRuns} title={title} maxN={maxN} />
   }
 
   // False-sharing schema: metrics nested in run.counters.

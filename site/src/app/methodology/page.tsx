@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Methodology",
@@ -61,7 +61,7 @@ function Ref({ href, children }: { href: string; children: React.ReactNode }) {
 
 export default function MethodologyPage() {
   return (
-    <div className="max-w-2xl fu">
+    <div className="max-w-2xl prose prose-invert fu">
       <p
         className="font-mono text-xs uppercase tracking-widest mb-3"
         style={{ color: "var(--cyan)" }}
@@ -85,6 +85,7 @@ export default function MethodologyPage() {
 
       {/* ── Reference machine ─────────────────────────────────────────────── */}
       <h2
+        id="reference-machine"
         className="font-sans font-semibold text-sm uppercase tracking-widest mb-4"
         style={{ color: "var(--text-muted)" }}
       >
@@ -144,12 +145,13 @@ export default function MethodologyPage() {
       <p className="text-sm mb-6" style={{ color: "var(--text-muted)" }}>
         Zen 2 implements 256-bit AVX2 as two 128-bit µops — called out
         explicitly in any SIMD post. Full{" "}
-        <code style={{ color: "var(--cyan)" }}>lscpu --extended</code> output,
+        <code>lscpu --extended</code> output,
         kernel version, and compiler version are committed to the repo alongside
         each benchmark result.
       </p>
       {/* ── Four commitments ──────────────────────────────────────────────── */}
       <h2
+        id="commitments"
         className="font-sans font-semibold text-sm uppercase tracking-widest mb-2"
         style={{ color: "var(--text-muted)" }}
       >
@@ -225,6 +227,7 @@ export default function MethodologyPage() {
 
       {/* ── Best practice items ───────────────────────────────────────────── */}
       <h2
+        id="best-practices"
         className="font-sans font-semibold text-sm uppercase tracking-widest mb-4"
         style={{ color: "var(--text-muted)" }}
       >
@@ -253,6 +256,7 @@ export default function MethodologyPage() {
 
       {/* ── References ────────────────────────────────────────────────────── */}
       <h2
+        id="references"
         className="font-sans font-semibold text-sm uppercase tracking-widest mb-4"
         style={{ color: "var(--text-muted)" }}
       >

@@ -28,6 +28,18 @@
   --font-sans: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
   --font-body: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
+
+  /* Semantic colour aliases — mirrors :root CSS variables so Tailwind can
+     generate utilities like text-text-primary, bg-bg-card, text-cyan, etc. */
+  --color-text-primary:   var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted:     var(--text-muted);
+  --color-bg-primary:     var(--bg-primary);
+  --color-bg-secondary:   var(--bg-secondary);
+  --color-bg-card:        var(--bg-card);
+  --color-border-color:   var(--border-color);
+  --color-border-hover:   var(--border-hover);
+  --color-cyan:           var(--cyan);
 }
 
 :root {

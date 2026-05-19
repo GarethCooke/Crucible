@@ -125,11 +125,9 @@ BENCHMARK(BM_AVX2FMA   )->Apply(sizes);
 
 // ─── Custom main ─────────────────────────────────────────────────────────────
 int main(int argc, char** argv) {
-    for (int i = 1; i < argc; ++i) {
-        if (std::string(argv[i]) == "--machine-info") {
-            std::cout << "{" << crucible::machine_info_json() << "}\n";
-            return 0;
-        }
+    if (argc > 1 && std::string_view(argv[1]) == "--machine-info") {
+        std::cout << "{" << crucible::machine_info_json() << "}\n";
+        return 0;
     }
 
     // Set FTZ + DAZ: Black-Scholes produces subnormals in deep-OTM tails.

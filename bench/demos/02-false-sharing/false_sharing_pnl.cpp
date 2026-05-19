@@ -78,7 +78,11 @@ static void init_fills() {
 
 static void check_smt_off() {
     std::ifstream f("/sys/devices/system/cpu/smt/active");
-    if (!f.is_open()) return;  // kernel without SMT sysfs — skip
+    if (!f.is_open()) {
+        std::fprintf(stderr, "WARNING: /sys/devices/system/cpu/smt/active not found — "
+                             "SMT check skipped (kernel may lack CONFIG_SCHED_SMT)\n");
+        return;
+    }
     int val = -1;
     f >> val;
     if (val != 0) {
@@ -229,7 +233,7 @@ static void run_benchmark(
 // ─── Registration + main ─────────────────────────────────────────────────────
 
 int main(int argc, char** argv) {
-    if (argc > 1 && std::string(argv[1]) == "--machine-info") {
+    if (argc > 1 && std::string_view(argv[1]) == "--machine-info") {
         std::cout << "{" << crucible::machine_info_json() << "}" << std::endl;
         return 0;
     }

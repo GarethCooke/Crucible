@@ -14,7 +14,7 @@ that makes the SIMD wins reachable at all.
 
 European call option price under Black-Scholes:
 
-```
+```text
 C  = S·N(d₁) − K·e^(−rT)·N(d₂)
 d₁ = (ln(S/K) + (r + σ²/2)T) / (σ√T)
 d₂ = d₁ − σ√T
@@ -95,14 +95,16 @@ the input is 20 MB — larger than the 16 MB L3 per CCX — but the workload is
 compute-bound anyway, so throughput per option is essentially identical to the
 L2-resident case.
 
-<ThroughputBars
+<Benchmark
   slug="03-simd-blackscholes"
+  chart="throughput-bars"
   targetN={16384}
   title="Options priced per second at N=16k — L2-resident, compute-bound (higher is better)"
 />
 
-<ThroughputBars
+<Benchmark
   slug="03-simd-blackscholes"
+  chart="throughput-bars"
   targetN={1048576}
   title="Options priced per second at N=1M — fully amortised (higher is better)"
 />

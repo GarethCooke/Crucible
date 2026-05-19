@@ -11,6 +11,7 @@ import { appendGrid, appendLegendRects } from './d3helpers'
 import { useTheme } from '@/hooks/useTheme'
 import { ChartZoom } from './ChartZoom'
 import { ChartShell } from './ChartShell'
+import { formatSI } from '@/lib/format'
 
 export interface CounterRun {
   variant: string
@@ -120,7 +121,7 @@ function render(el: SVGSVGElement, runs: CounterRun[], metric: Metric, title?: s
         .attr('x', bx + bw / 2)
         .attr('y', by - 6)
         .attr('text-anchor', 'middle')
-        .attr('font-size', 10)
+        .attr('font-size', typography.annotationSize)
         .attr('fill', colors.textPrimary)
         .text(val.toFixed(metric === 'instructions_per_cycle' ? 2 : 3))
     })
@@ -141,7 +142,7 @@ function render(el: SVGSVGElement, runs: CounterRun[], metric: Metric, title?: s
     .attr('x', margin.left + inner.w / 2)
     .attr('y', H - 8)
     .attr('text-anchor', 'middle')
-    .attr('font-size', 10)
+    .attr('font-size', typography.annotationSize)
     .attr('fill', colors.textMuted)
     .attr('font-family', typography.fontMono)
     .text('threads')
@@ -164,7 +165,7 @@ function render(el: SVGSVGElement, runs: CounterRun[], metric: Metric, title?: s
     .attr('x', -(margin.top + inner.h / 2))
     .attr('y', 12)
     .attr('text-anchor', 'middle')
-    .attr('font-size', 9)
+    .attr('font-size', typography.captionSize)
     .attr('fill', colors.textMuted)
     .attr('font-family', typography.fontMono)
     .text(METRIC_LABELS[metric])
@@ -172,7 +173,7 @@ function render(el: SVGSVGElement, runs: CounterRun[], metric: Metric, title?: s
   svg.append('text')
     .attr('x', margin.left)
     .attr('y', margin.top - 10)
-    .attr('font-size', 10)
+    .attr('font-size', typography.annotationSize)
     .attr('fill', colors.textMuted)
     .attr('font-family', typography.fontMono)
     .text(METRIC_LABELS[metric])
@@ -185,15 +186,15 @@ function render(el: SVGSVGElement, runs: CounterRun[], metric: Metric, title?: s
 
 // ─── Branch-miss overlay (branch-prediction demo) ────────────────────────────
 
-export function BranchMissOverlayChart({ runs, title }: { runs: BranchMissRun[]; title?: string }) {
+export function BranchMissOverlayChart({ runs, title, maxN }: { runs: BranchMissRun[]; title?: string; maxN?: number }) {
   const ref = useRef<SVGSVGElement>(null)
   const theme = useTheme()
 
   useEffect(() => {
     if (!ref.current || runs.length === 0) return
     select(ref.current).selectAll('*').remove()
-    renderBranchMiss(ref.current, runs, title)
-  }, [runs, title, theme])
+    renderBranchMiss(ref.current, runs, title, maxN)
+  }, [runs, title, maxN, theme])
 
   return (
     <ChartZoom>
@@ -202,7 +203,7 @@ export function BranchMissOverlayChart({ runs, title }: { runs: BranchMissRun[];
   )
 }
 
-function renderBranchMiss(el: SVGSVGElement, runs: BranchMissRun[], title?: string) {
+function renderBranchMiss(el: SVGSVGElement, runs: BranchMissRun[], title?: string, maxN?: number) {
   const colors = getColors()
   const W = el.clientWidth || 600
   const H = 220
@@ -270,7 +271,7 @@ function renderBranchMiss(el: SVGSVGElement, runs: BranchMissRun[], title?: stri
     .attr('x', -(margin.top + inner.h / 2))
     .attr('y', 14)
     .attr('text-anchor', 'middle')
-    .attr('font-size', 9)
+    .attr('font-size', typography.captionSize)
     .attr('fill', colors.textMuted)
     .attr('font-family', typography.fontMono)
     .text('branch misses / op')
@@ -279,8 +280,8 @@ function renderBranchMiss(el: SVGSVGElement, runs: BranchMissRun[], title?: stri
     .attr('x', margin.left + inner.w / 2)
     .attr('y', H - 8)
     .attr('text-anchor', 'middle')
-    .attr('font-size', 10)
+    .attr('font-size', typography.annotationSize)
     .attr('fill', colors.textMuted)
     .attr('font-family', typography.fontMono)
-    .text('branch misses / op  ·  N = 32 M')
+    .text(maxN != null ? `branch misses / op  ·  N = ${formatSI(maxN)}` : 'branch misses / op')
 }

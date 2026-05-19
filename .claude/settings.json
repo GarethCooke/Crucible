@@ -3,7 +3,8 @@
     "allow": [
       "Bash(node -e \"console.log\\(require\\('./node_modules/shiki/package.json'\\).version\\)\")",
       "PowerShell(node -e \"console.log\\(require\\('c:/Development/Projects/Crucible/site/node_modules/shiki/package.json'\\).version\\)\")",
-      "PowerShell(node -e \"console.log\\(require\\('c:/Development/Projects/Crucible/site/node_modules/rehype-pretty-code/package.json'\\).version\\)\")"
+      "PowerShell(node -e \"console.log\\(require\\('c:/Development/Projects/Crucible/site/node_modules/rehype-pretty-code/package.json'\\).version\\)\")",
+      "Bash(python3 -c ' *)"
     ]
   }
 }

@@ -168,6 +168,10 @@ static void bin_run(const std::vector<uint64_t>& enq_ts,
                     WarmupVerify* wv) {
     crucible::Histogram run_hist;
     for (size_t i = 0; i < ITEMS_MEASURED; ++i) {
+        if (deq_ts[i] == 0) {
+            std::fprintf(stderr, "WARN: mutex-condvar item %zu not consumed\n", i);
+            continue;  // skip — passing zero would underflow uint64_t subtraction
+        }
         const uint64_t latency_ns =
             static_cast<uint64_t>((deq_ts[i] - enq_ts[i]) * ns_per_cycle);
         run_hist.record(latency_ns);

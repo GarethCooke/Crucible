@@ -124,6 +124,8 @@ static void sizes(benchmark::internal::Benchmark* b) {
 BENCHMARK(BM_Sorted)    ->Apply(sizes);
 BENCHMARK(BM_Unsorted)  ->Apply(sizes);
 BENCHMARK(BM_Branchless)->Apply(sizes);
+// PerfCounters intentionally omitted — this benchmark measures sort wall time
+// only, not branch behaviour. See sort_cost_32m in assemble_results.py.
 BENCHMARK(BM_Sort_32M)  ->MinTime(2.0);
 
 // ---------------------------------------------------------------------------
@@ -132,11 +134,9 @@ BENCHMARK(BM_Sort_32M)  ->MinTime(2.0);
 
 int main(int argc, char** argv) {
     // --machine-info flag: print machine JSON and exit (used by run_one.sh)
-    for (int i = 1; i < argc; ++i) {
-        if (std::string(argv[i]) == "--machine-info") {
-            std::cout << "{" << crucible::machine_info_json() << "}\n";
-            return 0;
-        }
+    if (argc > 1 && std::string_view(argv[1]) == "--machine-info") {
+        std::cout << "{" << crucible::machine_info_json() << "}\n";
+        return 0;
     }
 
     benchmark::Initialize(&argc, argv);

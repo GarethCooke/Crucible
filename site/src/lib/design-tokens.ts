@@ -77,9 +77,11 @@ export const tokens = {
 
   // D3 chart-specific type sizes (numeric px for axis scale)
   chart: {
-    axisSize:  11,
-    labelSize: 12,
-    titleSize: 13,
+    axisSize:       11,
+    labelSize:      12,
+    titleSize:      13,
+    annotationSize: 10,  // value labels, footers, annotation text
+    captionSize:     9,  // rotated axis titles, secondary annotations
   },
 
   radius: {

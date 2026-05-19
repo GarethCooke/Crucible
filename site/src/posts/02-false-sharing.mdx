@@ -53,13 +53,15 @@ each other, the CPU spends most of its time waiting.
 
 The IPC counter and cache-miss-ratio counter make this visible:
 
-<CounterOverlay
+<Benchmark
   slug="02-false-sharing-pnl"
+  chart="counter-overlay"
   placement="intra-ccx"
   metric="instructions_per_cycle"
 />
-<CounterOverlay
+<Benchmark
   slug="02-false-sharing-pnl"
+  chart="counter-overlay"
   placement="intra-ccx"
   metric="cache_miss_ratio"
 />
@@ -101,7 +103,7 @@ ping-pong. Per-thread latency for padded sits near 2.85 ns/op across all
 thread counts (the inner loop's architectural floor); the system-level number
 falls because more threads share the wall-clock budget.
 
-<ThroughputBars slug="02-false-sharing-pnl" placement="intra-ccx" />
+<Benchmark slug="02-false-sharing-pnl" chart="throughput-bars" placement="intra-ccx" />
 
 ## Crossing the Fabric
 
@@ -111,8 +113,8 @@ Coherency traffic between two cores on the same CCX travels through their shared
 L3. Coherency traffic between CCX0 and CCX1 has to cross the Infinity Fabric — higher
 latency, no shared cache to absorb the round-trips.
 
-<ThroughputBars slug="02-false-sharing-pnl" placement="cross-ccx" />
-<CounterOverlay slug="02-false-sharing-pnl" placement="cross-ccx" metric="instructions_per_cycle" />
+<Benchmark slug="02-false-sharing-pnl" chart="throughput-bars" placement="cross-ccx" />
+<Benchmark slug="02-false-sharing-pnl" chart="counter-overlay" placement="cross-ccx" metric="instructions_per_cycle" />
 
 At 4 threads, the cross-CCX unpadded result is 4.59 ns/op against intra-CCX 4t unpadded
 at 3.61 ns/op — **a 1.27× additional penalty from crossing the Fabric, on top of the
