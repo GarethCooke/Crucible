@@ -23,6 +23,7 @@ export async function CodeCompare({
       dark:  SYNTAX_THEME,
       light: 'github-light',
     } as const,
+    defaultColor: 'dark' as const,
     transformers: [
       {
         line(node: { properties: { class?: string; style?: string } }, line: number) {
