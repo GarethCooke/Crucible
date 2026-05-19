@@ -152,6 +152,11 @@ DRAM-bound. Looking across all six sizes reveals a more interesting story:
   stat="median"
 />
 
+- **N = 1024 (harness floor)**: both variants land at ~20 ns/element here
+  because per-iteration overhead — timing calls, function entry, loop setup —
+  is fixed per measurement and amortises across N. By N = 10 K it's already
+  negligible. Treat the leftmost point as a measurement floor, not a branch-
+  prediction signal; the real per-element cost emerges from N = 10 K onward.
 - **Small N (≤ 10 K)**: 1 K elements fit in L1 (4 KiB), 10 K fits comfortably
   in L2 (40 KiB vs Zen 2's 512 KiB L2). Cache latency is minimal for both
   variants, and at small N the predictor can memorise the sequence (see below),
@@ -221,7 +226,7 @@ commits it; a well-predicted branch skips the work entirely on the not-taken
 path. For the 50/50 case studied here, branchless soundly beats unpredictable
 branching — but a perfectly-predicted branch still edges ahead by about 22%
 on this workload because it does half the adds. Branchless wins when the
-predicate is unpredictable, *not* when it's merely binary.
+predicate is unpredictable, _not_ when it's merely binary.
 
 ## The sort caveat
 
@@ -244,10 +249,10 @@ bottleneck, consider removing it rather than feeding it predictable inputs.
 
 ---
 
-*All numbers: median ns/iteration, AMD Ryzen 7 3800X at 3.9 GHz base,
-governor = performance, Turbo Boost off, isolated cores 4–7, GCC 13.3 `-O3 -march=native`.*
-*`sum_threshold` compiled with `no-tree-vectorize`, `no-if-conversion`, `no-if-conversion2`
+_All numbers: median ns/iteration, AMD Ryzen 7 3800X at 3.9 GHz base,
+governor = performance, Turbo Boost off, isolated cores 4–7, GCC 13.3 `-O3 -march=native`._
+_`sum_threshold` compiled with `no-tree-vectorize`, `no-if-conversion`, `no-if-conversion2`
 to preserve the conditional jump. `sum_threshold_branchless` compiled with `no-tree-vectorize`
-to prevent auto-vectorisation (cmov path); both variants do identical scalar arithmetic.*
-*Sort cost measured with `PauseTiming()` to exclude the per-iteration copy.*
-*[Methodology →](/methodology)*
+to prevent auto-vectorisation (cmov path); both variants do identical scalar arithmetic._
+_Sort cost measured with `PauseTiming()` to exclude the per-iteration copy._
+_[Methodology →](/methodology)_
