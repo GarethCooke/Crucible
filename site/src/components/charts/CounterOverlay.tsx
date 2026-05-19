@@ -31,6 +31,7 @@ export async function CounterOverlay({ slug, metric, placement, variants, title 
     // Branch-prediction schema: top-level branch_misses_per_op per run.
     // Show per-variant bars at the largest captured N.
     let branchRuns: BranchMissRun[] = []
+    let maxN = 0
     try {
       const raw = await readFile(filePath, 'utf-8')
       const data = JSON.parse(raw) as {
@@ -42,7 +43,7 @@ export async function CounterOverlay({ slug, metric, placement, variants, title 
         ? data.runs.filter((r) => variants.includes(r.variant))
         : data.runs
       // Pick the largest N so each variant contributes one representative bar.
-      const maxN = Math.max(...allRuns.map((r) => r.n))
+      maxN = Math.max(...allRuns.map((r) => r.n))
       branchRuns = allRuns
         .filter((r) => r.n === maxN)
         .map((r) => ({ variant: r.variant, branch_misses_per_op: r.branch_misses_per_op }))
