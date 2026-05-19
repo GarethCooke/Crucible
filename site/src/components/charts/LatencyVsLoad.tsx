@@ -126,7 +126,7 @@ function render(el: SVGSVGElement, runs: SweepRun[], orderedVariants: string[], 
     .range([inner.h, 0])
     .clamp(true)
 
-  appendGrid(g, y, inner, { gridline: colors.border }, x)
+  appendGrid(g, y, inner, { gridline: colors.border })
 
   const lineGen = line<[number, number]>()
     .x((d) => x(d[0]))
