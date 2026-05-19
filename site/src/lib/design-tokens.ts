@@ -40,15 +40,17 @@ export const tokens = {
       emerald:       'oklch(65% 0.17 182)',
     },
 
-    // D3 chart palette — ordered for sorted/unsorted comparison + generic series
+    // D3 chart palette — ordered for sorted/unsorted comparison + generic series.
+    // series[0] (72%) and series[1] (52%) have a 20-pt luminance gap so the
+    // primary "vs" pair is distinguishable under deuteranopia as well as by hue.
     chart: {
-      sorted:   'oklch(65% 0.18 222)',   // cyan  — the "good" result
-      unsorted: 'oklch(65% 0.17 182)',   // emerald — the "bad" result
+      sorted:   'oklch(72% 0.18 222)',   // lighter blue-cyan — the "good" result
+      unsorted: 'oklch(52% 0.17 30)',    // darker red-orange — the "bad" result
       series: [
-        'oklch(65% 0.18 222)',
-        'oklch(65% 0.17 182)',
-        'oklch(65% 0.17 320)',
-        'oklch(65% 0.17 60)',
+        'oklch(72% 0.18 222)',   // lighter blue-cyan
+        'oklch(52% 0.17 30)',    // darker red-orange
+        'oklch(78% 0.15 95)',    // light yellow-green
+        'oklch(60% 0.17 320)',   // mid rose
       ] as const,
     },
   },

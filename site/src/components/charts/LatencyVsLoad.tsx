@@ -1,7 +1,10 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import * as d3 from 'd3'
+import { select } from 'd3-selection'
+import { scaleLog } from 'd3-scale'
+import { axisBottom, axisLeft } from 'd3-axis'
+import { line } from 'd3-shape'
 import { getColors, typography, variantColorByIndex } from './theme'
 import { appendGrid, appendLegendLines } from './d3helpers'
 import { useTheme } from '@/hooks/useTheme'
@@ -32,6 +35,8 @@ const STAT_LABEL: Record<string, string> = {
 
 const STATS_SHOWN = ['p50', 'p99', 'p99_9'] as const
 
+const DEFAULT_TITLE = 'Latency vs offered load chart'
+
 interface Props {
   runs: SweepRun[]
   variants?: string[]
@@ -43,7 +48,6 @@ export function LatencyVsLoadChart({ runs, variants, title }: Props) {
   const theme = useTheme()
 
   useEffect(() => {
-    const colors = getColors()
     if (!ref.current) return
 
     const orderedVariants = variants
@@ -56,11 +60,11 @@ export function LatencyVsLoadChart({ runs, variants, title }: Props) {
         r.latency_ns?.stats != null,
     )
 
-    d3.select(ref.current).selectAll('*').remove()
+    select(ref.current).selectAll('*').remove()
     if (valid.length === 0) return
 
-    render(ref.current, valid, orderedVariants)
-  }, [runs, variants, theme])
+    render(ref.current, valid, orderedVariants, title)
+  }, [runs, variants, title, theme])
 
   return (
     <ChartZoom>
@@ -69,19 +73,20 @@ export function LatencyVsLoadChart({ runs, variants, title }: Props) {
   )
 }
 
-function render(el: SVGSVGElement, runs: SweepRun[], orderedVariants: string[]) {
+function render(el: SVGSVGElement, runs: SweepRun[], orderedVariants: string[], title?: string) {
   const colors = getColors()
   const W = el.clientWidth || 680
   const H = 380
   const margin = { top: 32, right: 150, bottom: 60, left: 80 }
   const inner  = { w: W - margin.left - margin.right, h: H - margin.top - margin.bottom }
 
-  const svg = d3
-    .select(el)
+  const svg = select(el)
     .attr('width', W)
     .attr('height', H)
     .attr('viewBox', `0 0 ${W} ${H}`)
     .style('font-family', typography.fontMono)
+
+  svg.append('title').text(title ?? DEFAULT_TITLE)
 
   const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`)
 
@@ -111,19 +116,19 @@ function render(el: SVGSVGElement, runs: SweepRun[], orderedVariants: string[]) 
     }
   }
 
-  const x = d3.scaleLog()
+  const x = scaleLog()
     .domain([xMin * 0.85, xMax * 1.2])
     .range([0, inner.w])
     .nice()
 
-  const y = d3.scaleLog()
+  const y = scaleLog()
     .domain([Math.max(1, yMin * 0.7), yMax * 2])
     .range([inner.h, 0])
     .clamp(true)
 
   appendGrid(g, y, inner, { gridline: colors.border }, x)
 
-  const lineGen = d3.line<[number, number]>()
+  const lineGen = line<[number, number]>()
     .x((d) => x(d[0]))
     .y((d) => y(Math.max(1, d[1])))
 
@@ -161,7 +166,7 @@ function render(el: SVGSVGElement, runs: SweepRun[], orderedVariants: string[]) 
 
   g.append('g')
     .attr('transform', `translate(0,${inner.h})`)
-    .call(d3.axisBottom(x).ticks(6, '~s').tickSize(0))
+    .call(axisBottom(x).ticks(6, '~s').tickSize(0))
     .call((s) => s.select('.domain').attr('stroke', colors.border))
     .call((s) =>
       s.selectAll('text')
@@ -179,7 +184,7 @@ function render(el: SVGSVGElement, runs: SweepRun[], orderedVariants: string[]) 
     .text('offered load (items/sec, log scale)')
 
   g.append('g')
-    .call(d3.axisLeft(y).ticks(6, '~g'))
+    .call(axisLeft(y).ticks(6, '~g'))
     .call((s) => s.select('.domain').remove())
     .call((s) =>
       s.selectAll('text')

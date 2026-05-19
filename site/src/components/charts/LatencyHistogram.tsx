@@ -1,7 +1,10 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import * as d3 from 'd3'
+import { select } from 'd3-selection'
+import { scaleLog } from 'd3-scale'
+import { axisBottom, axisLeft } from 'd3-axis'
+import { line, area } from 'd3-shape'
 import { getColors, typography, variantColorByIndex } from './theme'
 import { appendGrid, appendLegendLines, appendLegendRects } from './d3helpers'
 import { useTheme } from '@/hooks/useTheme'
@@ -37,6 +40,9 @@ interface Props {
   title?: string
 }
 
+const DEFAULT_TITLE_CCDF = 'Latency CCDF chart'
+const DEFAULT_TITLE_PDF  = 'Latency distribution chart'
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function LatencyHistogramChart({
@@ -50,7 +56,6 @@ export function LatencyHistogramChart({
   const theme = useTheme()
 
   useEffect(() => {
-    const colors = getColors()
     if (!ref.current) return
 
     const ordered = variants
@@ -58,15 +63,15 @@ export function LatencyHistogramChart({
       : runs
     const valid = ordered.filter((r) => r.latency_ns && r.latency_ns.counts.length > 0)
 
-    d3.select(ref.current).selectAll('*').remove()
+    select(ref.current).selectAll('*').remove()
     if (valid.length === 0) return
 
     if (view === 'ccdf') {
-      renderCCDF(ref.current, valid, markers, ordered)
+      renderCCDF(ref.current, valid, markers, ordered, title)
     } else {
-      renderPDF(ref.current, valid, ordered)
+      renderPDF(ref.current, valid, ordered, title)
     }
-  }, [runs, variants, view, markers, theme])
+  }, [runs, variants, view, markers, title, theme])
 
   return (
     <ChartZoom>
@@ -82,6 +87,7 @@ function renderCCDF(
   runs: LatencyRun[],
   markers: Array<'p50' | 'p99' | 'p99_9'>,
   allVariants: LatencyRun[],
+  title?: string,
 ) {
   const colors = getColors()
   const W = el.clientWidth || 640
@@ -89,12 +95,13 @@ function renderCCDF(
   const margin = { top: 32, right: 120, bottom: 56, left: 72 }
   const inner  = { w: W - margin.left - margin.right, h: H - margin.top - margin.bottom }
 
-  const svg = d3
-    .select(el)
+  const svg = select(el)
     .attr('width', W)
     .attr('height', H)
     .attr('viewBox', `0 0 ${W} ${H}`)
     .style('font-family', typography.fontMono)
+
+  svg.append('title').text(title ?? DEFAULT_TITLE_CCDF)
 
   const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`)
 
@@ -134,19 +141,19 @@ function renderCCDF(
 
   const yFloor = Math.max(1e-6, Math.pow(10, Math.floor(Math.log10(globalMinY))))
 
-  const x = d3.scaleLog()
+  const x = scaleLog()
     .domain([Math.max(1, globalMinX * 0.9), globalMaxX * 1.5])
     .range([0, inner.w])
     .nice()
 
-  const y = d3.scaleLog()
+  const y = scaleLog()
     .domain([yFloor, 2])
     .range([inner.h, 0])
     .clamp(true)
 
   appendGrid(g, y, inner, { gridline: colors.border })
 
-  const line = d3.line<{ x: number; y: number }>()
+  const lineGen = line<{ x: number; y: number }>()
     .x((d) => x(d.x))
     .y((d) => y(Math.max(yFloor, d.y)))
     .defined((d) => d.x > 0 && d.y > 0)
@@ -157,7 +164,7 @@ function renderCCDF(
       .attr('fill', 'none')
       .attr('stroke', color)
       .attr('stroke-width', 2)
-      .attr('d', line)
+      .attr('d', lineGen)
   })
 
   const headline = runs[0].latency_ns!
@@ -192,7 +199,7 @@ function renderCCDF(
 
   g.append('g')
     .attr('transform', `translate(0,${inner.h})`)
-    .call(d3.axisBottom(x).ticks(6, '~s').tickSize(0))
+    .call(axisBottom(x).ticks(6, '~s').tickSize(0))
     .call((s) => s.select('.domain').attr('stroke', colors.border))
     .call((s) =>
       s.selectAll('text')
@@ -210,7 +217,7 @@ function renderCCDF(
     .text('latency (ns, log scale)')
 
   g.append('g')
-    .call(d3.axisLeft(y).ticks(6, '~g'))
+    .call(axisLeft(y).ticks(6, '~g'))
     .call((s) => s.select('.domain').remove())
     .call((s) =>
       s.selectAll('text')
@@ -239,6 +246,7 @@ function renderPDF(
   el: SVGSVGElement,
   runs: LatencyRun[],
   allVariants: LatencyRun[],
+  title?: string,
 ) {
   const colors = getColors()
   const W = el.clientWidth || 640
@@ -246,12 +254,13 @@ function renderPDF(
   const margin = { top: 32, right: 120, bottom: 56, left: 72 }
   const inner  = { w: W - margin.left - margin.right, h: H - margin.top - margin.bottom }
 
-  const svg = d3
-    .select(el)
+  const svg = select(el)
     .attr('width', W)
     .attr('height', H)
     .attr('viewBox', `0 0 ${W} ${H}`)
     .style('font-family', typography.fontMono)
+
+  svg.append('title').text(title ?? DEFAULT_TITLE_PDF)
 
   const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`)
 
@@ -283,12 +292,12 @@ function renderPDF(
 
   if (allSeries.length === 0) return
 
-  const x = d3.scaleLog()
+  const x = scaleLog()
     .domain([Math.max(1, globalMinX * 0.8), globalMaxX * 1.5])
     .range([0, inner.w])
     .nice()
 
-  const y = d3.scaleLog()
+  const y = scaleLog()
     .domain([1, globalMaxY * 2])
     .range([inner.h, 0])
     .clamp(true)
@@ -296,7 +305,7 @@ function renderPDF(
   appendGrid(g, y, inner, { gridline: colors.border })
 
   allSeries.forEach(({ segs, color }) => {
-    const area = d3.area<Segment>()
+    const areaGen = area<Segment>()
       .x0((d) => x(d.x0))
       .x1((d) => x(d.x1))
       .y0(inner.h)
@@ -310,7 +319,7 @@ function renderPDF(
       .datum(segs)
       .attr('fill', color)
       .attr('fill-opacity', 0.2)
-      .attr('d', area)
+      .attr('d', areaGen)
 
     g.append('path')
       .attr('fill', 'none')
@@ -321,7 +330,7 @@ function renderPDF(
 
   g.append('g')
     .attr('transform', `translate(0,${inner.h})`)
-    .call(d3.axisBottom(x).ticks(6, '~s').tickSize(0))
+    .call(axisBottom(x).ticks(6, '~s').tickSize(0))
     .call((s) => s.select('.domain').attr('stroke', colors.border))
     .call((s) =>
       s.selectAll('text')
@@ -339,7 +348,7 @@ function renderPDF(
     .text('latency (ns, log scale)')
 
   g.append('g')
-    .call(d3.axisLeft(y).ticks(5, '~g'))
+    .call(axisLeft(y).ticks(5, '~g'))
     .call((s) => s.select('.domain').remove())
     .call((s) =>
       s.selectAll('text')

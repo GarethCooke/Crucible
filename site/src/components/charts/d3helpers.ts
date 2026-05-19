@@ -1,10 +1,13 @@
-import * as d3 from 'd3'
+import { axisLeft, axisBottom } from 'd3-axis'
+import type { AxisScale } from 'd3-axis'
+import type { NumberValue } from 'd3-scale'
+import type { Selection } from 'd3-selection'
 import { typography } from './theme'
 
-type NumericScale = d3.AxisScale<d3.NumberValue>
+type NumericScale = AxisScale<NumberValue>
 
 export function appendGrid<E extends Element>(
-  g: d3.Selection<E, unknown, null, undefined>,
+  g: Selection<E, unknown, null, undefined>,
   y: NumericScale,
   inner: { w: number; h: number },
   colors: { gridline: string },
@@ -13,7 +16,7 @@ export function appendGrid<E extends Element>(
   g.append('g')
     .attr('class', 'grid')
     .call(
-      d3.axisLeft(y)
+      axisLeft(y)
         .ticks(5)
         .tickSize(-inner.w)
         .tickFormat(() => ''),
@@ -25,7 +28,7 @@ export function appendGrid<E extends Element>(
     g.append('g')
       .attr('transform', `translate(0,${inner.h})`)
       .call(
-        d3.axisBottom(x)
+        axisBottom(x)
           .ticks(6, '~s')
           .tickSize(-inner.h)
           .tickFormat(() => ''),
@@ -36,7 +39,7 @@ export function appendGrid<E extends Element>(
 }
 
 export function appendLegendLines<E extends Element>(
-  container: d3.Selection<E, unknown, null, undefined>,
+  container: Selection<E, unknown, null, undefined>,
   items: { label: string; color: string; dash?: string }[],
   position: { x: number; y: number; spacing?: number },
   colors: { textSecondary: string },
@@ -61,7 +64,7 @@ export function appendLegendLines<E extends Element>(
 }
 
 export function appendLegendRects<E extends Element>(
-  container: d3.Selection<E, unknown, null, undefined>,
+  container: Selection<E, unknown, null, undefined>,
   items: { label: string; color: string }[],
   position: { x: number; y: number; spacing?: number },
   colors: { textSecondary: string },

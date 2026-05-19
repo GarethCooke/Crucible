@@ -1,7 +1,11 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import * as d3 from 'd3'
+import { select } from 'd3-selection'
+import { scaleBand, scaleLinear } from 'd3-scale'
+import { axisBottom, axisLeft } from 'd3-axis'
+import type { NumberValue } from 'd3-scale'
+import { max, group } from 'd3-array'
 import { getColors, typography, variantColor } from './theme'
 import { appendGrid, appendLegendRects } from './d3helpers'
 import { useTheme } from '@/hooks/useTheme'
@@ -42,11 +46,10 @@ export function CounterOverlayChart({ runs, metric, title }: Props) {
   const theme = useTheme()
 
   useEffect(() => {
-    const colors = getColors()
     if (!ref.current || runs.length === 0) return
-    d3.select(ref.current).selectAll('*').remove()
-    render(ref.current, runs, metric)
-  }, [runs, metric, theme])
+    select(ref.current).selectAll('*').remove()
+    render(ref.current, runs, metric, title)
+  }, [runs, metric, title, theme])
 
   return (
     <ChartZoom>
@@ -55,44 +58,46 @@ export function CounterOverlayChart({ runs, metric, title }: Props) {
   )
 }
 
-function render(el: SVGSVGElement, runs: CounterRun[], metric: Metric) {
+const DEFAULT_TITLE_COUNTER    = 'CPU counter metric bar chart'
+const DEFAULT_TITLE_BRANCHMISS = 'Branch miss rate bar chart'
+
+function render(el: SVGSVGElement, runs: CounterRun[], metric: Metric, title?: string) {
   const colors = getColors()
   const W = el.clientWidth || 600
   const H = 240
   const margin = { top: 32, right: 96, bottom: 64, left: 72 }
   const inner = { w: W - margin.left - margin.right, h: H - margin.top - margin.bottom }
 
-  const svg = d3
-    .select(el)
+  const svg = select(el)
     .attr('width', W)
     .attr('height', H)
     .attr('viewBox', `0 0 ${W} ${H}`)
     .style('font-family', typography.fontMono)
+
+  svg.append('title').text(title ?? DEFAULT_TITLE_COUNTER)
 
   const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`)
 
   const threadCounts = Array.from(new Set(runs.map((r) => r.threads))).sort((a, b) => a - b)
   const variants = ['unpadded', 'padded']
 
-  const x0 = d3
-    .scaleBand()
+  const x0 = scaleBand()
     .domain(threadCounts.map((t) => `${t}t`))
     .range([0, inner.w])
     .paddingInner(0.3)
     .paddingOuter(0.1)
 
-  const x1 = d3
-    .scaleBand()
+  const x1 = scaleBand()
     .domain(variants)
     .range([0, x0.bandwidth()])
     .padding(0.06)
 
   const vals = runs.map((r) => r.counters[metric])
-  const y = d3.scaleLinear().domain([0, d3.max(vals)! * 1.3]).range([inner.h, 0]).nice()
+  const y = scaleLinear().domain([0, max(vals)! * 1.3]).range([inner.h, 0]).nice()
 
   appendGrid(g, y, inner, { gridline: colors.border })
 
-  const grouped = d3.group(runs, (d) => d.threads)
+  const grouped = group(runs, (d) => d.threads)
   grouped.forEach((threadRuns, threads) => {
     const gx = x0(`${threads}t`)!
     threadRuns.forEach((run) => {
@@ -123,7 +128,7 @@ function render(el: SVGSVGElement, runs: CounterRun[], metric: Metric) {
 
   g.append('g')
     .attr('transform', `translate(0,${inner.h})`)
-    .call(d3.axisBottom(x0).tickSize(0))
+    .call(axisBottom(x0).tickSize(0))
     .call((sel) => sel.select('.domain').attr('stroke', colors.border))
     .call((sel) =>
       sel.selectAll('text')
@@ -142,10 +147,10 @@ function render(el: SVGSVGElement, runs: CounterRun[], metric: Metric) {
     .text('threads')
 
   const yFormat = metric === 'cache_miss_ratio'
-    ? (v: d3.NumberValue) => `${(+v * 100).toFixed(0)}%`
-    : (v: d3.NumberValue) => `${v}`
+    ? (v: NumberValue) => `${(+v * 100).toFixed(0)}%`
+    : (v: NumberValue) => `${v}`
   g.append('g')
-    .call(d3.axisLeft(y).ticks(5).tickFormat(yFormat))
+    .call(axisLeft(y).ticks(5).tickFormat(yFormat))
     .call((sel) => sel.select('.domain').remove())
     .call((sel) =>
       sel.selectAll('text')
@@ -185,11 +190,10 @@ export function BranchMissOverlayChart({ runs, title }: { runs: BranchMissRun[];
   const theme = useTheme()
 
   useEffect(() => {
-    const colors = getColors()
     if (!ref.current || runs.length === 0) return
-    d3.select(ref.current).selectAll('*').remove()
-    renderBranchMiss(ref.current, runs)
-  }, [runs, theme])
+    select(ref.current).selectAll('*').remove()
+    renderBranchMiss(ref.current, runs, title)
+  }, [runs, title, theme])
 
   return (
     <ChartZoom>
@@ -198,24 +202,25 @@ export function BranchMissOverlayChart({ runs, title }: { runs: BranchMissRun[];
   )
 }
 
-function renderBranchMiss(el: SVGSVGElement, runs: BranchMissRun[]) {
+function renderBranchMiss(el: SVGSVGElement, runs: BranchMissRun[], title?: string) {
   const colors = getColors()
   const W = el.clientWidth || 600
   const H = 220
   const margin = { top: 32, right: 24, bottom: 56, left: 72 }
   const inner = { w: W - margin.left - margin.right, h: H - margin.top - margin.bottom }
 
-  const svg = d3
-    .select(el)
+  const svg = select(el)
     .attr('width', W)
     .attr('height', H)
     .attr('viewBox', `0 0 ${W} ${H}`)
     .style('font-family', typography.fontMono)
 
+  svg.append('title').text(title ?? DEFAULT_TITLE_BRANCHMISS)
+
   const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`)
 
-  const x = d3.scaleBand().domain(runs.map((r) => r.variant)).range([0, inner.w]).padding(0.45)
-  const y = d3.scaleLinear().domain([0, 0.55]).range([inner.h, 0]).nice()
+  const x = scaleBand().domain(runs.map((r) => r.variant)).range([0, inner.w]).padding(0.45)
+  const y = scaleLinear().domain([0, 0.55]).range([inner.h, 0]).nice()
 
   appendGrid(g, y, inner, { gridline: colors.border })
 
@@ -244,7 +249,7 @@ function renderBranchMiss(el: SVGSVGElement, runs: BranchMissRun[]) {
 
   g.append('g')
     .attr('transform', `translate(0,${inner.h})`)
-    .call(d3.axisBottom(x).tickSize(0))
+    .call(axisBottom(x).tickSize(0))
     .call((sel) => sel.select('.domain').attr('stroke', colors.border))
     .call((sel) =>
       sel.selectAll('text')
@@ -255,7 +260,7 @@ function renderBranchMiss(el: SVGSVGElement, runs: BranchMissRun[]) {
     )
 
   g.append('g')
-    .call(d3.axisLeft(y).ticks(5).tickFormat((v) => `${(+v * 100).toFixed(0)}%`))
+    .call(axisLeft(y).ticks(5).tickFormat((v) => `${(+v * 100).toFixed(0)}%`))
     .call((sel) => sel.select('.domain').remove())
     .call((sel) => sel.selectAll('text').attr('font-size', typography.axisSize).attr('fill', colors.textMuted))
     .call((sel) => sel.selectAll('line').remove())

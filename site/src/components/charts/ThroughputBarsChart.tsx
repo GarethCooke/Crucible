@@ -1,7 +1,12 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import * as d3 from 'd3'
+import { select } from 'd3-selection'
+import type { Selection } from 'd3-selection'
+import { scaleBand, scaleLinear } from 'd3-scale'
+import type { ScaleBand, ScaleLinear } from 'd3-scale'
+import { axisBottom, axisLeft } from 'd3-axis'
+import { max, group } from 'd3-array'
 import { getColors, typography, variantColor } from './theme'
 import { appendGrid, appendLegendRects } from './d3helpers'
 import { useTheme } from '@/hooks/useTheme'
@@ -65,15 +70,14 @@ export function ThroughputBarsChart({ runs, stat = 'median', targetN, title }: P
   const theme = useTheme()
 
   useEffect(() => {
-    const colors = getColors()
     if (!ref.current || runs.length === 0) return
-    d3.select(ref.current).selectAll('*').remove()
+    select(ref.current).selectAll('*').remove()
     if (isThreadRun(runs[0])) {
-      renderGrouped(ref.current, runs as ThreadRun[], stat)
+      renderGrouped(ref.current, runs as ThreadRun[], stat, title)
     } else {
-      renderLegacy(ref.current, runs as LegacyRun[], stat, targetN)
+      renderLegacy(ref.current, runs as LegacyRun[], stat, targetN, title)
     }
-  }, [runs, stat, targetN, theme])
+  }, [runs, stat, targetN, title, theme])
 
   return (
     <ChartZoom>
@@ -84,11 +88,15 @@ export function ThroughputBarsChart({ runs, stat = 'median', targetN, title }: P
 
 // ─── Legacy renderer (branch prediction) ─────────────────────────────────────
 
+const DEFAULT_TITLE_LEGACY   = 'Throughput comparison bar chart'
+const DEFAULT_TITLE_GROUPED  = 'Throughput by thread count (padded vs unpadded)'
+
 function renderLegacy(
   el: SVGSVGElement,
   runs: LegacyRun[],
   stat: 'median' | 'min' | 'p99',
   targetN?: number,
+  title?: string,
 ) {
   const colors = getColors()
   const ns = Array.from(new Set(runs.map((r) => r.n))).sort((a, b) => a - b)
@@ -101,18 +109,22 @@ function renderLegacy(
   const margin = { top: 24, right: 16, bottom: 64, left: 64 }
   const inner = { w: W - margin.left - margin.right, h: H - margin.top - margin.bottom }
 
-  const svg = d3
-    .select(el)
+  const svg = select(el)
     .attr('width', W)
     .attr('height', H)
     .attr('viewBox', `0 0 ${W} ${H}`)
     .style('font-family', typography.fontMono)
 
+  svg.append('title').text(title ?? DEFAULT_TITLE_LEGACY)
+  svg.append('desc').text(
+    data.map((d) => `${d.variant}: ${(d.ns_per_op[stat] ?? d.ns_per_op.median).toFixed(2)} ns/op`).join('. ')
+  )
+
   const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`)
 
-  const x = d3.scaleBand().domain(data.map((d) => d.variant)).range([0, inner.w]).padding(0.45)
+  const x = scaleBand().domain(data.map((d) => d.variant)).range([0, inner.w]).padding(0.45)
   const vals = data.map((d) => d.ns_per_op[stat] ?? d.ns_per_op.median)
-  const y = d3.scaleLinear().domain([0, d3.max(vals)! * 1.25]).range([inner.h, 0]).nice()
+  const y = scaleLinear().domain([0, max(vals)! * 1.25]).range([inner.h, 0]).nice()
 
   appendGrid(g, y, inner, { gridline: colors.border })
 
@@ -159,6 +171,7 @@ function renderGrouped(
   el: SVGSVGElement,
   runs: ThreadRun[],
   stat: 'median' | 'min' | 'p99',
+  title?: string,
 ) {
   const colors = getColors()
   const W = el.clientWidth || 600
@@ -166,37 +179,36 @@ function renderGrouped(
   const margin = { top: 32, right: 96, bottom: 64, left: 72 }
   const inner = { w: W - margin.left - margin.right, h: H - margin.top - margin.bottom }
 
-  const svg = d3
-    .select(el)
+  const svg = select(el)
     .attr('width', W)
     .attr('height', H)
     .attr('viewBox', `0 0 ${W} ${H}`)
     .style('font-family', typography.fontMono)
+
+  svg.append('title').text(title ?? DEFAULT_TITLE_GROUPED)
 
   const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`)
 
   const threadCounts = Array.from(new Set(runs.map((r) => r.threads))).sort((a, b) => a - b)
   const variants = ['unpadded', 'padded']
 
-  const x0 = d3
-    .scaleBand()
+  const x0 = scaleBand()
     .domain(threadCounts.map((t) => `${t}t`))
     .range([0, inner.w])
     .paddingInner(0.3)
     .paddingOuter(0.1)
 
-  const x1 = d3
-    .scaleBand()
+  const x1 = scaleBand()
     .domain(variants)
     .range([0, x0.bandwidth()])
     .padding(0.06)
 
   const vals = runs.map((d) => d.ns_per_op[stat] ?? d.ns_per_op.median)
-  const y = d3.scaleLinear().domain([0, d3.max(vals)! * 1.3]).range([inner.h, 0]).nice()
+  const y = scaleLinear().domain([0, max(vals)! * 1.3]).range([inner.h, 0]).nice()
 
   appendGrid(g, y, inner, { gridline: colors.border })
 
-  const grouped = d3.group(runs, (d) => d.threads)
+  const grouped = group(runs, (d) => d.threads)
   grouped.forEach((threadRuns, threads) => {
     const gx = x0(`${threads}t`)!
     threadRuns.forEach((run) => {
@@ -238,7 +250,7 @@ function renderGrouped(
   // X axis: thread counts
   g.append('g')
     .attr('transform', `translate(0,${inner.h})`)
-    .call(d3.axisBottom(x0).tickSize(0))
+    .call(axisBottom(x0).tickSize(0))
     .call((sel) => sel.select('.domain').attr('stroke', colors.border))
     .call((sel) =>
       sel.selectAll('text')
@@ -257,7 +269,7 @@ function renderGrouped(
     .text(`threads  ·  ${stat} ns/op`)
 
   g.append('g')
-    .call(d3.axisLeft(y).ticks(5).tickFormat((v) => `${v} ns`))
+    .call(axisLeft(y).ticks(5).tickFormat((v) => `${v} ns`))
     .call((sel) => sel.select('.domain').remove())
     .call((sel) =>
       sel.selectAll('text')
@@ -275,10 +287,10 @@ function renderGrouped(
 // ─── Shared helpers ───────────────────────────────────────────────────────────
 
 function appendAxesLegacy(
-  g: d3.Selection<SVGGElement, unknown, null, undefined>,
-  svg: d3.Selection<SVGSVGElement, unknown, null, undefined>,
-  x: d3.ScaleBand<string>,
-  y: d3.ScaleLinear<number, number>,
+  g: Selection<SVGGElement, unknown, null, undefined>,
+  svg: Selection<SVGSVGElement, unknown, null, undefined>,
+  x: ScaleBand<string>,
+  y: ScaleLinear<number, number>,
   inner: { w: number; h: number },
   W: number,
   H: number,
@@ -289,7 +301,7 @@ function appendAxesLegacy(
   const colors = getColors()
   g.append('g')
     .attr('transform', `translate(0,${inner.h})`)
-    .call(d3.axisBottom(x).tickSize(0))
+    .call(axisBottom(x).tickSize(0))
     .call((sel) => sel.select('.domain').attr('stroke', colors.border))
     .call((sel) =>
       sel.selectAll('text')
@@ -300,7 +312,7 @@ function appendAxesLegacy(
     )
 
   g.append('g')
-    .call(d3.axisLeft(y).ticks(5).tickFormat((v) => `${v} ns`))
+    .call(axisLeft(y).ticks(5).tickFormat((v) => `${v} ns`))
     .call((sel) => sel.select('.domain').remove())
     .call((sel) =>
       sel.selectAll('text')

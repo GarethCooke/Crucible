@@ -1,7 +1,11 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import * as d3 from 'd3'
+import { select } from 'd3-selection'
+import { scaleLog, scaleLinear } from 'd3-scale'
+import { axisBottom, axisLeft } from 'd3-axis'
+import { max } from 'd3-array'
+import { line } from 'd3-shape'
 import { getColors, typography, variantColor } from './theme'
 import { appendGrid, appendLegendLines } from './d3helpers'
 import { useTheme } from '@/hooks/useTheme'
@@ -25,11 +29,10 @@ export function TimeVsNChart({ runs, stat = 'median', title }: Props) {
   const theme = useTheme()
 
   useEffect(() => {
-    const colors = getColors()
     if (!ref.current || runs.length === 0) return
-    d3.select(ref.current).selectAll('*').remove()
-    render(ref.current, runs, stat)
-  }, [runs, stat, theme])
+    select(ref.current).selectAll('*').remove()
+    render(ref.current, runs, stat, title)
+  }, [runs, stat, title, theme])
 
   return (
     <ChartZoom>
@@ -38,19 +41,22 @@ export function TimeVsNChart({ runs, stat = 'median', title }: Props) {
   )
 }
 
-function render(el: SVGSVGElement, runs: TimeVsNRun[], stat: 'median' | 'min' | 'p99') {
+const DEFAULT_TITLE = 'Time vs N benchmark chart'
+
+function render(el: SVGSVGElement, runs: TimeVsNRun[], stat: 'median' | 'min' | 'p99', title?: string) {
   const colors = getColors()
   const W = el.clientWidth || 700
   const H = 320
   const margin = { top: 32, right: 112, bottom: 56, left: 72 }
   const inner = { w: W - margin.left - margin.right, h: H - margin.top - margin.bottom }
 
-  const svg = d3
-    .select(el)
+  const svg = select(el)
     .attr('width', W)
     .attr('height', H)
     .attr('viewBox', `0 0 ${W} ${H}`)
     .style('font-family', typography.fontMono)
+
+  svg.append('title').text(title ?? DEFAULT_TITLE)
 
   const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`)
 
@@ -59,13 +65,13 @@ function render(el: SVGSVGElement, runs: TimeVsNRun[], stat: 'median' | 'min' | 
 
   const nsPerElem = (r: TimeVsNRun) => r.ns_per_op[stat] ?? r.ns_per_op.median
 
-  const x = d3.scaleLog().domain([ns[0], ns[ns.length - 1]]).range([0, inner.w])
+  const x = scaleLog().domain([ns[0], ns[ns.length - 1]]).range([0, inner.w])
   const allY = runs.map(nsPerElem)
-  const y = d3.scaleLinear().domain([0, d3.max(allY)! * 1.15]).range([inner.h, 0]).nice()
+  const y = scaleLinear().domain([0, max(allY)! * 1.15]).range([inner.h, 0]).nice()
 
   appendGrid(g, y, inner, { gridline: colors.border })
 
-  const line = d3.line<TimeVsNRun>()
+  const lineGen = line<TimeVsNRun>()
     .x((d) => x(d.n))
     .y((d) => y(nsPerElem(d)))
 
@@ -79,7 +85,7 @@ function render(el: SVGSVGElement, runs: TimeVsNRun[], stat: 'median' | 'min' | 
       .attr('stroke', col)
       .attr('stroke-width', 2)
       .attr('opacity', 0.85)
-      .attr('d', line)
+      .attr('d', lineGen)
 
     g.selectAll(`.dot-${v}`)
       .data(vRuns)
@@ -129,7 +135,7 @@ function render(el: SVGSVGElement, runs: TimeVsNRun[], stat: 'median' | 'min' | 
     }
   }
 
-  const xAxis = d3.axisBottom(x)
+  const xAxis = axisBottom(x)
     .tickValues(ns)
     .tickSize(0)
     .tickFormat((v) => {
@@ -160,7 +166,7 @@ function render(el: SVGSVGElement, runs: TimeVsNRun[], stat: 'median' | 'min' | 
     .text('N (elements)  ·  log scale')
 
   g.append('g')
-    .call(d3.axisLeft(y).ticks(5).tickFormat((v) => `${(+v).toFixed(2)} ns`))
+    .call(axisLeft(y).ticks(5).tickFormat((v) => `${(+v).toFixed(2)} ns`))
     .call((sel) => sel.select('.domain').remove())
     .call((sel) => sel.selectAll('text').attr('font-size', typography.axisSize).attr('fill', colors.textMuted))
     .call((sel) => sel.selectAll('line').remove())
