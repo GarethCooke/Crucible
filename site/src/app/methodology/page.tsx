@@ -32,12 +32,12 @@ function Commitment({
         >
           {title}
         </h3>
-        <p
+        <div
           className="text-sm leading-relaxed"
           style={{ color: "var(--text-secondary)" }}
         >
           {children}
-        </p>
+        </div>
       </div>
     </div>
   );

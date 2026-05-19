@@ -96,7 +96,7 @@ export default function TopNav() {
         <div className="topnav-brand">
           <a className="topnav-logo" href={`https://garethcooke.com/?theme=${theme}`} aria-label="Gareth Cooke portfolio">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/iguana.svg" alt="Gareth Cooke" />
+            <img src="/iguana.svg" alt="Gareth Cooke" width="1500" height="1700" />
           </a>
           <a className="topnav-site-name" href="/" aria-label="Crucible home">Crucible</a>
         </div>
