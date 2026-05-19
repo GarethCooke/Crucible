@@ -15,8 +15,11 @@ the same 16-byte `MarketTick`:
 
 - **`lockfree-handrolled`** — ~50-line ring buffer, 1024 entries, power-of-2
   bitmask indexing. `std::atomic` head and tail, each on its own 64-byte cache
-  line. `acquire`/`release` ordering only — no `seq_cst` in the hot path. Non-blocking
-  `try_push`/`try_pop`; the harness spins on false.
+  line — a `PaddedAtomic<T>` wrapper with `static_assert(alignof(PaddedAtomic<T>) == 64)`
+  makes [the false-sharing cost measured in demo 2](/posts/02-false-sharing) a
+  compile-time invariant rather than a discipline to remember. `acquire`/`release`
+  ordering only — no `seq_cst` in the hot path. Non-blocking `try_push`/`try_pop`;
+  the harness spins on false.
 - **`lockfree-boost`** — `boost::lockfree::spsc_queue<MarketTick, capacity<1024>>`,
   compile-time fixed size. Header-only. Exists as a sanity check on the hand-rolled
   implementation, not a competing entry.

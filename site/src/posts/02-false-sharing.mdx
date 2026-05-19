@@ -158,7 +158,10 @@ False sharing is easy to introduce accidentally in systems with per-thread state
 The fix is straightforward: align each per-thread slot to the cache-line size.
 `alignas(64)` is sufficient on x86-64 (and most ARM64 deployments). The trade-off is
 memory: 8 threads × 64 bytes = 512 bytes instead of 64 bytes. For hot-path accumulators
-the trade-off is almost always worthwhile.
+the trade-off is almost always worthwhile. [The lock-free SPSC queue in demo 4](/posts/04-spsc-queue)
+ships this pattern productionised — a `PaddedAtomic<T>` template with a `static_assert`
+that catches any layout regression at compile time, rather than relying on a test to
+notice the throughput collapse.
 
 ## What this benchmark doesn't show
 
