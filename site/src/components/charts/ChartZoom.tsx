@@ -41,10 +41,10 @@ export function ChartZoom({ children }: { children: React.ReactNode }) {
         {children}
         <div
           className="absolute top-3 right-3 opacity-0 group-hover:opacity-70 transition-opacity pointer-events-none rounded p-1"
-          style={{ background: 'rgba(255,255,255,0.07)' }}
+          style={{ background: 'var(--border-color)' }}
           aria-hidden
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8899bb" strokeWidth="2.5">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ color: 'var(--text-secondary)' }}>
             <circle cx="11" cy="11" r="8" />
             <line x1="21" y1="21" x2="16.65" y2="16.65" />
             <line x1="11" y1="8" x2="11" y2="14" />
@@ -62,8 +62,8 @@ export function ChartZoom({ children }: { children: React.ReactNode }) {
             <div
               className="w-full max-w-5xl rounded-2xl overflow-auto"
               style={{
-                background: '#0c1018',
-                border: '1px solid rgba(255,255,255,0.09)',
+                background: 'var(--bg-card)',
+                border: '1px solid var(--border-color)',
                 maxHeight: '90vh',
                 padding: '28px 28px 20px',
               }}
@@ -72,7 +72,7 @@ export function ChartZoom({ children }: { children: React.ReactNode }) {
               <div ref={modalSvgRef} />
               <p
                 className="text-center text-xs mt-3 font-mono"
-                style={{ color: '#435270' }}
+                style={{ color: 'var(--text-muted)' }}
               >
                 press Esc or click outside to close
               </p>
