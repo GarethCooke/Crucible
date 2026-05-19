@@ -6,6 +6,7 @@ import { scaleLog } from 'd3-scale'
 import { axisBottom, axisLeft } from 'd3-axis'
 import { line, area } from 'd3-shape'
 import { getColors, typography, variantColorByIndex } from './theme'
+import { tokens } from '@/lib/design-tokens'
 import { appendGrid, appendLegendLines, appendLegendRects } from './d3helpers'
 import { useTheme } from '@/hooks/useTheme'
 import { ChartZoom } from './ChartZoom'
@@ -92,7 +93,10 @@ function renderCCDF(
   const colors = getColors()
   const W = el.clientWidth || 640
   const H = 360
-  const margin = { top: 32, right: 120, bottom: 56, left: 72 }
+  const isNarrow = W < tokens.chart.mobileBreakpoint
+  const margin = isNarrow
+    ? { top: 32, right: 16, bottom: 80, left: 56 }
+    : { top: 32, right: 120, bottom: 56, left: 72 }
   const inner  = { w: W - margin.left - margin.right, h: H - margin.top - margin.bottom }
 
   const svg = select(el)
@@ -235,8 +239,10 @@ function renderCCDF(
     .attr('font-family', typography.fontMono)
     .text('P(latency ≥ x)  — CCDF (log scale)')
 
+  const legendX = isNarrow ? margin.left : margin.left + inner.w + 8
+  const legendY = isNarrow ? margin.top + inner.h + 16 : margin.top
   appendLegendLines(svg, series.map(({ variant, color }) => ({ label: variant, color })),
-    { x: margin.left + inner.w + 8, y: margin.top },
+    { x: legendX, y: legendY },
     { textSecondary: colors.textSecondary })
 }
 
@@ -251,7 +257,10 @@ function renderPDF(
   const colors = getColors()
   const W = el.clientWidth || 640
   const H = 320
-  const margin = { top: 32, right: 120, bottom: 56, left: 72 }
+  const isNarrow = W < tokens.chart.mobileBreakpoint
+  const margin = isNarrow
+    ? { top: 32, right: 16, bottom: 80, left: 56 }
+    : { top: 32, right: 120, bottom: 56, left: 72 }
   const inner  = { w: W - margin.left - margin.right, h: H - margin.top - margin.bottom }
 
   const svg = select(el)
@@ -366,7 +375,9 @@ function renderPDF(
     .attr('font-family', typography.fontMono)
     .text('sample count (log scale)')
 
+  const legendX = isNarrow ? margin.left : margin.left + inner.w + 8
+  const legendY = isNarrow ? margin.top + inner.h + 16 : margin.top
   appendLegendRects(svg, allSeries.map(({ variant, color }) => ({ label: variant, color })),
-    { x: margin.left + inner.w + 8, y: margin.top },
+    { x: legendX, y: legendY },
     { textSecondary: colors.textSecondary })
 }

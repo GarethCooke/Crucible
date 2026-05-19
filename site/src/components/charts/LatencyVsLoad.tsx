@@ -7,6 +7,7 @@ import { axisBottom, axisLeft } from 'd3-axis'
 import { line } from 'd3-shape'
 import { getColors, typography, variantColorByIndex } from './theme'
 import { appendGrid, appendLegendLines } from './d3helpers'
+import { tokens } from '@/lib/design-tokens'
 import { useTheme } from '@/hooks/useTheme'
 import { ChartZoom } from './ChartZoom'
 import { ChartShell } from './ChartShell'
@@ -77,7 +78,10 @@ function render(el: SVGSVGElement, runs: SweepRun[], orderedVariants: string[], 
   const colors = getColors()
   const W = el.clientWidth || 680
   const H = 380
-  const margin = { top: 32, right: 150, bottom: 60, left: 80 }
+  const isNarrow = W < tokens.chart.mobileBreakpoint
+  const margin = isNarrow
+    ? { top: 32, right: 16, bottom: 130, left: 80 }
+    : { top: 32, right: 150, bottom: 60, left: 80 }
   const inner  = { w: W - margin.left - margin.right, h: H - margin.top - margin.bottom }
 
   const svg = select(el)
@@ -126,7 +130,8 @@ function render(el: SVGSVGElement, runs: SweepRun[], orderedVariants: string[], 
     .range([inner.h, 0])
     .clamp(true)
 
-  appendGrid(g, y, inner, { gridline: colors.border })
+  appendGrid(g, y, inner, { gridline: colors.border }, undefined,
+    isNarrow ? { y: 4 } : undefined)
 
   const lineGen = line<[number, number]>()
     .x((d) => x(d[0]))
@@ -164,9 +169,19 @@ function render(el: SVGSVGElement, runs: SweepRun[], orderedVariants: string[], 
     }
   }
 
+  const xAxis = isNarrow
+    ? axisBottom(x).tickValues([1e4, 1e5, 1e6, 1e8]).tickFormat((d) => {
+        const n = +d
+        if (n >= 1e8) return '100M'
+        if (n >= 1e6) return '1M'
+        if (n >= 1e5) return '100k'
+        return '10k'
+      }).tickSize(0)
+    : axisBottom(x).ticks(6, '~s').tickSize(0)
+
   g.append('g')
     .attr('transform', `translate(0,${inner.h})`)
-    .call(axisBottom(x).ticks(6, '~s').tickSize(0))
+    .call(xAxis)
     .call((s) => s.select('.domain').attr('stroke', colors.border))
     .call((s) =>
       s.selectAll('text')
@@ -203,17 +218,20 @@ function render(el: SVGSVGElement, runs: SweepRun[], orderedVariants: string[], 
     .text('latency (ns, log scale)')
 
   // Legend — variant colour swatches then stat dash key
-  const legendX = margin.left + inner.w + 10
+  const legendX = isNarrow ? margin.left : margin.left + inner.w + 10
+  const legendBaseY = isNarrow ? margin.top + inner.h + 16 : margin.top
 
   const variantItems = orderedVariants
     .filter((v) => byVariant.has(v))
     .map((v, i) => ({ label: v, color: variantColorByIndex(i) }))
 
   appendLegendLines(svg, variantItems,
-    { x: legendX, y: margin.top, spacing: 17 },
+    { x: legendX, y: legendBaseY, spacing: 17 },
     { textSecondary: colors.textSecondary })
 
-  const statKeyY = margin.top + variantItems.length * 17 + 6
+  const statKeyY = isNarrow
+    ? legendBaseY + variantItems.length * 17 + 8
+    : margin.top + variantItems.length * 17 + 6
   appendLegendLines(svg, STATS_SHOWN.map((stat) => ({
     label: STAT_LABEL[stat],
     color: colors.textMuted,

@@ -12,12 +12,16 @@ export function appendGrid<E extends Element>(
   inner: { w: number; h: number },
   colors: { gridline: string },
   x?: NumericScale,
+  counts?: { y?: number; x?: number },
 ) {
+  const yCount = counts?.y ?? 5
+  const xCount = counts?.x ?? 6
+
   g.append('g')
     .attr('class', 'grid')
     .call(
       axisLeft(y)
-        .ticks(5)
+        .ticks(yCount)
         .tickSize(-inner.w)
         .tickFormat(() => ''),
     )
@@ -29,7 +33,7 @@ export function appendGrid<E extends Element>(
       .attr('transform', `translate(0,${inner.h})`)
       .call(
         axisBottom(x)
-          .ticks(6, '~s')
+          .ticks(xCount, '~s')
           .tickSize(-inner.h)
           .tickFormat(() => ''),
       )

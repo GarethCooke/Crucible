@@ -9,6 +9,7 @@ import { axisBottom, axisLeft } from 'd3-axis'
 import { max, group } from 'd3-array'
 import { getColors, typography, variantColor } from './theme'
 import { appendGrid, appendLegendRects } from './d3helpers'
+import { tokens } from '@/lib/design-tokens'
 import { useTheme } from '@/hooks/useTheme'
 import { ChartZoom } from './ChartZoom'
 import { ChartShell } from './ChartShell'
@@ -106,7 +107,8 @@ function renderLegacy(
 
   const W = el.clientWidth || 600
   const H = 260
-  const margin = { top: 24, right: 16, bottom: 64, left: 64 }
+  const isNarrow = W < tokens.chart.mobileBreakpoint
+  const margin = { top: 24, right: 16, bottom: isNarrow ? 60 : 40, left: 64 }
   const inner = { w: W - margin.left - margin.right, h: H - margin.top - margin.bottom }
 
   const svg = select(el)
@@ -162,7 +164,7 @@ function renderLegacy(
     .attr('fill', colors.textMuted)
     .text((d) => `${((d.branch_misses_per_op ?? 0) * 100).toFixed(1)}% miss`)
 
-  appendAxesLegacy(g, svg, x, y, inner, W, H, margin, stat, n)
+  appendAxesLegacy(g, svg, x, y, inner, W, H, margin, stat, n, isNarrow)
 }
 
 // ─── Grouped renderer (false sharing) ────────────────────────────────────────
@@ -297,19 +299,27 @@ function appendAxesLegacy(
   margin: { top: number; right: number; bottom: number; left: number },
   stat: string,
   n: number,
+  isNarrow = false,
 ) {
   const colors = getColors()
   g.append('g')
     .attr('transform', `translate(0,${inner.h})`)
     .call(axisBottom(x).tickSize(0))
     .call((sel) => sel.select('.domain').attr('stroke', colors.border))
-    .call((sel) =>
-      sel.selectAll('text')
+    .call((sel) => {
+      const labels = sel.selectAll('text')
         .attr('font-size', typography.axisSize)
         .attr('fill', colors.textSecondary)
-        .attr('dy', '1.4em')
         .text((d) => (d as string).charAt(0).toUpperCase() + (d as string).slice(1))
-    )
+      if (isNarrow) {
+        labels
+          .style('text-anchor', 'end')
+          .attr('transform', 'rotate(-30) translate(-6, 0)')
+          .attr('dy', '0.3em')
+      } else {
+        labels.attr('dy', '1.4em')
+      }
+    })
 
   g.append('g')
     .call(axisLeft(y).ticks(5).tickFormat((v) => `${v} ns`))

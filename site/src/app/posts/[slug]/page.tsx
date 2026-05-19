@@ -63,11 +63,11 @@ export default async function PostPage({ params }: { params: { slug: string } })
           ← All posts
         </a>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {prev && (
             <a
               href={`/posts/${prev.slug}`}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-sm border transition-colors hover:bg-white/[0.05] max-w-[220px]"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-sm border transition-colors hover:bg-white/[0.05] min-w-0 flex-1 sm:flex-initial sm:max-w-[220px]"
               style={{ borderColor: 'var(--border-color)', color: 'var(--text-secondary)' }}
               title={prev.title}
             >
@@ -78,7 +78,7 @@ export default async function PostPage({ params }: { params: { slug: string } })
           {next && (
             <a
               href={`/posts/${next.slug}`}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-sm border transition-colors hover:bg-white/[0.05] max-w-[220px]"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-sm border transition-colors hover:bg-white/[0.05] min-w-0 flex-1 sm:flex-initial sm:max-w-[220px]"
               style={{ borderColor: 'var(--border-color)', color: 'var(--text-secondary)' }}
               title={next.title}
             >
