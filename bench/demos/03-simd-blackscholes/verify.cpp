@@ -5,6 +5,7 @@
 // prices them with all four variants, and reports max|C_variant - C_libm|.
 // Exits 0 if all variants meet the 1e-4 threshold; exits 1 otherwise.
 
+#include "inputs.h"
 #include "poly.h"
 
 #include <xmmintrin.h>
@@ -15,7 +16,6 @@
 #include <cstdio>
 #include <cstdint>
 #include <cstdlib>
-#include <random>
 #include <vector>
 
 extern void price_options_scalar_libm(
@@ -37,22 +37,6 @@ alignas(32) static float gSigma[N];
 alignas(32) static float gRef  [N];
 alignas(32) static float gOut  [N];
 
-static void gen_inputs() {
-    std::mt19937 rng(0xCAFEBABE);
-    std::uniform_real_distribution<float> dS  (50.0f, 150.0f);
-    std::uniform_real_distribution<float> dK  (50.0f, 150.0f);
-    std::uniform_real_distribution<float> dT  (0.05f, 2.0f  );
-    std::uniform_real_distribution<float> dR  (0.0f,  0.08f );
-    std::uniform_real_distribution<float> dSig(0.1f,  0.6f  );
-    for (int64_t i = 0; i < N; ++i) {
-        gS    [i] = dS  (rng);
-        gK    [i] = dK  (rng);
-        gT    [i] = dT  (rng);
-        gR    [i] = dR  (rng);
-        gSigma[i] = dSig(rng);
-    }
-}
-
 static float max_abs_err(const float* a, const float* b, int64_t n) {
     float e = 0.0f;
     for (int64_t i = 0; i < n; ++i)
@@ -64,7 +48,7 @@ int main() {
     _MM_SET_FLUSH_ZERO_MODE(_MM_FLUSH_ZERO_ON);
     _MM_SET_DENORMALS_ZERO_MODE(_MM_DENORMALS_ZERO_ON);
 
-    gen_inputs();
+    gen_inputs(gS, gK, gT, gR, gSigma, N);
     price_options_scalar_libm(gS, gK, gT, gR, gSigma, gRef, N);
 
     static constexpr float THRESHOLD = 1e-4f;

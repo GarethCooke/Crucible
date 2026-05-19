@@ -20,7 +20,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from stats_utils import bench_stats
+from stats_utils import bench_stats, build_groups
 
 # Flops per option — documented in poly.h.
 # scalar variants: 98 (treating libm log/sqrt as 1 flop each).
@@ -71,16 +71,12 @@ def main() -> None:
 
     machine = json.loads(args.machine_json)
 
-    groups: dict = {}
-    for b in raw.get("benchmarks", []):
-        if b.get("run_type") != "iteration":
-            continue
-        name = b["name"]
+    def parse_name(name: str):
         parts = name.split("/")
-        variant_raw = normalise_variant(parts[0].removeprefix("BM_"))
-        n = int(parts[1]) if len(parts) > 1 else 0
-        key = (variant_raw, n)
-        groups.setdefault(key, []).append(b)
+        return {"variant": normalise_variant(parts[0].removeprefix("BM_")),
+                "n": int(parts[1]) if len(parts) > 1 else 0}
+
+    groups = build_groups(raw.get("benchmarks", []), parse_name)
 
     runs = []
     for (variant, n), reps in sorted(groups.items(), key=lambda x: (x[0][0], x[0][1])):

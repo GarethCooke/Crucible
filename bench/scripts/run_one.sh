@@ -187,14 +187,7 @@ if [[ "${SLUG}" == "02-false-sharing" ]]; then
     fi
 
     echo "==> Verifying disassembly (movsd load+store pair in worker_fn)..."
-    DISASM_OUT=$(objdump -d "${FS_BINARY}" | grep -A 40 '<_ZL9worker_fn' || true)
-    MOVSD_COUNT=$(echo "${DISASM_OUT}" | grep -c 'movsd' || true)
-    if [[ "${MOVSD_COUNT}" -lt 2 ]]; then
-        echo "ERROR: expected ≥2 movsd in worker_fn (volatile load + store); found ${MOVSD_COUNT}." >&2
-        echo "       See escalation options in false_sharing_pnl.cpp header." >&2
-        exit 1
-    fi
-    echo "    OK — ${MOVSD_COUNT} movsd confirmed."
+    "${BENCH_ROOT}/scripts/check_volatile_codegen.sh" "${FS_BINARY}"
 
     WDIR=$(mktemp -d /tmp/crucible_fs_XXXXXX)
 

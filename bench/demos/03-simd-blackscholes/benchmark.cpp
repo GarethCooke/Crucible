@@ -1,3 +1,5 @@
+#include "inputs.h"
+
 #include <benchmark/benchmark.h>
 #include <machine_info.h>
 #include <perf_wrapper.h>
@@ -9,7 +11,6 @@
 #include <cmath>
 #include <cstdint>
 #include <iostream>
-#include <random>
 #include <string>
 
 // ─── Variant declarations (defined in separate TUs with per-variant ISA flags)
@@ -35,23 +36,6 @@ alignas(32) static float gC    [MAX_N]; // shared output scratch
 
 // Per-variant max absolute error against scalar_libm (computed once at start).
 static float g_max_abs_err[4] = {};
-
-// ─── Input generation ─────────────────────────────────────────────────────────
-static void gen_inputs() {
-    std::mt19937 rng(0xCAFEBABE);
-    std::uniform_real_distribution<float> dS   (50.0f, 150.0f);
-    std::uniform_real_distribution<float> dK   (50.0f, 150.0f);
-    std::uniform_real_distribution<float> dT   (0.05f, 2.0f  );
-    std::uniform_real_distribution<float> dR   (0.0f,  0.08f );
-    std::uniform_real_distribution<float> dSig (0.1f,  0.6f  );
-    for (int64_t i = 0; i < MAX_N; ++i) {
-        gS    [i] = dS(rng);
-        gK    [i] = dK(rng);
-        gT    [i] = dT(rng);
-        gR    [i] = dR(rng);
-        gSigma[i] = dSig(rng);
-    }
-}
 
 // ─── Alignment check ─────────────────────────────────────────────────────────
 [[noreturn]] static void abort_misaligned(const char* name, const void* ptr) {
@@ -153,7 +137,7 @@ int main(int argc, char** argv) {
     _MM_SET_FLUSH_ZERO_MODE(_MM_FLUSH_ZERO_ON);
     _MM_SET_DENORMALS_ZERO_MODE(_MM_DENORMALS_ZERO_ON);
 
-    gen_inputs();
+    gen_inputs(gS, gK, gT, gR, gSigma, MAX_N);
     check_alignment();
     compute_errors();
 

@@ -33,8 +33,13 @@ target_compile_options(bs_avx2_fma PRIVATE
     -O3 -mavx -mavx2 -mfma)
 target_include_directories(bs_avx2_fma PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
+# ─── Shared input generation (linked into both benchmark and verify) ──────────
+add_library(bs_inputs OBJECT inputs.cpp)
+target_include_directories(bs_inputs PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+
 # ─── Main benchmark binary ────────────────────────────────────────────────────
 add_executable(bench_03_simd_blackscholes benchmark.cpp
+    $<TARGET_OBJECTS:bs_inputs>
     $<TARGET_OBJECTS:bs_scalar_libm>
     $<TARGET_OBJECTS:bs_scalar_poly>
     $<TARGET_OBJECTS:bs_sse2>
@@ -44,6 +49,7 @@ target_include_directories(bench_03_simd_blackscholes PRIVATE ${CMAKE_CURRENT_SO
 
 # ─── Verify binary ────────────────────────────────────────────────────────────
 add_executable(verify_03_simd_blackscholes verify.cpp
+    $<TARGET_OBJECTS:bs_inputs>
     $<TARGET_OBJECTS:bs_scalar_libm>
     $<TARGET_OBJECTS:bs_scalar_poly>
     $<TARGET_OBJECTS:bs_sse2>

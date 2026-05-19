@@ -1,5 +1,21 @@
 """Shared statistics utilities for benchmark result scripts."""
 
+from typing import Callable
+
+
+def build_groups(benchmarks: list, parse_name_fn: Callable) -> dict:
+    """Group iteration records by (variant, n) via the supplied name parser."""
+    groups: dict = {}
+    for b in benchmarks:
+        if b.get("run_type") != "iteration":
+            continue
+        parsed = parse_name_fn(b["name"])
+        if parsed is None:
+            continue
+        key = (parsed["variant"], parsed["n"])
+        groups.setdefault(key, []).append(b)
+    return groups
+
 
 def percentile(sorted_values: list[float], p: float) -> float:
     """Linear-interpolation percentile. sorted_values must already be sorted."""
