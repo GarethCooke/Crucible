@@ -81,7 +81,7 @@ def main() -> None:
             "variant":                variant,
             "n":                      n,
             "iterations":             reps[0].get("iterations", 0),
-            "ns_per_op":              bench_stats(times),
+            "ns_per_op":              bench_stats([t / n for t in times] if n > 0 else times),
             "ops_per_sec":            round(sorted(ops_s)[len(ops_s) // 2]),
             "branch_misses_per_op":   round(sorted(bm)[len(bm) // 2], 4),
             "instructions_per_cycle": round(sorted(ipc)[len(ipc) // 2], 3),

@@ -63,8 +63,7 @@ function render(el: SVGSVGElement, runs: TimeVsNRun[], stat: 'median' | 'min' | 
   const variants = Array.from(new Set(runs.map((r) => r.variant)))
   const ns = Array.from(new Set(runs.map((r) => r.n))).sort((a, b) => a - b)
 
-  // Y values: ns per element = ns_per_op[stat] / n  (per-element cost)
-  const nsPerElem = (r: TimeVsNRun) => (r.ns_per_op[stat] ?? r.ns_per_op.median) / r.n
+  const nsPerElem = (r: TimeVsNRun) => r.ns_per_op[stat] ?? r.ns_per_op.median
 
   const x = d3.scaleLog().domain([ns[0], ns[ns.length - 1]]).range([0, inner.w])
   const allY = runs.map(nsPerElem)

@@ -97,7 +97,7 @@ def main() -> None:
             "variant":                      variant,
             "n":                            n,
             "iterations":                   reps[0].get("iterations", 0),
-            "ns_per_op":                    bench_stats(times),
+            "ns_per_op":                    bench_stats([t / n for t in times] if n > 0 else times),
             "ops_per_sec":                  round(med_ops),
             "instructions_per_cycle":       round(sorted(ipc)[len(ipc) // 2], 3),
             "gflops":                       gflops,
