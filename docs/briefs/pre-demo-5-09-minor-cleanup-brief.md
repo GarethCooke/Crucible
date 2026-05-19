@@ -8,9 +8,12 @@
 
 Both reviews flagged a dozen-plus `Minor` findings: stylistic, comment-level, naming, dependency hygiene. Individually trivial; collectively a tidy-up that makes the codebase visibly cared-for. Land last in the pre-demo-5 sequence so the bigger refactors aren't blocked behind cosmetic changes.
 
-Findings included (verbatim list — refer to the two review files for full context):
+This brief was extended after tasks 9 (Lighthouse) and 10 (mobile) completed, to absorb three small additional items that don't justify their own briefs: two Lighthouse residue items (L-01, L-02) and one cross-cutting MDX pipeline item (X-01). They share the "small, isolated, hygienic" character of the N-series cleanup and land in the same PR. The headline mobile findings (M02-1, M03-1, M04-1, M04-2, M04-3) live in brief 10; the Lighthouse D3 wildcard imports (M-02) live in brief 08.
+
+Findings included (verbatim list — refer to the source files for full context):
 
 **Bench side** (`pre-demo-5-bench-code-review-findings.md`):
+
 - **N1** — Demo 04 mutex-condvar `deq_ts == 0` items in histogram
 - **N2** — Demo 02 `check_smt_off()` silent skip on missing sysfs
 - **N3** — `--machine-info` argv scanning inconsistent across demos
@@ -18,6 +21,7 @@ Findings included (verbatim list — refer to the two review files for full cont
 - **N6** — `bench/tests/CMakeLists.txt` macOS SDK hardcoding
 
 **Site side** (`pre-demo-5-site-code-review-findings.md`):
+
 - **N-01** — Magic font-size values `10` and `9` in chart renderers
 - **N-02** — `BranchMissOverlayChart` hardcodes `N = 32 M` in label
 - **N-03** — Post 03 Black-Scholes formula uses un-tagged code fence
@@ -25,6 +29,15 @@ Findings included (verbatim list — refer to the two review files for full cont
 - **N-05** — Methodology page `h2` sections lack `id` attributes
 - **N-06** — MDX component invocation convention inconsistent (`<Benchmark>` vs direct chart components)
 - **N-08** — CSS custom properties not registered as Tailwind `@theme` tokens
+
+**Lighthouse residue** (`pre-demo-5-lighthouse-findings.md`):
+
+- **L-01** — Umami preconnect missing (~300 ms saved per page)
+- **L-02** — Legacy JS polyfills shipped in `chunks/117-*.js` (~11 KB)
+
+**Cross-cutting** (`pre-demo-5-mobile-findings.md`, "Cross-cutting note" section):
+
+- **X-01** — `remark-gfm` plugin absent from MDX pipeline; markdown tables in demos 1 and 2 render as pipe-separated text rather than HTML `<table>` elements
 
 Two N-series items are explicitly handled elsewhere and **not** in this brief:
 
@@ -161,7 +174,7 @@ If the SI formatter isn't already exported from a shared module, extract it from
 
 **File:** `site/src/posts/03-simd-blackscholes.mdx:18–24`.
 
-Change the un-tagged opening fence to ```` ```text ````. No content change.
+Change the un-tagged opening fence to ` ```text `. No content change.
 
 ### 3.4 N-04 — Methodology page inline `<code>` styling
 
@@ -238,9 +251,88 @@ Once registered, Tailwind generates utilities like `text-text-muted` and `bg-bg-
 
 1. Grep for `style={{ color: 'var(--text-` and `style={{ background: 'var(--bg-` across `site/src`.
 2. For each match, replace with the equivalent Tailwind utility class.
-3. Inline `style` attributes that *only* set theme-var colours can be dropped entirely; inline styles that also set non-themable properties keep the structure but lose the colour line.
+3. Inline `style` attributes that _only_ set theme-var colours can be dropped entirely; inline styles that also set non-themable properties keep the structure but lose the colour line.
 
 This is a sweep that touches many files lightly. Stretch goal — if the migration grows beyond ~30 minutes, defer the per-component migration to a follow-up and ship only the `@theme {}` registration in this brief. The registration alone enables future code to use the utilities without re-touching the inline-style files.
+
+### 3.8 L-01 — Umami preconnect
+
+**File:** `site/src/app/layout.tsx` (the root layout where the document head is composed).
+
+The Lighthouse audit (`pre-demo-5-lighthouse-findings.md`) flagged ~300 ms of avoidable wait against `https://api-gateway.umami.dev` because the analytics script connects without a preconnect hint. Add one:
+
+```tsx
+<head>
+  {/* … existing head children */}
+  <link rel="preconnect" href="https://api-gateway.umami.dev" />
+</head>
+```
+
+If the layout uses Next.js's `metadata` API or `next/script` rather than directly rendering `<head>`, add the link via the equivalent Next mechanism (a `<link>` rendered as a child in the `app/` layout root works in the App Router). Two-line change; preserves analytics behaviour, just starts the handshake earlier.
+
+Manual verification: Lighthouse re-run on any post page shows the preconnect audit no longer firing; LCP shifts down by ~200–300 ms.
+
+### 3.9 L-02 — Legacy JS polyfills
+
+**File:** `site/.browserslistrc` (or the `browserslist` field in `site/package.json`); audit `site/next.config.mjs` for any explicit transpile-target override.
+
+The Lighthouse audit flagged ~11 KB of legacy polyfills in `chunks/117-*.js`. Fix is to bump the browser baseline so Next.js's SWC compiler stops emitting downlevel transforms for browsers that no longer matter for this audience.
+
+A reasonable starting point:
+
+```
+> 0.5%
+last 2 versions
+not dead
+not op_mini all
+not ie 11
+```
+
+For a perf-focused site with a developer audience, a tighter target gives a smaller bundle:
+
+```
+last 2 Chrome versions
+last 2 Firefox versions
+last 2 Safari versions
+last 2 Edge versions
+```
+
+CC chooses; the second is more aggressive. Either way, verify the build still passes and pages render in the target browsers (a smoke test in Chrome stable is sufficient — the audience is unlikely to use anything outside this set).
+
+If `next.config.mjs` has any explicit `target`, `swcMinify`, or `compiler.legacyBrowsers` setting affecting transpile output, audit and align it with the browserslist.
+
+Manual verification: Lighthouse re-run on any post page no longer flags the legacy-JS audit for `chunks/117-*.js`. The chunk filename will change after rebuild; verify the JS payload size in the Network tab drops by approximately 11 KB.
+
+### 3.10 X-01 — `remark-gfm` plugin in MDX pipeline
+
+**File:** the MDX configuration — likely `site/next.config.mjs` (if MDX is configured via `@next/mdx`), or a dedicated MDX config file alongside it. Grep for `createMDX` or `remarkPlugins` to locate.
+
+The mobile audit cross-cutting note (`pre-demo-5-mobile-findings.md`, "Cross-cutting note" section) found that markdown tables in demo 1 (`01-branch-prediction.mdx` lines 179–184) and demo 2 (`02-false-sharing.mdx` lines 130–136) render as pipe-separated paragraph text rather than HTML `<table>` elements. Root cause: the MDX pipeline does not include `remark-gfm`, so GitHub Flavoured Markdown table syntax is passed through as literal text.
+
+Install and register:
+
+```bash
+npm install remark-gfm
+```
+
+In the MDX config:
+
+```js
+import remarkGfm from "remark-gfm";
+
+const withMDX = createMDX({
+  options: {
+    remarkPlugins: [remarkGfm],
+    // … existing rehypePlugins etc. preserved
+  },
+});
+```
+
+Once active, the existing markdown tables in demos 1 and 2 render as HTML tables without further edits. Verify both pages.
+
+Styling note: `.prose` (from `@tailwindcss/typography`, which the post pages already use) styles tables by default — borders, padding, header-row weight. The rendered tables should inherit the design without additional CSS. If a table looks visually off after the plugin lands (e.g. overflows narrow viewports), that's a styling concern for a follow-up brief, not a `remark-gfm` regression.
+
+Manual verification: demo 1 and demo 2 post pages now show their summary tables as proper HTML tables with visible borders and a distinct header row. No regression elsewhere on the site — `remark-gfm` also enables strikethrough, task lists, and autolinks, but none of those are used in the current posts; existing content renders identically.
 
 ---
 
@@ -272,9 +364,15 @@ This is a sweep that touches many files lightly. Stretch goal — if the migrati
 - [ ] **N-06**: Convention decided and documented; if migrating, posts 01–03 use `<Benchmark>` exclusively and direct chart components removed from MDX `components` map.
 - [ ] **N-08**: `@theme {}` block registers semantic colour tokens. (Per-component inline-style migration: full sweep if scope allows, else registration only with sweep deferred.)
 
+### Lighthouse residue and MDX pipeline
+
+- [ ] **L-01**: `<link rel="preconnect" href="https://api-gateway.umami.dev">` present in rendered HTML head; Lighthouse no longer flags the preconnect audit.
+- [ ] **L-02**: Browserslist updated; Lighthouse no longer flags the `chunks/117-*.js` legacy-JS audit; total JS payload reduced by approximately 11 KB.
+- [ ] **X-01**: `remark-gfm` installed and registered in MDX pipeline; demos 1 and 2 markdown tables render as HTML `<table>` elements with `.prose` styling; no regression on other posts.
+
 ### Cross-cutting
 
 - [ ] Full `bench/` build passes.
-- [ ] `npm run build` succeeds.
+- [ ] `npm run build` succeeds (especially relevant after browserslist and MDX pipeline changes).
 - [ ] No shipped JSON modified by this brief.
 - [ ] No re-capture required for any demo.

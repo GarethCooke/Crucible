@@ -52,6 +52,7 @@ export default function RootLayout({
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        <link rel="preconnect" href="https://api-gateway.umami.dev" />
       </head>
       <body>
         <TopNav />
