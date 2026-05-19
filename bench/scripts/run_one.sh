@@ -37,8 +37,6 @@ trap cleanup EXIT
 
 sudo -v  # refresh sudo cache — cset/perf calls throughout this script need it
 
-set_governor_performance
-
 # Verify turbo state and export for machine_info.h to consume.
 # Caller can pre-set CRUCIBLE_TURBO=on|off to override (e.g. on systems
 # without cpupower); otherwise we derive it from cpupower output.
@@ -57,6 +55,10 @@ if [ -z "${CRUCIBLE_TURBO:-}" ]; then
     esac
 fi
 echo "CRUCIBLE_TURBO=$CRUCIBLE_TURBO (verified)" >&2
+
+assert_smt_off
+assert_isolated_cores
+set_governor_performance
 
 echo "==> Building ${SLUG}..."
 cmake -B "${BENCH_ROOT}/build" -S "${BENCH_ROOT}" -DCMAKE_BUILD_TYPE=Release -Wno-dev --log-level=ERROR
