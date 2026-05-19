@@ -350,6 +350,74 @@ html.light .shiki span {
 html.light [data-rehype-pretty-code-figure] pre[data-theme='dark']  { display: none; }
 html.light [data-rehype-pretty-code-figure] pre[data-theme='light'] { display: block; }
 
+/* ── Prose tables ─────────────────────────────────────────────────────────── */
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1.75rem;
+  font-size: 0.875rem;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+}
+.prose thead {
+  background: oklch(65% 0.18 222 / 0.12);
+  border-bottom: 1px solid oklch(65% 0.18 222 / 0.3);
+}
+.prose thead th {
+  padding: 0.7rem 1rem;
+  text-align: left;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--cyan);
+  white-space: nowrap;
+}
+.prose tbody tr {
+  border-bottom: 1px solid var(--border-color);
+  transition: background 0.1s;
+}
+.prose tbody tr:last-child {
+  border-bottom: none;
+}
+.prose tbody tr:nth-child(even) {
+  background: oklch(65% 0.18 222 / 0.04);
+}
+.prose tbody tr:hover {
+  background: oklch(65% 0.18 222 / 0.08);
+}
+.prose td {
+  padding: 0.65rem 1rem;
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  vertical-align: middle;
+}
+.prose td:first-child {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+/* Light mode table overrides */
+html.light .prose table {
+  border-color: rgba(0,0,0,0.08);
+}
+html.light .prose thead {
+  background: oklch(48% 0.15 222 / 0.08);
+  border-bottom-color: oklch(48% 0.15 222 / 0.25);
+}
+html.light .prose tbody tr {
+  border-bottom-color: rgba(0,0,0,0.06);
+}
+html.light .prose tbody tr:nth-child(even) {
+  background: oklch(48% 0.15 222 / 0.04);
+}
+html.light .prose tbody tr:hover {
+  background: oklch(48% 0.15 222 / 0.08);
+}
+
 /* ── Animation ────────────────────────────────────────────────────────────── */
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(16px); }
