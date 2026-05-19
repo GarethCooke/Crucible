@@ -1,0 +1,1027 @@
+[
+  {
+    "post": "01-branch-prediction",
+    "viewport": "375px",
+    "filename": "01-branch-prediction--375px.png",
+    "diagnostics": {
+      "issues": [],
+      "svgSummary": [
+        {
+          "i": 0,
+          "w": "0",
+          "h": "0",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 1,
+          "w": "17",
+          "h": "17",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 2,
+          "w": "20",
+          "h": "20",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 3,
+          "w": "325",
+          "h": "260",
+          "viewBox": "0 0 325 260",
+          "texts": 22
+        },
+        {
+          "i": 4,
+          "w": "14",
+          "h": "14",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 5,
+          "w": "325",
+          "h": "220",
+          "viewBox": "0 0 325 220",
+          "texts": 20
+        },
+        {
+          "i": 6,
+          "w": "14",
+          "h": "14",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 7,
+          "w": "325",
+          "h": "320",
+          "viewBox": "0 0 325 320",
+          "texts": 22
+        },
+        {
+          "i": 8,
+          "w": "14",
+          "h": "14",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        }
+      ],
+      "bodyScrollW": 375,
+      "vpW": 375,
+      "docScrollW": 375
+    }
+  },
+  {
+    "post": "01-branch-prediction",
+    "viewport": "390px",
+    "filename": "01-branch-prediction--390px.png",
+    "diagnostics": {
+      "issues": [],
+      "svgSummary": [
+        {
+          "i": 0,
+          "w": "0",
+          "h": "0",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 1,
+          "w": "17",
+          "h": "17",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 2,
+          "w": "20",
+          "h": "20",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 3,
+          "w": "340",
+          "h": "260",
+          "viewBox": "0 0 340 260",
+          "texts": 22
+        },
+        {
+          "i": 4,
+          "w": "14",
+          "h": "14",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 5,
+          "w": "340",
+          "h": "220",
+          "viewBox": "0 0 340 220",
+          "texts": 20
+        },
+        {
+          "i": 6,
+          "w": "14",
+          "h": "14",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 7,
+          "w": "340",
+          "h": "320",
+          "viewBox": "0 0 340 320",
+          "texts": 22
+        },
+        {
+          "i": 8,
+          "w": "14",
+          "h": "14",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        }
+      ],
+      "bodyScrollW": 390,
+      "vpW": 390,
+      "docScrollW": 390
+    }
+  },
+  {
+    "post": "01-branch-prediction",
+    "viewport": "414px",
+    "filename": "01-branch-prediction--414px.png",
+    "diagnostics": {
+      "issues": [],
+      "svgSummary": [
+        {
+          "i": 0,
+          "w": "0",
+          "h": "0",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 1,
+          "w": "17",
+          "h": "17",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 2,
+          "w": "20",
+          "h": "20",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 3,
+          "w": "364",
+          "h": "260",
+          "viewBox": "0 0 364 260",
+          "texts": 22
+        },
+        {
+          "i": 4,
+          "w": "14",
+          "h": "14",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 5,
+          "w": "364",
+          "h": "220",
+          "viewBox": "0 0 364 220",
+          "texts": 20
+        },
+        {
+          "i": 6,
+          "w": "14",
+          "h": "14",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 7,
+          "w": "364",
+          "h": "320",
+          "viewBox": "0 0 364 320",
+          "texts": 22
+        },
+        {
+          "i": 8,
+          "w": "14",
+          "h": "14",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        }
+      ],
+      "bodyScrollW": 414,
+      "vpW": 414,
+      "docScrollW": 414
+    }
+  },
+  {
+    "post": "02-false-sharing",
+    "viewport": "375px",
+    "filename": "02-false-sharing--375px.png",
+    "diagnostics": {
+      "issues": [
+        "Body horizontal overflow: scrollWidth=508 > innerWidth=375",
+        "Document horizontal overflow: scrollWidth=508 > innerWidth=375"
+      ],
+      "svgSummary": [
+        {
+          "i": 0,
+          "w": "0",
+          "h": "0",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 1,
+          "w": "17",
+          "h": "17",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 2,
+          "w": "20",
+          "h": "20",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 3,
+          "w": "325",
+          "h": "240",
+          "viewBox": "0 0 325 240",
+          "texts": 24
+        },
+        {
+          "i": 4,
+          "w": "14",
+          "h": "14",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 5,
+          "w": "325",
+          "h": "240",
+          "viewBox": "0 0 325 240",
+          "texts": 28
+        },
+        {
+          "i": 6,
+          "w": "14",
+          "h": "14",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 7,
+          "w": "325",
+          "h": "280",
+          "viewBox": "0 0 325 280",
+          "texts": 30
+        },
+        {
+          "i": 8,
+          "w": "14",
+          "h": "14",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 9,
+          "w": "325",
+          "h": "280",
+          "viewBox": "0 0 325 280",
+          "texts": 32
+        },
+        {
+          "i": 10,
+          "w": "14",
+          "h": "14",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 11,
+          "w": "325",
+          "h": "240",
+          "viewBox": "0 0 325 240",
+          "texts": 24
+        },
+        {
+          "i": 12,
+          "w": "14",
+          "h": "14",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        }
+      ],
+      "bodyScrollW": 508,
+      "vpW": 375,
+      "docScrollW": 508
+    }
+  },
+  {
+    "post": "02-false-sharing",
+    "viewport": "390px",
+    "filename": "02-false-sharing--390px.png",
+    "diagnostics": {
+      "issues": [
+        "Body horizontal overflow: scrollWidth=508 > innerWidth=390",
+        "Document horizontal overflow: scrollWidth=508 > innerWidth=390"
+      ],
+      "svgSummary": [
+        {
+          "i": 0,
+          "w": "0",
+          "h": "0",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 1,
+          "w": "17",
+          "h": "17",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 2,
+          "w": "20",
+          "h": "20",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 3,
+          "w": "340",
+          "h": "240",
+          "viewBox": "0 0 340 240",
+          "texts": 24
+        },
+        {
+          "i": 4,
+          "w": "14",
+          "h": "14",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 5,
+          "w": "340",
+          "h": "240",
+          "viewBox": "0 0 340 240",
+          "texts": 28
+        },
+        {
+          "i": 6,
+          "w": "14",
+          "h": "14",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 7,
+          "w": "340",
+          "h": "280",
+          "viewBox": "0 0 340 280",
+          "texts": 30
+        },
+        {
+          "i": 8,
+          "w": "14",
+          "h": "14",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 9,
+          "w": "340",
+          "h": "280",
+          "viewBox": "0 0 340 280",
+          "texts": 32
+        },
+        {
+          "i": 10,
+          "w": "14",
+          "h": "14",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 11,
+          "w": "340",
+          "h": "240",
+          "viewBox": "0 0 340 240",
+          "texts": 24
+        },
+        {
+          "i": 12,
+          "w": "14",
+          "h": "14",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        }
+      ],
+      "bodyScrollW": 508,
+      "vpW": 390,
+      "docScrollW": 508
+    }
+  },
+  {
+    "post": "02-false-sharing",
+    "viewport": "414px",
+    "filename": "02-false-sharing--414px.png",
+    "diagnostics": {
+      "issues": [
+        "Body horizontal overflow: scrollWidth=508 > innerWidth=414",
+        "Document horizontal overflow: scrollWidth=508 > innerWidth=414"
+      ],
+      "svgSummary": [
+        {
+          "i": 0,
+          "w": "0",
+          "h": "0",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 1,
+          "w": "17",
+          "h": "17",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 2,
+          "w": "20",
+          "h": "20",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 3,
+          "w": "364",
+          "h": "240",
+          "viewBox": "0 0 364 240",
+          "texts": 24
+        },
+        {
+          "i": 4,
+          "w": "14",
+          "h": "14",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 5,
+          "w": "364",
+          "h": "240",
+          "viewBox": "0 0 364 240",
+          "texts": 28
+        },
+        {
+          "i": 6,
+          "w": "14",
+          "h": "14",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 7,
+          "w": "364",
+          "h": "280",
+          "viewBox": "0 0 364 280",
+          "texts": 30
+        },
+        {
+          "i": 8,
+          "w": "14",
+          "h": "14",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 9,
+          "w": "364",
+          "h": "280",
+          "viewBox": "0 0 364 280",
+          "texts": 32
+        },
+        {
+          "i": 10,
+          "w": "14",
+          "h": "14",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 11,
+          "w": "364",
+          "h": "240",
+          "viewBox": "0 0 364 240",
+          "texts": 24
+        },
+        {
+          "i": 12,
+          "w": "14",
+          "h": "14",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        }
+      ],
+      "bodyScrollW": 508,
+      "vpW": 414,
+      "docScrollW": 508
+    }
+  },
+  {
+    "post": "03-simd-blackscholes",
+    "viewport": "375px",
+    "filename": "03-simd-blackscholes--375px.png",
+    "diagnostics": {
+      "issues": [
+        "Body horizontal overflow: scrollWidth=508 > innerWidth=375",
+        "Document horizontal overflow: scrollWidth=508 > innerWidth=375"
+      ],
+      "svgSummary": [
+        {
+          "i": 0,
+          "w": "0",
+          "h": "0",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 1,
+          "w": "17",
+          "h": "17",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 2,
+          "w": "20",
+          "h": "20",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 3,
+          "w": "325",
+          "h": "260",
+          "viewBox": "0 0 325 260",
+          "texts": 23
+        },
+        {
+          "i": 4,
+          "w": "14",
+          "h": "14",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 5,
+          "w": "325",
+          "h": "260",
+          "viewBox": "0 0 325 260",
+          "texts": 23
+        },
+        {
+          "i": 6,
+          "w": "14",
+          "h": "14",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        }
+      ],
+      "bodyScrollW": 508,
+      "vpW": 375,
+      "docScrollW": 508
+    }
+  },
+  {
+    "post": "03-simd-blackscholes",
+    "viewport": "390px",
+    "filename": "03-simd-blackscholes--390px.png",
+    "diagnostics": {
+      "issues": [
+        "Body horizontal overflow: scrollWidth=508 > innerWidth=390",
+        "Document horizontal overflow: scrollWidth=508 > innerWidth=390"
+      ],
+      "svgSummary": [
+        {
+          "i": 0,
+          "w": "0",
+          "h": "0",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 1,
+          "w": "17",
+          "h": "17",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 2,
+          "w": "20",
+          "h": "20",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 3,
+          "w": "340",
+          "h": "260",
+          "viewBox": "0 0 340 260",
+          "texts": 23
+        },
+        {
+          "i": 4,
+          "w": "14",
+          "h": "14",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 5,
+          "w": "340",
+          "h": "260",
+          "viewBox": "0 0 340 260",
+          "texts": 23
+        },
+        {
+          "i": 6,
+          "w": "14",
+          "h": "14",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        }
+      ],
+      "bodyScrollW": 508,
+      "vpW": 390,
+      "docScrollW": 508
+    }
+  },
+  {
+    "post": "03-simd-blackscholes",
+    "viewport": "414px",
+    "filename": "03-simd-blackscholes--414px.png",
+    "diagnostics": {
+      "issues": [
+        "Body horizontal overflow: scrollWidth=508 > innerWidth=414",
+        "Document horizontal overflow: scrollWidth=508 > innerWidth=414"
+      ],
+      "svgSummary": [
+        {
+          "i": 0,
+          "w": "0",
+          "h": "0",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 1,
+          "w": "17",
+          "h": "17",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 2,
+          "w": "20",
+          "h": "20",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 3,
+          "w": "364",
+          "h": "260",
+          "viewBox": "0 0 364 260",
+          "texts": 23
+        },
+        {
+          "i": 4,
+          "w": "14",
+          "h": "14",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 5,
+          "w": "364",
+          "h": "260",
+          "viewBox": "0 0 364 260",
+          "texts": 23
+        },
+        {
+          "i": 6,
+          "w": "14",
+          "h": "14",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        }
+      ],
+      "bodyScrollW": 508,
+      "vpW": 414,
+      "docScrollW": 508
+    }
+  },
+  {
+    "post": "04-spsc-queue",
+    "viewport": "375px",
+    "filename": "04-spsc-queue--375px.png",
+    "diagnostics": {
+      "issues": [
+        "SVG[3] text[56] \"lockfree-handrolled\" outside SVG bounds (x=260-374, svg=25-350)",
+        "SVG[5] text[53] \"lockfree-handrolled\" outside SVG bounds (x=252-366, svg=25-350)",
+        "Body horizontal overflow: scrollWidth=382 > innerWidth=375",
+        "Document horizontal overflow: scrollWidth=382 > innerWidth=375"
+      ],
+      "svgSummary": [
+        {
+          "i": 0,
+          "w": "0",
+          "h": "0",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 1,
+          "w": "17",
+          "h": "17",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 2,
+          "w": "20",
+          "h": "20",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 3,
+          "w": "325",
+          "h": "360",
+          "viewBox": "0 0 325 360",
+          "texts": 59
+        },
+        {
+          "i": 4,
+          "w": "14",
+          "h": "14",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 5,
+          "w": "325",
+          "h": "320",
+          "viewBox": "0 0 325 320",
+          "texts": 56
+        },
+        {
+          "i": 6,
+          "w": "14",
+          "h": "14",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 7,
+          "w": "325",
+          "h": "380",
+          "viewBox": "0 0 325 380",
+          "texts": 107
+        },
+        {
+          "i": 8,
+          "w": "14",
+          "h": "14",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 9,
+          "w": "325",
+          "h": "260",
+          "viewBox": "0 0 325 260",
+          "texts": 17
+        },
+        {
+          "i": 10,
+          "w": "14",
+          "h": "14",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        }
+      ],
+      "bodyScrollW": 382,
+      "vpW": 375,
+      "docScrollW": 382
+    }
+  },
+  {
+    "post": "04-spsc-queue",
+    "viewport": "390px",
+    "filename": "04-spsc-queue--390px.png",
+    "diagnostics": {
+      "issues": [
+        "SVG[3] text[56] \"lockfree-handrolled\" outside SVG bounds (x=275-389, svg=25-365)",
+        "SVG[5] text[53] \"lockfree-handrolled\" outside SVG bounds (x=267-381, svg=25-365)"
+      ],
+      "svgSummary": [
+        {
+          "i": 0,
+          "w": "0",
+          "h": "0",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 1,
+          "w": "17",
+          "h": "17",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 2,
+          "w": "20",
+          "h": "20",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 3,
+          "w": "340",
+          "h": "360",
+          "viewBox": "0 0 340 360",
+          "texts": 59
+        },
+        {
+          "i": 4,
+          "w": "14",
+          "h": "14",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 5,
+          "w": "340",
+          "h": "320",
+          "viewBox": "0 0 340 320",
+          "texts": 56
+        },
+        {
+          "i": 6,
+          "w": "14",
+          "h": "14",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 7,
+          "w": "340",
+          "h": "380",
+          "viewBox": "0 0 340 380",
+          "texts": 107
+        },
+        {
+          "i": 8,
+          "w": "14",
+          "h": "14",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 9,
+          "w": "340",
+          "h": "260",
+          "viewBox": "0 0 340 260",
+          "texts": 17
+        },
+        {
+          "i": 10,
+          "w": "14",
+          "h": "14",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        }
+      ],
+      "bodyScrollW": 390,
+      "vpW": 390,
+      "docScrollW": 390
+    }
+  },
+  {
+    "post": "04-spsc-queue",
+    "viewport": "414px",
+    "filename": "04-spsc-queue--414px.png",
+    "diagnostics": {
+      "issues": [
+        "SVG[3] text[56] \"lockfree-handrolled\" outside SVG bounds (x=299-413, svg=25-389)",
+        "SVG[5] text[53] \"lockfree-handrolled\" outside SVG bounds (x=291-405, svg=25-389)"
+      ],
+      "svgSummary": [
+        {
+          "i": 0,
+          "w": "0",
+          "h": "0",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 1,
+          "w": "17",
+          "h": "17",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 2,
+          "w": "20",
+          "h": "20",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 3,
+          "w": "364",
+          "h": "360",
+          "viewBox": "0 0 364 360",
+          "texts": 59
+        },
+        {
+          "i": 4,
+          "w": "14",
+          "h": "14",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 5,
+          "w": "364",
+          "h": "320",
+          "viewBox": "0 0 364 320",
+          "texts": 56
+        },
+        {
+          "i": 6,
+          "w": "14",
+          "h": "14",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 7,
+          "w": "364",
+          "h": "380",
+          "viewBox": "0 0 364 380",
+          "texts": 107
+        },
+        {
+          "i": 8,
+          "w": "14",
+          "h": "14",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        },
+        {
+          "i": 9,
+          "w": "364",
+          "h": "260",
+          "viewBox": "0 0 364 260",
+          "texts": 17
+        },
+        {
+          "i": 10,
+          "w": "14",
+          "h": "14",
+          "viewBox": "0 0 24 24",
+          "texts": 0
+        }
+      ],
+      "bodyScrollW": 414,
+      "vpW": 414,
+      "docScrollW": 414
+    }
+  }
+]
