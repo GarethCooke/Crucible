@@ -224,7 +224,7 @@ if [[ "${SLUG}" == "05-allocators" ]]; then
 
     for VARIANT in cross-thread-malloc freelist-return-queue arena-batch-handoff; do
         echo "==> Running ${VARIANT}: cross-CCX paced (consumer core 1)..."
-        sudo -E cset shield --cpu=4-7 --kthread=on > /dev/null
+        sudo -E cset shield --cpu=1,4-7 --kthread=on > /dev/null
         SHIELD_ACTIVE=1
         sudo -E cset shield --exec -- "${ALLOC_BINARY}" "${VARIANT}" \
             --mode paced --offered-rate-hz 1000000 --bg-pressure-hz 1000000 \
