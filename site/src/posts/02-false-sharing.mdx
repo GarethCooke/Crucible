@@ -1,12 +1,12 @@
 ---
-title: "False sharing: a 13× throughput gap from two missing bytes"
+title: "False sharing: a 15× throughput gap from two missing bytes"
 date: "2026-05-16"
 summary: "Same algorithm. Same fill stream. Same machine. The only variable is struct layout — and it dominates."
 ---
 
 Same algorithm. Same fill stream. Same machine. Two versions of a single struct — the
 only difference is 56 bytes of padding. At 8 threads, the unpadded version runs at
-3.31 ns/op; the padded version reaches 0.26 ns/op. A 13× gap from a layout choice the
+3.31 ns/op; the padded version reaches 0.22 ns/op. A 15× gap from a layout choice the
 compiler never warned about.
 
 ## The setup
@@ -121,10 +121,10 @@ at 3.61 ns/op — **a 1.27× additional penalty from crossing the Fabric, on top
 5× false-sharing penalty already paid**. The cross-CCX 4t result has IQR/median under
 0.4% across 20 repetitions — reproducible to two significant figures.
 
-## 13× at 8 threads cross-CCX
+## 15× at 8 threads cross-CCX
 
 At 8 threads spanning both CCXs, the gap widens. The unpadded variant settles at
-3.31 ns/op; the padded variant reaches 0.26 ns/op — a **13× throughput gap** from a
+3.31 ns/op; the padded variant reaches 0.22 ns/op — a **15× throughput gap** from a
 single struct layout decision.
 
 | Configuration         | Median ns/op | Throughput (ops/sec) | IQR/median |
@@ -133,14 +133,14 @@ single struct layout decision.
 | Intra-CCX 4t unpadded | 3.61         | 277 M/s              | 0.08%      |
 | Cross-CCX 4t padded   | 0.71         | 1.40 G/s             | 0.35%      |
 | Cross-CCX 4t unpadded | 4.59         | 218 M/s              | 0.17%      |
-| Cross-CCX 8t padded   | 0.26         | 3.89 G/s             | 12%        |
+| Cross-CCX 8t padded   | 0.22         | 4.59 G/s             | 16%        |
 | Cross-CCX 8t unpadded | 3.31         | 302 M/s              | 1.4%       |
 
 The 8-thread configuration is the only one that includes cpu0, which the kernel
 refuses to isolate (it's the boot CPU and handles unmigrable housekeeping). Run-to-run
 variance is correspondingly higher there. The unpadded number remains robust —
 false-sharing cost dwarfs cpu0 background noise — but the padded baseline has
-IQR/median around 12% rather than the sub-1% seen everywhere else. The 13× headline is
+IQR/median around 16% rather than the sub-1% seen everywhere else. The 15× headline is
 real; treat the third significant figure with skepticism.
 
 ## What this means in practice
@@ -175,15 +175,15 @@ notice the throughput collapse.
   multi-socket NUMA systems behave more like cross-CCX. The mechanism is universal; the
   magnitudes depend on the chip.
 - **cpu0 cannot be kernel-isolated.** On the reference machine the 8t result includes
-  cpu0 in the worker pool. The 13× number is robust because the false-sharing signal
+  cpu0 in the worker pool. The 15× number is robust because the false-sharing signal
   dominates; smaller effects measured at 8t would need different methodology.
 
 ## Takeaway
 
-False sharing is a 13× throughput collapse from two missing bytes of padding — a
+False sharing is a 15× throughput collapse from two missing bytes of padding — a
 layout regression the compiler will never warn about. The mechanism is universal
 (write-write coherency traffic on a shared cache line) but the magnitudes are
-hardware-specific: 5× within a Zen 2 CCX, 13× once the Infinity Fabric is in
+hardware-specific: 5× within a Zen 2 CCX, 15× once the Infinity Fabric is in
 the loop, milder on Intel monolithic dies. The fix is a single `alignas(64)` —
 and a `static_assert` that turns the discipline into a compile-time invariant,
 as [demo 4's `PaddedAtomic<T>`](/posts/04-spsc-queue) does.
