@@ -183,10 +183,11 @@ function renderCCDF(
     p99_9: 'p99.9',
   }
 
-  markers.forEach((m) => {
+  markers.forEach((m, i) => {
     const ns = markerValues[m]
     if (!ns || ns <= 0) return
     const xPos = x(ns)
+    const labelY = 10 + i * 12
     g.append('line')
       .attr('x1', xPos).attr('x2', xPos)
       .attr('y1', 0).attr('y2', inner.h)
@@ -195,7 +196,7 @@ function renderCCDF(
       .attr('stroke-dasharray', '4,3')
     g.append('text')
       .attr('x', xPos + 3)
-      .attr('y', 10)
+      .attr('y', labelY)
       .attr('font-size', typography.captionSize)
       .attr('fill', colors.textMuted)
       .text(`${markerLabels[m]} ${ns} ns`)
