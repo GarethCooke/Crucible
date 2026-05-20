@@ -1,0 +1,33 @@
+---
+title: "Allocators: cross-thread order pipeline"
+date: "2026-05-20"
+status: "in-progress"
+expectedAt: "June 2026"
+summary: "Cross-thread Order lifecycle benchmarked across three allocator strategies — malloc, freelist with return queue, and arena with batch handoff. Median vs tail under realistic background heap pressure."
+---
+
+<InProgressNotice expectedAt="June 2026" />
+
+## The thesis
+
+In a cross-thread trading pipeline, the allocator design is a derivative of the threading model. The right choice depends on whether your latency budget lives in the median or the tail.
+
+Every `new Order(...)` you write looks like it costs 20 ns. Under realistic background heap pressure, that median hides a p99.9 tail of microseconds — the latencies that determine whether your strategy reacts in time.
+
+This post benchmarks three allocator strategies for an Order pipeline where the producer thread constructs orders and the consumer thread frees them after processing — the threading model every real system uses, and the one that breaks naïve thread-local pools.
+
+## What the post will cover
+
+Three variants of allocation for ~64 B `Order` objects flowing producer → consumer through an SPSC queue, reusing the queue primitive from [Demo 4](/posts/04-spsc-queue):
+
+1. **Cross-thread `new`/`delete`** — glibc's per-arena allocator. The baseline most real systems run because it just works.
+2. **Freelist with return queue** — producer keeps a thread-local freelist; consumer pushes used Orders onto a return SPSC back to the producer for replenishment. The "magazine" pattern simplified.
+3. **Arena with batch handoff** — producer bump-allocates from a rotating slab; consumer publishes drain progress; producer recycles slabs once fully consumed.
+
+The headline chart will be the end-to-end latency CCDF — alloc-to-free time across all three variants with p50 / p99 / p99.9 markers. Supporting view: a sweep of p99.9 latency vs background heap-pressure intensity, showing the malloc tail growing while the pool variants stay flat.
+
+## What makes the post interesting
+
+There's a non-obvious result hiding in the data — the answer isn't simply "use a pool." The right pool depends on whether your latency budget is in the median or the tail, and the trade-off between freelist-style and arena-style allocators isn't free.
+
+Expected to ship in June 2026.

@@ -9,6 +9,8 @@ export interface PostMeta {
   title: string
   date: string
   summary: string
+  status?: 'in-progress' | 'shipped'
+  expectedAt?: string
 }
 
 export async function getAllPosts(): Promise<PostMeta[]> {
@@ -28,9 +30,11 @@ export async function getAllPosts(): Promise<PostMeta[]> {
         const { data } = matter(raw)
         return {
           slug,
-          title:   (data.title   as string) ?? slug,
-          date:    (data.date    as string) ?? '',
-          summary: (data.summary as string) ?? '',
+          title:      (data.title      as string) ?? slug,
+          date:       (data.date       as string) ?? '',
+          summary:    (data.summary    as string) ?? '',
+          status:     (data.status     as PostMeta['status']) ?? undefined,
+          expectedAt: (data.expectedAt as string) ?? undefined,
         }
       })
   )

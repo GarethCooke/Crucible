@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { getAllPosts } from '@/lib/posts'
+import { StatusPill } from '@/components/StatusPill'
 
 export const metadata: Metadata = {
   title: 'Crucible',
@@ -63,12 +64,17 @@ export default async function HomePage() {
                     {post.summary}
                   </p>
                 </div>
-                <span
-                  className="font-mono text-xs shrink-0"
-                  style={{ color: 'var(--text-muted)' }}
-                >
-                  {post.date}
-                </span>
+                <div className="flex items-center gap-2 shrink-0">
+                  {post.status === 'in-progress' && (
+                    <StatusPill status={post.status} />
+                  )}
+                  <span
+                    className="font-mono text-xs"
+                    style={{ color: 'var(--text-muted)' }}
+                  >
+                    {post.date}
+                  </span>
+                </div>
               </a>
             </li>
           ))}

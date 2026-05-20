@@ -8,10 +8,11 @@ import remarkGfm from 'remark-gfm'
 import type { Metadata } from 'next'
 import { CodeCompare } from '@/components/CodeCompare'
 import { Benchmark } from '@/components/Benchmark'
+import { InProgressNotice } from '@/components/InProgressNotice'
 import { getAllPosts } from '@/lib/posts'
 import { SYNTAX_THEME } from '@/lib/syntax'
 
-const components = { CodeCompare, Benchmark }
+const components = { CodeCompare, Benchmark, InProgressNotice }
 
 const POSTS_DIR = path.join(process.cwd(), 'src/posts')
 
