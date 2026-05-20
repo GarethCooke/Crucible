@@ -454,12 +454,13 @@ static std::string emit_run_json(const char* variant,
         knobs = buf;
     }
 
-    char trailer[128];
-    std::snprintf(trailer, sizeof(trailer),
-        "},\"top_bucket_count\":%zu,\"calibration_drift_pct\":%.4f%s}",
-        r.top_bucket_count,
-        calibration_drift_pct,
-        knobs.c_str());
+    char trailer_head[128];
+    std::snprintf(trailer_head, sizeof(trailer_head),
+        "},\"top_bucket_count\":%zu,\"calibration_drift_pct\":%.4f",
+        r.top_bucket_count, calibration_drift_pct);
+    std::string trailer = trailer_head;
+    trailer += knobs;
+    trailer += "}";
 
     std::string result;
     result.reserve(1024 + crucible::HISTOGRAM_BUCKET_COUNT * 8 + 256);
