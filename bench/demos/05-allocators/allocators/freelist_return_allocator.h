@@ -43,9 +43,7 @@ public:
 
     // Called by producer. Drains return queue if local freelist is empty.
     Order* allocate() {
-        if (local_free_.empty()) [[unlikely]] {
-            drain_return_queue();
-        }
+        drain_return_queue();
         if (local_free_.empty()) [[unlikely]] {
             // Slab exhausted — should not happen under correct sizing.
             // Spin until the consumer returns something.
