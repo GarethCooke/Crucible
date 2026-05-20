@@ -169,15 +169,30 @@ against them for sporadic workloads.
   chart="throughput-bars"
   mode="saturated"
   variants={["lockfree-handrolled", "lockfree-boost", "mutex-condvar"]}
-  stat="median"
+  metric="ops_per_sec"
+  title="Saturated throughput (ops/sec, producer flat-out — higher is better)"
 />
 
-Saturated throughput: the producer runs flat-out with no pacing. The gap between
-lock-free and mutex is smaller than the tail gap — often within a small multiple.
-The mutex fast path (lock uncontested, no condvar wake-up) is cheap. The cost
-shows up as determinism, not rate.
+Saturated throughput: the producer runs flat-out with no pacing. Hand-rolled and
+Boost cap at near-identical rates — 14.7 M/s and 14.9 M/s respectively, within
+1.4%. Both are limited by the producer's per-iteration cost (timestamp, `try_push`,
+spin) rather than anything queue-implementation-specific. The latency distribution
+is what separates them under load (see the histograms above): Boost runs with its
+queue near capacity at saturation, hand-rolled with its queue near empty, so an
+item resident in Boost's queue waits ~200× longer end-to-end. Same throughput,
+very different residency.
 
-A nuance on the throughput numbers above: they reflect _steady-state_ behaviour with the producer flat-out and the queue at capacity. For Boost specifically, this slightly understates peak rate — the load sweep shows it transiently reaching ~19.8 M/s when the queue is at intermediate depth, before settling into the lower steady-state rate as the queue fills. The hand-rolled variant doesn't show this gap because its queue never reaches capacity (see the saturation discussion above). Mutex doesn't show it because its steady-state and transient rates are both bound by condvar wake-up cost, which doesn't vary with queue depth.
+Mutex caps lower, at ~5.7 M/s — about 2.6× slower than lock-free. That's the
+"small multiple" rate gap: small enough that a throughput-only view would
+undersell how different these queues actually are. The tail-latency view
+above is where the gap explodes by orders of magnitude.
+
+A nuance for the Boost number: the steady-state ~14.9 M/s shown here is slightly
+below its transient peak — the load sweep shows Boost briefly reaching ~19.8 M/s
+when the queue is at intermediate depth, before settling lower as the queue fills.
+Hand-rolled doesn't show this gap because its queue never fills. Mutex doesn't
+show it because both steady-state and transient rates are bound by condvar
+wake-up cost, which is depth-independent.
 
 **The lock-free win is about determinism, not raw rate.**
 

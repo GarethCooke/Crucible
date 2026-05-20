@@ -8,7 +8,8 @@ import { TimeVsN } from './charts/TimeVsN'
 import { NoData } from './charts/NoData'
 import type { LatencyHistogramData } from '@/lib/perf-types'
 
-type Metric = 'cache_misses_per_op' | 'cache_miss_ratio' | 'instructions_per_cycle' | 'branch_misses_per_op'
+type CounterMetric = 'cache_misses_per_op' | 'cache_miss_ratio' | 'instructions_per_cycle' | 'branch_misses_per_op'
+type Metric = CounterMetric | 'ops_per_sec'
 
 interface BenchmarkProps {
   slug: string
@@ -100,7 +101,7 @@ export async function Benchmark({
 }: BenchmarkProps) {
   // Delegate chart types that have dedicated server components with their own data schemas.
   if (chart === 'counter-overlay') {
-    return <CounterOverlay slug={slug} metric={metric!} placement={placement} variants={variants} />
+    return <CounterOverlay slug={slug} metric={metric as CounterMetric} placement={placement} variants={variants} />
   }
   if (chart === 'time-vs-n') {
     return <TimeVsN slug={slug} variants={variants} stat={stat} />
@@ -154,7 +155,7 @@ export async function Benchmark({
   }
 
   if (chart === 'throughput-bars') {
-    return <ThroughputBarsChart runs={runs} stat={stat} targetN={resolvedN} title={titleProp ?? data.title} />
+    return <ThroughputBarsChart runs={runs} stat={stat} targetN={resolvedN} title={titleProp ?? data.title} metric={metric === 'ops_per_sec' ? 'ops_per_sec' : undefined} />
   }
 
   if (chart === 'latency-histogram') {

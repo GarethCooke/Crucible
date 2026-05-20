@@ -64,9 +64,10 @@ interface Props {
   stat?: 'median' | 'min' | 'p99'
   targetN?: number
   title?: string
+  metric?: 'ops_per_sec'
 }
 
-export function ThroughputBarsChart({ runs, stat = 'median', targetN, title }: Props) {
+export function ThroughputBarsChart({ runs, stat = 'median', targetN, title, metric }: Props) {
   const ref = useRef<SVGSVGElement>(null)
   const theme = useTheme()
 
@@ -76,9 +77,9 @@ export function ThroughputBarsChart({ runs, stat = 'median', targetN, title }: P
     if (isThreadRun(runs[0])) {
       renderGrouped(ref.current, runs as ThreadRun[], stat, title)
     } else {
-      renderLegacy(ref.current, runs as LegacyRun[], stat, targetN, title)
+      renderLegacy(ref.current, runs as LegacyRun[], stat, targetN, title, metric)
     }
-  }, [runs, stat, targetN, title, theme])
+  }, [runs, stat, targetN, title, metric, theme])
 
   return (
     <ChartZoom>
@@ -92,12 +93,26 @@ export function ThroughputBarsChart({ runs, stat = 'median', targetN, title }: P
 const DEFAULT_TITLE_LEGACY   = 'Throughput comparison bar chart'
 const DEFAULT_TITLE_GROUPED  = 'Throughput by thread count (padded vs unpadded)'
 
+function fmtOps(v: number): string {
+  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)} M/s`
+  if (v >= 1_000) return `${(v / 1_000).toFixed(1)} K/s`
+  return `${v}/s`
+}
+
+function fmtOpsTick(v: number | { valueOf(): number }): string {
+  const n = +v
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(0)} M`
+  if (n >= 1_000) return `${(n / 1_000).toFixed(0)} K`
+  return `${n}`
+}
+
 function renderLegacy(
   el: SVGSVGElement,
   runs: LegacyRun[],
   stat: 'median' | 'min' | 'p99',
   targetN?: number,
   title?: string,
+  metric?: 'ops_per_sec',
 ) {
   const colors = getColors()
   const ns = Array.from(new Set(runs.map((r) => r.n))).sort((a, b) => a - b)
@@ -111,6 +126,8 @@ function renderLegacy(
   const margin = { top: 24, right: 16, bottom: isNarrow ? 60 : 40, left: 64 }
   const inner = { w: W - margin.left - margin.right, h: H - margin.top - margin.bottom }
 
+  const useOps = metric === 'ops_per_sec'
+
   const svg = select(el)
     .attr('width', W)
     .attr('height', H)
@@ -119,13 +136,17 @@ function renderLegacy(
 
   svg.append('title').text(title ?? DEFAULT_TITLE_LEGACY)
   svg.append('desc').text(
-    data.map((d) => `${d.variant}: ${(d.ns_per_op[stat] ?? d.ns_per_op.median).toFixed(2)} ns/op`).join('. ')
+    useOps
+      ? data.map((d) => `${d.variant}: ${fmtOps(d.ops_per_sec)}`).join('. ')
+      : data.map((d) => `${d.variant}: ${(d.ns_per_op[stat] ?? d.ns_per_op.median).toFixed(2)} ns/op`).join('. ')
   )
 
   const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`)
 
   const x = scaleBand().domain(data.map((d) => d.variant)).range([0, inner.w]).padding(0.45)
-  const vals = data.map((d) => d.ns_per_op[stat] ?? d.ns_per_op.median)
+  const vals = useOps
+    ? data.map((d) => d.ops_per_sec)
+    : data.map((d) => d.ns_per_op[stat] ?? d.ns_per_op.median)
   const y = scaleLinear().domain([0, max(vals)! * 1.25]).range([inner.h, 0]).nice()
 
   appendGrid(g, y, inner, { gridline: colors.border })
@@ -135,9 +156,9 @@ function renderLegacy(
     .join('rect')
     .attr('class', 'bar')
     .attr('x', (d) => x(d.variant)!)
-    .attr('y', (d) => y(d.ns_per_op[stat] ?? d.ns_per_op.median))
+    .attr('y', (d) => y(useOps ? d.ops_per_sec : (d.ns_per_op[stat] ?? d.ns_per_op.median)))
     .attr('width', x.bandwidth())
-    .attr('height', (d) => inner.h - y(d.ns_per_op[stat] ?? d.ns_per_op.median))
+    .attr('height', (d) => inner.h - y(useOps ? d.ops_per_sec : (d.ns_per_op[stat] ?? d.ns_per_op.median)))
     .attr('fill', (d) => variantColor(d.variant))
     .attr('rx', 4)
     .attr('opacity', 0.9)
@@ -147,11 +168,14 @@ function renderLegacy(
     .join('text')
     .attr('class', 'bar-label')
     .attr('x', (d) => x(d.variant)! + x.bandwidth() / 2)
-    .attr('y', (d) => y(d.ns_per_op[stat] ?? d.ns_per_op.median) - 8)
+    .attr('y', (d) => y(useOps ? d.ops_per_sec : (d.ns_per_op[stat] ?? d.ns_per_op.median)) - 8)
     .attr('text-anchor', 'middle')
     .attr('font-size', typography.labelSize)
     .attr('fill', colors.textPrimary)
-    .text((d) => `${(d.ns_per_op[stat] ?? d.ns_per_op.median).toFixed(2)} ns/op`)
+    .text((d) => useOps
+      ? fmtOps(d.ops_per_sec)
+      : `${(d.ns_per_op[stat] ?? d.ns_per_op.median).toFixed(2)} ns/op`
+    )
 
   g.selectAll('.miss-label')
     .data(data.filter((d) => d.branch_misses_per_op != null))
@@ -164,7 +188,7 @@ function renderLegacy(
     .attr('fill', colors.textMuted)
     .text((d) => `${((d.branch_misses_per_op ?? 0) * 100).toFixed(1)}% miss`)
 
-  appendAxesLegacy(g, svg, x, y, inner, W, H, margin, stat, n, isNarrow)
+  appendAxesLegacy(g, svg, x, y, inner, W, H, margin, stat, n, isNarrow, useOps)
 }
 
 // ─── Grouped renderer (false sharing) ────────────────────────────────────────
@@ -300,6 +324,7 @@ function appendAxesLegacy(
   stat: string,
   n: number,
   isNarrow = false,
+  useOps = false,
 ) {
   const colors = getColors()
   g.append('g')
@@ -322,7 +347,7 @@ function appendAxesLegacy(
     })
 
   g.append('g')
-    .call(axisLeft(y).ticks(5).tickFormat((v) => `${v} ns`))
+    .call(axisLeft(y).ticks(5).tickFormat(useOps ? fmtOpsTick : (v) => `${v} ns`))
     .call((sel) => sel.select('.domain').remove())
     .call((sel) =>
       sel.selectAll('text')
@@ -337,5 +362,5 @@ function appendAxesLegacy(
     .attr('font-size', typography.annotationSize)
     .attr('fill', colors.textMuted)
     .attr('font-family', typography.fontMono)
-    .text(`${stat} ns/op · N = ${n.toLocaleString()}`)
+    .text(useOps ? `ops/sec · N = ${n.toLocaleString()}` : `${stat} ns/op · N = ${n.toLocaleString()}`)
 }
