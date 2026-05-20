@@ -8,10 +8,9 @@ A market-data thread produces 16-byte ticks; a strategy thread consumes them. En
 
 ## Setup
 
-A market-data thread produces ticks; a strategy thread consumes them. We measure
-the latency from the moment the producer stamps the item to the moment the
-consumer has it in hand — the full journey across the queue. Three variants on
-the same 16-byte `MarketTick`:
+Three variants on the same 16-byte `MarketTick`. We measure latency from the
+moment the producer stamps the item to the moment the consumer has it in hand —
+the full journey across the queue:
 
 - **`lockfree-handrolled`** — ~50-line ring buffer, 1024 entries, power-of-2
   bitmask indexing. `std::atomic` head and tail, each on its own 64-byte cache
@@ -32,8 +31,8 @@ the same 16-byte `MarketTick`:
 All three variants use a 1024-slot bounded queue. The mutex variant uses a paired
 condvar for not-full back-pressure, matching the lock-free back-pressure semantics.
 
-Producer pinned to core 4, consumer to core 5 — both on CCX1 of the Ryzen 7
-3800X, sharing an L3 slice. Same-CCX only; cross-CCX is deferred.
+Producer pinned to core 4, consumer to core 5 — both on the same CCX of the Ryzen 7
+3800X, sharing an L3. Same-CCX only; cross-CCX is deferred.
 
 **The producer is paced at 1 M items/sec for the headline measurements**, well
 below the sustainable throughput of any variant. The lock-free variants leave the
@@ -129,7 +128,7 @@ sample that arrives during a fast market move, when being slow costs the most.
 
 The lock-free distribution is sharply peaked — most items transit at nearly the
 same latency. The 16 KB ring buffer fits in each core's 32 KB L1d, and the
-inter-core handoff is serviced by the shared CCX1 L3 slice without crossing the
+inter-core handoff is serviced by the shared CCX L3 without crossing the
 Infinity Fabric. The mutex distribution is bimodal: a fast path when the consumer is
 already spinning on the condvar and wakes immediately, and a condvar-wake-up tail
 where the kernel becomes involved. The fast mode looks deceptively similar to
@@ -193,23 +192,24 @@ wait. When `cv.wait` blocks:
 4. Cache cold effects if the consumer has been executing other work.
 
 None of that happens on the lock-free path. The consumer spins until it sees the
-producer's `tail_` store, then loads the item. On Zen 2 with both threads on the
-same L3 slice, that cache-coherence round-trip plus the buffer load and store completes in roughly
-100–130 nanoseconds on Zen 2 within a CCX — the floor visible in the p50 numbers above.
+producer's `tail_` store, then loads the item. On Zen 2, with both cores on the
+same CCX sharing an L3, that cache-coherence round-trip plus the buffer load and
+store completes in roughly 130 ns — the floor visible in the p50 numbers above.
 
 At high offered load, the tail grows further for a different reason: once the
 queue saturates, the effective latency is `queue_depth × consumer_period`. This
 is the mechanism behind the hockey-stick in the load-sweep chart above, not a
-change in the per-op cost. The post labels these separately because conflating
-them was the main flaw in an earlier version of this measurement.
+change in the per-op cost. The two saturation regimes are genuinely different and
+worth labelling separately.
 
 ## Boost comparison
 
 `boost::lockfree::spsc_queue` is a production-quality implementation with the same
 structural properties as the hand-rolled version: power-of-2 capacity, `acquire`/`release`
 atomics, cache-line-aware layout. Under 1 MHz paced load, the hand-rolled
-implementation comes in at 132 ns p50 vs Boost's 122 ns — within 8%. p99.9 is
-similarly close: 172 ns hand-rolled vs 148 ns Boost. That's the credibility check:
+implementation comes in at 132 ns p50 vs Boost's 122 ns — within 8%. The p99.9
+gap is wider — 172 ns vs 148 ns, about 16% — but both are still orders of
+magnitude inside the mutex variant's tail. That's the credibility check:
 the hand-rolled version isn't leaving anything obvious on the table relative to a
 battle-tested production library, and conversely Boost isn't doing anything clever
 in its hot path that the 50-line version misses.
@@ -241,7 +241,7 @@ can't keep pace with the producer long before the lock-free consumer reaches its
 
 ---
 
-_Percentile values shown in charts above are computed from raw histograms in the corresponding JSON entries: log₂-subbucket-16 binning, bucket-midpoint percentile convention. Top-bucket counts and TSC drift across all 30 runs were zero. See [Methodology] for the rdtscp calibration path._
+_Percentile values shown in charts above are computed from raw histograms in the corresponding JSON entries: log₂-subbucket-16 binning, bucket-midpoint percentile convention. Top-bucket counts and TSC drift across all 30 runs were zero. See [Methodology](/methodology) for the rdtscp calibration path._
 
 *AMD Ryzen 7 3800X (Zen 2), producer core 4 + consumer core 5 (same CCX1),
 governor = performance, Turbo Boost off, SMT off (BIOS), GCC 13.3, -O3 -march=native.*

@@ -163,7 +163,7 @@ ships this pattern productionised — a `PaddedAtomic<T>` template with a `stati
 that catches any layout regression at compile time, rather than relying on a test to
 notice the throughput collapse.
 
-## What this benchmark doesn't show
+## What this doesn't show
 
 - **Read-write sharing is different.** This benchmark measures write-write false sharing.
   Writer-reader and reader-writer patterns (e.g., one thread updating a sequence number
@@ -178,60 +178,21 @@ notice the throughput collapse.
   cpu0 in the worker pool. The 13× number is robust because the false-sharing signal
   dominates; smaller effects measured at 8t would need different methodology.
 
-## Reproducing this
+## Takeaway
 
-Source files committed to the repo:
+False sharing is a 13× throughput collapse from two missing bytes of padding — a
+layout regression the compiler will never warn about. The mechanism is universal
+(write-write coherency traffic on a shared cache line) but the magnitudes are
+hardware-specific: 5× within a Zen 2 CCX, 13× once the Infinity Fabric is in
+the loop, milder on Intel monolithic dies. The fix is a single `alignas(64)` —
+and a `static_assert` that turns the discipline into a compile-time invariant,
+as [demo 4's `PaddedAtomic<T>`](/posts/04-spsc-queue) does.
 
-- Benchmark: [bench/demos/02-false-sharing/false_sharing_pnl.cpp](bench/demos/02-false-sharing/false_sharing_pnl.cpp)
-- Capture script: [tools/perf_capture.sh](tools/perf_capture.sh)
-- Data parser: [tools/parse_perf.py](tools/parse_perf.py)
-
-Per-variant capture (example — intra-CCX, 4 threads, unpadded):
-
-```bash
-# Build
-cd bench && cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build --parallel
-
-# Verify store is not elided (see comment at top of false_sharing_pnl.cpp)
-objdump -d build/demos/02-false-sharing/bench_02_false_sharing_pnl \
-  | grep -A 40 "<_ZL9worker_fn" | grep "movsd"
-
-# Capture (one call per variant; repeat for all 12)
-./tools/perf_capture.sh \
-  build/demos/02-false-sharing/bench_02_false_sharing_pnl \
-  intra-ccx 4 0   # placement threads padded(0/1)
-
-# Fold into JSON
-python3 tools/parse_perf.py \
-  --perf  intra-ccx_4t_unpadded.perf.json \
-  --bench intra-ccx_4t_unpadded.bench.json \
-  --out   site/src/data/perf/02-false-sharing-pnl.json \
-  --placement intra-ccx --threads 4 --padded 0
-```
-
-For the L1D-specific miss counter, confirm the event name on Zen 2 before capture:
-
-```bash
-perf list | grep -i l1d   # look for l1d.replacement or L1-dcache-load-misses
-```
-
-Pre-flight: boot into the benchmark GRUB entry (`isolcpus=0-7 nohz_full=0-7 rcu_nocbs=0-7`),
-SMT off (`cat /sys/devices/system/cpu/smt/active` → `0`), governor = performance, turbo off.
-The benchmark binary aborts with a clear error message if SMT is active;
-`perf_capture.sh` aborts if `/sys/devices/system/cpu/isolated` is not `1-7`.
-
-To verify thread-to-CPU pinning (invaluable when debugging topology issues), set the
-`CRUCIBLE_PRINT_AFFINITY` environment variable before running:
-
-```bash
-CRUCIBLE_PRINT_AFFINITY=1 ./bench/build/demos/02-false-sharing/bench_02_false_sharing_pnl \
-  --benchmark_filter='CrossCCX/2t/unpadded' \
-  --benchmark_repetitions=1 2>&1 | grep '\[bench\]'
-# Expect: one cpu in {0,1,2,3} and one in {4,5,6,7}
-```
+When per-thread state lives in an array, the default layout is almost always
+wrong. Pad to a cache line, assert it, move on.
 
 ---
 
 *AMD Ryzen 7 3800X, Zen 2, 3.9 GHz base, governor = performance, Turbo Boost off,
-SMT off (BIOS), GCC 13, -O3 -march=native.*
+SMT off (BIOS), GCC 13.3, -O3 -march=native.*
 *[Methodology →](/methodology)*
