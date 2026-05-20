@@ -17,3 +17,13 @@ export interface LatencyHistogramData {
 }
 
 export type LatencyStatsOnly = Pick<LatencyHistogramData, 'stats'>
+
+// Demo 05 pressure-sweep record (mode: "pressure_sweep").
+// background_pressure_hz is null for the no-T_bg baseline run.
+export interface PressureSweepRun {
+  variant: string
+  mode: 'pressure_sweep'
+  offered_rate_hz: number
+  background_pressure_hz: number | null
+  latency_ns?: LatencyStatsOnly
+}

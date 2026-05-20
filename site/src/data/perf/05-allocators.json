@@ -1,0 +1,8 @@
+{
+  "demo": "05-allocators",
+  "title": "Allocators: cross-thread order pipeline",
+  "machine": {},
+  "captured_at": null,
+  "runs": [],
+  "notes": "Not yet captured. Run bench/scripts/run_one.sh 05-allocators on the reference machine."
+}

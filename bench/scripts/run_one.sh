@@ -174,6 +174,76 @@ if [[ "${SLUG}" == "04-spsc-queue" ]]; then
 fi
 # ─────────────────────────────────────────────────────────────────────────────
 
+# ─── Demo 05: allocators — three variants, paced + pressure_sweep + cross-CCX ─
+if [[ "${SLUG}" == "05-allocators" ]]; then
+    ALLOC_BINARY="${BENCH_ROOT}/build/demos/05-allocators/bench_05_allocators"
+
+    if [[ ! -x "${ALLOC_BINARY}" ]]; then
+        echo "ERROR: binary not found: ${ALLOC_BINARY}" >&2; exit 1
+    fi
+
+    echo "==> Collecting machine info..."
+    sudo -E cset shield --cpu=4-7 --kthread=on > /dev/null
+    SHIELD_ACTIVE=1
+    MACHINE_JSON=$(sudo -E cset shield --exec -- "${ALLOC_BINARY}" --machine-info \
+        | grep -v '^cset:' | tr -d '\000-\010\013-\037\177')
+    sudo -E cset shield --reset > /dev/null
+    SHIELD_ACTIVE=0
+
+    WDIR=$(mktemp -d /tmp/crucible_alloc_XXXXXX)
+
+    for VARIANT in cross-thread-malloc freelist-return-queue arena-batch-handoff; do
+        echo "==> Running ${VARIANT}: paced 1 MHz, bg 1 M/s (5 × 1M items)..."
+        sudo -E cset shield --cpu=4-7 --kthread=on > /dev/null
+        SHIELD_ACTIVE=1
+        sudo -E cset shield --exec -- "${ALLOC_BINARY}" "${VARIANT}" \
+            --mode paced --offered-rate-hz 1000000 --bg-pressure-hz 1000000 \
+            | grep -v '^cset:' > "${WDIR}/${VARIANT}-paced.json"
+        sudo -E cset shield --reset > /dev/null
+        SHIELD_ACTIVE=0
+
+        echo "==> Running ${VARIANT}: pressure_sweep (9 points × 1M items)..."
+        sudo -E cset shield --cpu=4-7 --kthread=on > /dev/null
+        SHIELD_ACTIVE=1
+        sudo -E cset shield --exec -- "${ALLOC_BINARY}" "${VARIANT}" \
+            --mode pressure_sweep \
+            --bg-from 100000 --bg-to 10000000 --steps 8 \
+            | grep -v '^cset:' > "${WDIR}/${VARIANT}-pressure_sweep.json"
+        sudo -E cset shield --reset > /dev/null
+        SHIELD_ACTIVE=0
+    done
+
+    echo "==> Assembling primary output JSON..."
+    CAPTURED_AT=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    python3 "${BENCH_ROOT}/scripts/assemble_results_05.py" \
+        "${WDIR}" "${CAPTURED_AT}" "${MACHINE_JSON}" "${OUT_JSON}"
+
+    # Cross-CCX side experiment: producer=4, consumer=1, T_bg=6.
+    CROSS_CCX_JSON="${REPO_ROOT}/site/src/data/perf/05-allocators-cross-ccx.json"
+    XWDIR=$(mktemp -d /tmp/crucible_alloc_xccx_XXXXXX)
+
+    for VARIANT in cross-thread-malloc freelist-return-queue arena-batch-handoff; do
+        echo "==> Running ${VARIANT}: cross-CCX paced (consumer core 1)..."
+        sudo -E cset shield --cpu=4-7 --kthread=on > /dev/null
+        SHIELD_ACTIVE=1
+        sudo -E cset shield --exec -- "${ALLOC_BINARY}" "${VARIANT}" \
+            --mode paced --offered-rate-hz 1000000 --bg-pressure-hz 1000000 \
+            --consumer-core 1 \
+            | grep -v '^cset:' > "${XWDIR}/${VARIANT}-cross-ccx.json"
+        sudo -E cset shield --reset > /dev/null
+        SHIELD_ACTIVE=0
+    done
+
+    echo "==> Assembling cross-CCX output JSON..."
+    python3 "${BENCH_ROOT}/scripts/assemble_results_05.py" \
+        "${XWDIR}" "${CAPTURED_AT}" "${MACHINE_JSON}" "${CROSS_CCX_JSON}" --cross-ccx
+
+    rm -rf "${XWDIR}"
+    echo "==> Done: ${OUT_JSON} and ${CROSS_CCX_JSON}"
+    exit 0
+fi
+# ─────────────────────────────────────────────────────────────────────────────
+
 # ─── Demo 02: false-sharing — separate perf-stat pipeline ────────────────────
 # Uses tools/perf_capture.sh (handles its own cset shield per variant) and
 # tools/parse_perf.py to fold perf stat + Google Benchmark JSON into the site

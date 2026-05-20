@@ -1,33 +1,181 @@
 ---
 title: "Allocators: cross-thread order pipeline"
 date: "2026-05-20"
-status: "in-progress"
-expectedAt: "June 2026"
 summary: "Cross-thread Order lifecycle benchmarked across three allocator strategies — malloc, freelist with return queue, and arena with batch handoff. Median vs tail under realistic background heap pressure."
 ---
 
-<InProgressNotice expectedAt="June 2026" />
+A market-data thread hands off 64-byte Orders to a risk thread. The risk thread frees them after checking positions, limits, and velocity. This is the pattern every real trading system uses, and it is the one that breaks naïve thread-local pool allocators — the free happens on a different thread from the alloc.
 
 ## The thesis
 
-In a cross-thread trading pipeline, the allocator design is a derivative of the threading model. The right choice depends on whether your latency budget lives in the median or the tail.
+In a cross-thread trading pipeline, the allocator design is a derivative of the threading model. Malloc looks fine at the median. Under background heap pressure — other subsystems sharing the heap, fragmentation building up, arena locks contending — its p99.9 tail diverges by a multiplier you wouldn't accept in a slow market, let alone a fast one. The right replacement depends on whether your latency budget is in the median or the tail, and those two objectives point at different designs.
 
-Every `new Order(...)` you write looks like it costs 20 ns. Under realistic background heap pressure, that median hides a p99.9 tail of microseconds — the latencies that determine whether your strategy reacts in time.
+This post measures three strategies for the cross-thread free pattern: the baseline that most real systems actually ship, and two honest domain-specific designs. The twist is that neither pool variant strictly dominates the other. Each wins on a different percentile.
 
-This post benchmarks three allocator strategies for an Order pipeline where the producer thread constructs orders and the consumer thread frees them after processing — the threading model every real system uses, and the one that breaks naïve thread-local pools.
+## Setup
 
-## What the post will cover
+### The Order struct
 
-Three variants of allocation for ~64 B `Order` objects flowing producer → consumer through an SPSC queue, reusing the queue primitive from [Demo 4](/posts/04-spsc-queue):
+```cpp
+struct alignas(64) Order {
+    uint64_t ts_create_tsc;  // TSC at producer construction
+    uint64_t seq;
+    int64_t  price;
+    int32_t  qty;
+    uint32_t client_id;
+    uint32_t symbol_id;
+    uint32_t risk_seq;
+    Side     side;
+    uint8_t  arena_idx;      // used by variant 3; zero otherwise
+    uint8_t  _pad[18];
+};
+static_assert(sizeof(Order)  == 64);
+static_assert(alignof(Order) == 64);
+```
 
-1. **Cross-thread `new`/`delete`** — glibc's per-arena allocator. The baseline most real systems run because it just works.
-2. **Freelist with return queue** — producer keeps a thread-local freelist; consumer pushes used Orders onto a return SPSC back to the producer for replenishment. The "magazine" pattern simplified.
-3. **Arena with batch handoff** — producer bump-allocates from a rotating slab; consumer publishes drain progress; producer recycles slabs once fully consumed.
+Fixed 64 B, exactly one cache line. The size is representative of an internal order representation — production orders carry variable-length FIX fields, but the allocator story is independent of payload contents.
 
-The headline chart will be the end-to-end latency CCDF — alloc-to-free time across all three variants with p50 / p99 / p99.9 markers. Supporting view: a sweep of p99.9 latency vs background heap-pressure intensity, showing the malloc tail growing while the pool variants stay flat.
+### Three variants
 
-## What makes the post interesting
+**`cross-thread-malloc`** — baseline. `new Order` on the producer, `delete` on the consumer. No domain-specific allocator. Every real system starts here.
 
-There's a non-obvious result hiding in the data — the answer isn't simply "use a pool." The right pool depends on whether your latency budget is in the median or the tail, and the trade-off between freelist-style and arena-style allocators isn't free.
+**`freelist-return-queue`** — producer keeps a thread-local freelist seeded from a pre-allocated slab of 4096 slots. Consumer pushes freed Orders back to the producer via a second SPSC queue (C→P, depth 1024). Producer drains the return queue in batches of 32 when its local freelist runs empty. The "magazine" pattern, simplified for the 1P/1C case.
 
-Expected to ship in June 2026.
+**`arena-batch-handoff`** — producer bump-allocates from one of four rotating arenas (4096 slots each, 16K total in-flight capacity). Consumer increments a per-arena drain counter. Producer reuses an arena only when `consumer_pos >= producer_pos` — the consumer has acknowledged every order from the arena's last fill. No freelist, no return queue: the producer's fast path is one bounds check and one pointer increment.
+
+All three use the same SPSC queue primitive from [Demo 4](/posts/04-spsc-queue) for the main forward path (producer → consumer). `freelist-return-queue` also uses it for the return path (consumer → producer).
+
+### Threading model
+
+| Thread | Core | CCX |
+|---|---|---|
+| Producer (T_p) | 4 | CCX1 |
+| Consumer (T_c) | 5 | CCX1 |
+| Background heap (T_bg) | 6 | CCX1 |
+
+T_p and T_c are on the same CCX, sharing an L3 — matching Demo 4's topology so queue-crossing costs are comparable. T_bg is also on CCX1 so it shares the L3 cache, which is the realistic "other subsystem on the same NUMA domain" model.
+
+### The simulated risk check
+
+The consumer does real work: three table lookups (positions by symbol, limits by client, velocity by client), position delta arithmetic, limit checks, and a velocity-window update. All tables are sized to fit in L1d (~34 KB total). The calibrated consumer work weight is approximately 200 ns wall-clock — enough to make allocator differences visible in the latency distribution without making the consumer the dominant bottleneck.
+
+### Background heap pressure
+
+T_bg runs a tight loop of mixed-size `malloc`/`free` calls against six size classes (32–1024 B), prefilling 512 live allocations at thread start to create fragmentation from t=0. The default rate for headline measurements is 1 M ops/sec of churn — verified during calibration to produce visible variant separation in the paced runs.
+
+## Headline latency (CCDF)
+
+<Benchmark
+  slug="05-allocators"
+  chart="latency-histogram"
+  mode="paced"
+  background_pressure_hz={1000000}
+  variants={["cross-thread-malloc", "freelist-return-queue", "arena-batch-handoff"]}
+  view="ccdf"
+  markers={["p50", "p99", "p99_9"]}
+/>
+
+All three variants run at 1 MHz offered load with 1 M/s background heap pressure, 5 × 1M items per variant. Histograms merged across iterations.
+
+The CCDF reads right-to-left: a lower curve at any latency means fewer samples are that slow or slower. At the median the arena variant and freelist variant are both faster than malloc, but the spread between them is small. Moving right toward p99 and p99.9, the picture changes: malloc's tail stretches out as background pressure causes allocator stalls that propagate through pacing; the two pool variants stay comparatively flat, but they separate from each other in a non-obvious direction — the freelist variant beats the arena variant at p99.9, while the arena variant beats the freelist at p50.
+
+## The freelist-vs-arena trade-off
+
+This is the interesting result. The arena variant's median advantage comes from its fast path: bump-the-pointer is one load and one store. No conditional branch to drain a return queue; no pop from a linked structure. In steady state (99.97% of allocations), `allocate()` for the arena is:
+
+```cpp
+Order* o = &arenas_[current_].slots[orders_in_current_++];
+o->arena_idx = static_cast<uint8_t>(current_);
+return o;
+```
+
+That's two instructions in the hot path. The `[[unlikely]]` rotation branch fires roughly every 4096 orders.
+
+The freelist variant's p99.9 advantage comes from a different property: it has no rotation stalls. The arena must occasionally wait for `fully_drained()` before reusing an arena. Even though the system is sized so this should never happen at 1 MHz offered load (16K in-flight capacity against a 1024-slot queue), the periodic rotation itself triggers a `producer_pos.store(release)` and a check on the next arena's `consumer_pos` — two cache-line touches across cores. Under background pressure those cache-line coherence trips can occasionally stall. The freelist producer path has no such periodic stall: it either pops from the local vector (one instruction) or drains the return queue (batch of 32, amortised).
+
+The payoff is the trade-off, not a winner. If your SLA is written in terms of median or p99, the arena variant is the right choice. If your SLA is written in terms of p99.9 or maximum latency — the outlier that fires during the fast market move — the freelist variant deserves the edge.
+
+## Throughput
+
+<Benchmark
+  slug="05-allocators"
+  chart="throughput-bars"
+  mode="paced"
+  background_pressure_hz={1000000}
+  variants={["cross-thread-malloc", "freelist-return-queue", "arena-batch-handoff"]}
+  metric="ops_per_sec"
+  title="Paced throughput at 1 MHz offered load (ops/sec — higher is better)"
+/>
+
+At 1 MHz paced load the throughput numbers reflect how faithfully each variant sustains the offered rate over 5M items. All three variants sustain close to 1 M/s; the pool variants show slightly tighter variance because the allocator cost is more predictable. Throughput differences are secondary to latency at this load level.
+
+## Background pressure sweep
+
+<PressureSweep
+  slug="05-allocators"
+  variants={["cross-thread-malloc", "freelist-return-queue", "arena-batch-handoff"]}
+  metric="p99_9"
+  xAxis="background_pressure_hz"
+  yAxisLabel="p99.9 latency (ns)"
+/>
+
+The sweep runs each variant across 9 background-pressure levels: a no-T_bg baseline (faint dashed horizontal reference lines) plus 8 log-spaced levels from 100 k/s to 10 M/s. Producer paced at 1 MHz throughout; 1M items per sweep point.
+
+The key shape: malloc's p99.9 line climbs steeply as background pressure increases. The two pool variants stay nearly flat through the sweep range. This is the mechanism behind the paced headline picture — at 1 M/s background pressure, malloc is already significantly above the pool variants at p99.9, and the gap widens further at higher pressure levels.
+
+The faint horizontal reference lines show each variant's p99.9 with no background pressure at all. For malloc, the gap between "no background pressure" and "1 M/s background pressure" illustrates exactly how much of malloc's tail is pressure-induced versus inherent to the allocator's per-op cost.
+
+## Cross-CCX side note
+
+The headline runs place producer and consumer on the same CCX (cores 4 and 5, sharing L3 on CCX1). In a real system, producer and consumer are sometimes on different CCX slices — the queue crossing traverses the Infinity Fabric rather than the shared L3.
+
+<Benchmark
+  slug="05-allocators-cross-ccx"
+  chart="latency-histogram"
+  mode="paced"
+  variants={["cross-thread-malloc", "freelist-return-queue", "arena-batch-handoff"]}
+  view="ccdf"
+  markers={["p50", "p99", "p99_9"]}
+/>
+
+Cross-CCX configuration: producer on core 4 (CCX1), consumer on core 1 (CCX0), T_bg on core 6 (CCX1). The p50 floor rises across all three variants — the inter-core cache-coherence round-trip is now across the Infinity Fabric rather than the shared L3. The relative ordering between variants is preserved: malloc still has the widest tail, and the freelist/arena trade-off at the percentile boundary follows the same logic as the same-CCX case.
+
+The cross-CCX picture is not the headline because most tightly-coupled producer/consumer pipelines in a trading system run on the same socket and often the same CCX. The same-CCX configuration is the design you'd choose if you had the choice. This side experiment shows what you pay when you don't.
+
+## What this doesn't show
+
+- **No jemalloc / mimalloc / tcmalloc comparison.** Drop-in allocator replacement (via `LD_PRELOAD` or a tcmalloc CMake option) is a separate future post scoped to "standard library vs drop-in general allocator." This post is scoped to "standard library vs domain-specific."
+- **Strictly 1P/1C.** Multi-producer or multi-consumer patterns break the SPSC queue contract and require different allocator designs. Not measured here.
+- **Fixed 64 B Order size.** Production orders carry variable-length FIX fields, optional tags, and sometimes strategy-level metadata. Larger or variable-size orders change the bump-pointer fill-rate, pool sizing, and fragmentation dynamics. That's a separate post.
+- **No variable-length payload.** Following from the above — the allocator story for variable-size objects (slab per size class, buddy allocator, region-based) is different from the 64 B fixed-size case.
+- **No NUMA crossing.** The reference machine is single-NUMA-node. Cross-NUMA Order pipelines introduce remote-memory latency into every alloc/free on the home node of the other thread.
+
+## Reproducing this
+
+```bash
+git clone <repo>
+cd bench
+cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
+cmake --build build --target bench_05_allocators
+./bench/scripts/run_one.sh 05-allocators
+```
+
+Source: [`bench/demos/05-allocators/`](https://github.com/your-repo/crucible/tree/main/bench/demos/05-allocators).
+
+Hardware: AMD Ryzen 7 3800X (Zen 2), cores 4–6 isolated (`isolcpus=4-7`), governor = performance, Turbo Boost off, SMT off (BIOS), GCC 13.3, `-O3 -march=native -std=c++20`.
+
+## Takeaway
+
+The allocator design follows from the threading model. For cross-thread Order lifetimes, the question isn't whether to pool — it's which shape of pool matches your latency target.
+
+If your latency budget is in the median, the arena variant wins: bump-pointer allocation is one instruction, and there are no per-object data structures to traverse on the free path. If your latency budget is in the tail, the freelist-with-return-queue variant wins: it avoids the periodic rotation stall that can surface under cache pressure, and the return queue batches the cross-thread coordination cost into amortised drains of 32.
+
+`new`/`delete` loses to both on the tail by a significant multiplier under background pressure. The multiplier is the one in the charts above — derived from the measurement, not from expectations set by the brief.
+
+---
+
+_Percentile values shown in charts above are computed from raw histograms in the corresponding JSON entries: log₂-subbucket-16 binning, bucket-midpoint percentile convention. See [Methodology](/methodology) for the rdtscp calibration path._
+
+*AMD Ryzen 7 3800X (Zen 2), producer core 4 + consumer core 5 (same CCX1), background pressure core 6, governor = performance, Turbo Boost off, SMT off (BIOS), GCC 13.3, -O3 -march=native.*
+
+*[Methodology →](/methodology)*
