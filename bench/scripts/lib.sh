@@ -17,12 +17,12 @@ assert_smt_off() {
     fi
 }
 
-EXPECTED_ISOLATED="${EXPECTED_ISOLATED:-0-7}"
+EXPECTED_ISOLATED="${EXPECTED_ISOLATED:-1-7}"
 
 assert_isolated_cores() {
     local iso_path=/sys/devices/system/cpu/isolated
     local actual
-    actual=$(<"$iso_path" 2>/dev/null || echo "")
+    actual=$(cat "$iso_path" 2>/dev/null)
     if [[ "$actual" != "$EXPECTED_ISOLATED" ]]; then
         echo "ERROR: isolated cores mismatch — got '$actual', expected '$EXPECTED_ISOLATED'." >&2
         echo "Boot under the benchmark GRUB entry with isolcpus=$EXPECTED_ISOLATED nohz_full=$EXPECTED_ISOLATED rcu_nocbs=$EXPECTED_ISOLATED." >&2
