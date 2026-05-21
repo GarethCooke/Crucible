@@ -192,12 +192,18 @@ if [[ "${SLUG}" == "05-allocators" ]]; then
 
     WDIR=$(mktemp -d /tmp/crucible_alloc_XXXXXX)
 
+    # Headline configuration: MALLOC_ARENA_MAX=1 forces shared arena, 8192-alloc
+    # working set provides fragmentation pressure (rung-2 config from recalibration brief).
+    HEADLINE_FLAGS="--malloc-tuning arena1 --bg-live-allocs 8192 --bg-size-classes default --bg-threads 1"
+
     for VARIANT in cross-thread-malloc freelist-return-queue arena-batch-handoff; do
         echo "==> Running ${VARIANT}: paced 1 MHz, bg 1 M/s (5 × 1M items)..."
         sudo -E cset shield --cpu=4-7 --kthread=on > /dev/null
         SHIELD_ACTIVE=1
+        # shellcheck disable=SC2086
         sudo -E cset shield --exec -- "${ALLOC_BINARY}" "${VARIANT}" \
             --mode paced --offered-rate-hz 1000000 --bg-pressure-hz 1000000 \
+            ${HEADLINE_FLAGS} \
             | grep -v '^cset:' > "${WDIR}/${VARIANT}-paced.json"
         sudo -E cset shield --reset > /dev/null
         SHIELD_ACTIVE=0
@@ -205,9 +211,11 @@ if [[ "${SLUG}" == "05-allocators" ]]; then
         echo "==> Running ${VARIANT}: pressure_sweep (9 points × 1M items)..."
         sudo -E cset shield --cpu=4-7 --kthread=on > /dev/null
         SHIELD_ACTIVE=1
+        # shellcheck disable=SC2086
         sudo -E cset shield --exec -- "${ALLOC_BINARY}" "${VARIANT}" \
             --mode pressure_sweep \
             --bg-from 100000 --bg-to 10000000 --steps 8 \
+            ${HEADLINE_FLAGS} \
             | grep -v '^cset:' > "${WDIR}/${VARIANT}-pressure_sweep.json"
         sudo -E cset shield --reset > /dev/null
         SHIELD_ACTIVE=0
@@ -226,9 +234,11 @@ if [[ "${SLUG}" == "05-allocators" ]]; then
         echo "==> Running ${VARIANT}: cross-CCX paced (consumer core 1)..."
         sudo -E cset shield --cpu=1,4-7 --kthread=on > /dev/null
         SHIELD_ACTIVE=1
+        # shellcheck disable=SC2086
         sudo -E cset shield --exec -- "${ALLOC_BINARY}" "${VARIANT}" \
             --mode paced --offered-rate-hz 1000000 --bg-pressure-hz 1000000 \
             --consumer-core 1 \
+            ${HEADLINE_FLAGS} \
             | grep -v '^cset:' > "${XWDIR}/${VARIANT}-cross-ccx.json"
         sudo -E cset shield --reset > /dev/null
         SHIELD_ACTIVE=0

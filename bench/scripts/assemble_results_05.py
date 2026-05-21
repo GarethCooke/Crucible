@@ -82,6 +82,21 @@ def load_runs(vpath: Path) -> list:
                 file=sys.stderr,
             )
 
+        # pressure_config must be present on every demo-05 run.
+        pc = run.get("pressure_config")
+        if pc is None:
+            print(
+                f"FLAG [{variant}/{mode}]: missing pressure_config block.",
+                file=sys.stderr,
+            )
+        else:
+            for field in ("malloc_tuning", "bg_live_allocs", "bg_size_classes", "bg_threads"):
+                if field not in pc:
+                    print(
+                        f"FLAG [{variant}/{mode}]: pressure_config missing field '{field}'.",
+                        file=sys.stderr,
+                    )
+
     return data
 
 

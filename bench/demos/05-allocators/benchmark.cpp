@@ -45,6 +45,7 @@
 #include <thread>
 #include <vector>
 
+#include <malloc.h>
 #include <x86intrin.h>
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -66,16 +67,21 @@ static constexpr int      SWEEP_STEPS_DEF = 8;
 // ─── Mode ────────────────────────────────────────────────────────────────────
 
 enum class Mode { Paced, PressureSweep };
+enum class MallocTuning { Default, Arena1 };
 
 struct BenchConfig {
-    Mode     mode            = Mode::Paced;
-    uint64_t offered_rate_hz = 1'000'000;
-    uint64_t bg_pressure_hz  = 1'000'000;  // paced mode default
-    uint64_t bg_from_hz      = BG_FROM_DEFAULT;
-    uint64_t bg_to_hz        = BG_TO_DEFAULT;
-    int      sweep_steps     = SWEEP_STEPS_DEF;
-    bool     verify_warmup   = false;
-    int      consumer_core   = 5;  // override with --consumer-core for cross-CCX
+    Mode          mode             = Mode::Paced;
+    uint64_t      offered_rate_hz  = 1'000'000;
+    uint64_t      bg_pressure_hz   = 1'000'000;  // paced mode default
+    uint64_t      bg_from_hz       = BG_FROM_DEFAULT;
+    uint64_t      bg_to_hz         = BG_TO_DEFAULT;
+    int           sweep_steps      = SWEEP_STEPS_DEF;
+    bool          verify_warmup    = false;
+    int           consumer_core    = 5;  // override with --consumer-core for cross-CCX
+    MallocTuning  malloc_tuning    = MallocTuning::Arena1;
+    size_t        bg_live_allocs   = 8192;
+    BgSizeClasses bg_size_classes  = BgSizeClasses::Default;
+    int           bg_threads       = 1;
 };
 
 // ─── TSC helpers ─────────────────────────────────────────────────────────────
@@ -194,7 +200,10 @@ static RunResult run_one(Alloc& alloc,
                          uint64_t bg_pressure_hz,
                          int consumer_core,
                          size_t num_iterations,
-                         WarmupVerify* wv) {
+                         WarmupVerify* wv,
+                         size_t bg_live_allocs,
+                         BgSizeClasses bg_size_classes,
+                         int bg_threads) {
 
     const uint64_t period_cycles = pacing_period_cycles(offered_rate_hz, ns_per_cycle);
 
@@ -256,14 +265,22 @@ static RunResult run_one(Alloc& alloc,
             }
         });
 
-        // ── Background pressure thread (T_bg) ──
+        // ── Background pressure thread(s) (T_bg) ──
+        // When bg_threads > 1, divide the rate evenly across threads.
+        // Each thread gets its own PRNG seed (42 + index) and pins to core 6, 7, ...
         std::atomic<bool> bg_stop{false};
-        std::thread bg_thread;
+        std::vector<std::thread> bg_thread_list;
         if (bg_pressure_hz > 0) {
-            bg_thread = std::thread([&] {
-                pin_to_core(BG_CORE);
-                background_pressure_loop(bg_pressure_hz, ns_per_cycle, bg_stop);
-            });
+            const uint64_t per_thread_hz = bg_pressure_hz / static_cast<uint64_t>(bg_threads);
+            for (int t = 0; t < bg_threads; ++t) {
+                const int core    = BG_CORE + t;
+                const uint32_t sd = static_cast<uint32_t>(42 + t);
+                bg_thread_list.emplace_back([&, core, sd, per_thread_hz] {
+                    pin_to_core(core);
+                    background_pressure_loop(per_thread_hz, ns_per_cycle, bg_stop,
+                                             bg_live_allocs, bg_size_classes, sd);
+                });
+            }
         }
 
         // ── Producer (T_p — main thread) ──
@@ -324,7 +341,7 @@ static RunResult run_one(Alloc& alloc,
 
         if (bg_pressure_hz > 0) {
             bg_stop.store(true, std::memory_order_relaxed);
-            bg_thread.join();
+            for (auto& t : bg_thread_list) t.join();
         }
 
         // Check for top-bucket contamination.
@@ -348,9 +365,13 @@ static RunResult run_variant_arena(ArenaBatchAllocator& alloc,
                                     uint64_t bg_pressure_hz,
                                     int consumer_core,
                                     size_t num_iterations,
-                                    WarmupVerify* wv) {
+                                    WarmupVerify* wv,
+                                    size_t bg_live_allocs,
+                                    BgSizeClasses bg_size_classes,
+                                    int bg_threads) {
     RunResult r = run_one(alloc, ns_per_cycle, offered_rate_hz, bg_pressure_hz,
-                          consumer_core, num_iterations, wv);
+                          consumer_core, num_iterations, wv,
+                          bg_live_allocs, bg_size_classes, bg_threads);
     r.arena_wait_count = alloc.wait_count;
     if (alloc.wait_count > 0) {
         std::fprintf(stderr,
@@ -379,7 +400,12 @@ static std::string emit_run_json(const char* variant,
                                   size_t return_queue_depth,
                                   size_t freelist_drain_batch,
                                   size_t arena_count,
-                                  size_t arena_capacity_orders) {
+                                  size_t arena_capacity_orders,
+                                  // pressure config
+                                  MallocTuning malloc_tuning,
+                                  size_t bg_live_allocs,
+                                  BgSizeClasses bg_size_classes,
+                                  int bg_threads) {
     (void)ns_per_cycle;
     const auto& h = r.hist;
 
@@ -401,14 +427,31 @@ static std::string emit_run_json(const char* variant,
         std::snprintf(bg_field, sizeof(bg_field), "%llu",
                       (unsigned long long)bg_pressure_hz);
 
-    char hdr[1024];
+    const char* malloc_tuning_str = (malloc_tuning == MallocTuning::Arena1) ? "arena1" : "default";
+    const std::string sc_json = bg_size_classes_json(bg_size_classes);
+
+    char pressure_cfg[256];
+    std::snprintf(pressure_cfg, sizeof(pressure_cfg),
+        "\"pressure_config\":{"
+        "\"malloc_tuning\":\"%s\","
+        "\"bg_live_allocs\":%zu,"
+        "\"bg_size_classes\":\"%s\","
+        "\"bg_threads\":%d"
+        "},",
+        malloc_tuning_str,
+        bg_live_allocs,
+        bg_size_classes_str(bg_size_classes),
+        bg_threads);
+
+    char hdr[1280];
     std::snprintf(hdr, sizeof(hdr),
         "{"
         "\"variant\":\"%s\","
         "\"mode\":\"%s\","
         "\"offered_rate_hz\":%llu,"
         "\"background_pressure_hz\":%s,"
-        "\"background_size_classes\":[32,64,128,256,512,1024],"
+        "\"background_size_classes\":%s,"
+        "%s"
         "\"consumer_work_target_ns\":%u,"
         "\"n\":%zu,"
         "\"items_measured\":%zu,"
@@ -426,6 +469,8 @@ static std::string emit_run_json(const char* variant,
         mode_str,
         (unsigned long long)offered_rate_hz,
         bg_field,
+        sc_json.c_str(),
+        pressure_cfg,
         consumer_work_target_ns,
         QUEUE_DEPTH,
         ITEMS_MEASURED,
@@ -486,7 +531,11 @@ static RunOutput dispatch(std::string_view variant,
                            int consumer_core,
                            const char* mode_str,
                            size_t num_iterations,
-                           WarmupVerify* wv) {
+                           WarmupVerify* wv,
+                           MallocTuning malloc_tuning,
+                           size_t bg_live_allocs,
+                           BgSizeClasses bg_size_classes,
+                           int bg_threads) {
     // consumer_work_target_ns: measured during calibration; see README.
     // Set to 200 as the calibrated target; update after measurement confirms it.
     constexpr uint32_t CONSUMER_WORK_NS = 200;
@@ -496,35 +545,41 @@ static RunOutput dispatch(std::string_view variant,
     if (variant == "cross-thread-malloc") {
         MallocAllocator alloc;
         out.result = run_one(alloc, ns_per_cycle, offered_rate_hz, bg_pressure_hz,
-                             consumer_core, num_iterations, wv);
+                             consumer_core, num_iterations, wv,
+                             bg_live_allocs, bg_size_classes, bg_threads);
         out.json = emit_run_json("cross-thread-malloc", mode_str,
             offered_rate_hz, bg_pressure_hz, CONSUMER_WORK_NS, num_iterations,
             out.result, ns_per_cycle,
             std::abs(calibrate_tsc() - ns_per_cycle) / ns_per_cycle * 100.0,
-            0, 0, 0, 0, 0);
+            0, 0, 0, 0, 0,
+            malloc_tuning, bg_live_allocs, bg_size_classes, bg_threads);
 
     } else if (variant == "freelist-return-queue") {
         FreelistReturnAllocator alloc;
         out.result = run_one(alloc, ns_per_cycle, offered_rate_hz, bg_pressure_hz,
-                             consumer_core, num_iterations, wv);
+                             consumer_core, num_iterations, wv,
+                             bg_live_allocs, bg_size_classes, bg_threads);
         out.json = emit_run_json("freelist-return-queue", mode_str,
             offered_rate_hz, bg_pressure_hz, CONSUMER_WORK_NS, num_iterations,
             out.result, ns_per_cycle,
             std::abs(calibrate_tsc() - ns_per_cycle) / ns_per_cycle * 100.0,
             alloc.initial_slots, alloc.return_depth, alloc.drain_batch,
-            0, 0);
+            0, 0,
+            malloc_tuning, bg_live_allocs, bg_size_classes, bg_threads);
 
     } else {
         ArenaBatchAllocator alloc;
         out.result = run_variant_arena(alloc, ns_per_cycle, offered_rate_hz,
                                         bg_pressure_hz, consumer_core,
-                                        num_iterations, wv);
+                                        num_iterations, wv,
+                                        bg_live_allocs, bg_size_classes, bg_threads);
         out.json = emit_run_json("arena-batch-handoff", mode_str,
             offered_rate_hz, bg_pressure_hz, CONSUMER_WORK_NS, num_iterations,
             out.result, ns_per_cycle,
             std::abs(calibrate_tsc() - ns_per_cycle) / ns_per_cycle * 100.0,
             0, 0, 0,
-            alloc.arena_count, alloc.arena_capacity);
+            alloc.arena_count, alloc.arena_capacity,
+            malloc_tuning, bg_live_allocs, bg_size_classes, bg_threads);
     }
 
     return out;
@@ -590,9 +645,35 @@ int main(int argc, char* argv[]) {
             if (!mode_set) cfg.mode = Mode::Paced;
         } else if (arg == "--consumer-core" && i + 1 < argc) {
             cfg.consumer_core = std::stoi(argv[++i]);
+        } else if (arg == "--malloc-tuning" && i + 1 < argc) {
+            std::string_view v = argv[++i];
+            if      (v == "arena1")  cfg.malloc_tuning = MallocTuning::Arena1;
+            else if (v == "default") cfg.malloc_tuning = MallocTuning::Default;
+            else { std::fprintf(stderr, "ERROR: unknown --malloc-tuning '%s'\n", argv[i]); return 1; }
+        } else if (arg == "--bg-live-allocs" && i + 1 < argc) {
+            cfg.bg_live_allocs = std::stoull(argv[++i]);
+        } else if (arg == "--bg-size-classes" && i + 1 < argc) {
+            std::string_view v = argv[++i];
+            if      (v == "default") cfg.bg_size_classes = BgSizeClasses::Default;
+            else if (v == "large")   cfg.bg_size_classes = BgSizeClasses::Large;
+            else { std::fprintf(stderr, "ERROR: unknown --bg-size-classes '%s'\n", argv[i]); return 1; }
+        } else if (arg == "--bg-threads" && i + 1 < argc) {
+            cfg.bg_threads = std::stoi(argv[++i]);
+            if (cfg.bg_threads < 1 || cfg.bg_threads > 2) {
+                std::fprintf(stderr, "ERROR: --bg-threads must be 1 or 2 (>2 escapes CCX)\n");
+                return 1;
+            }
         } else {
             std::fprintf(stderr, "ERROR: unknown option '%s'\n", argv[i]);
             return 1;
+        }
+    }
+
+    if (cfg.malloc_tuning == MallocTuning::Arena1) {
+        if (mallopt(M_ARENA_MAX, 1) != 1) {
+            std::fprintf(stderr,
+                "warning: mallopt(M_ARENA_MAX, 1) returned non-1; "
+                "tuning may not have taken effect\n");
         }
     }
 
@@ -615,7 +696,9 @@ int main(int argc, char* argv[]) {
         // Point 0: no background pressure (T_bg not spawned).
         std::fprintf(stderr, "  pressure_sweep baseline: T_bg off\n");
         auto r0 = dispatch(variant, ns_per_cycle, cfg.offered_rate_hz, 0,
-                           cfg.consumer_core, "pressure_sweep", NUM_RUNS_SWEEP, &wv);
+                           cfg.consumer_core, "pressure_sweep", NUM_RUNS_SWEEP, &wv,
+                           cfg.malloc_tuning, cfg.bg_live_allocs,
+                           cfg.bg_size_classes, cfg.bg_threads);
         output += r0.json;
         output += ",\n";
 
@@ -629,7 +712,9 @@ int main(int argc, char* argv[]) {
                          s + 1, n, static_cast<double>(bg_hz));
 
             auto r = dispatch(variant, ns_per_cycle, cfg.offered_rate_hz, bg_hz,
-                              cfg.consumer_core, "pressure_sweep", NUM_RUNS_SWEEP, &wv);
+                              cfg.consumer_core, "pressure_sweep", NUM_RUNS_SWEEP, &wv,
+                              cfg.malloc_tuning, cfg.bg_live_allocs,
+                              cfg.bg_size_classes, cfg.bg_threads);
             output += r.json;
             if (s + 1 < n) output += ",\n";
         }
@@ -639,7 +724,9 @@ int main(int argc, char* argv[]) {
         // Paced mode (headline measurement or --verify-warmup).
         auto r = dispatch(variant, ns_per_cycle, cfg.offered_rate_hz,
                           cfg.bg_pressure_hz,
-                          cfg.consumer_core, "paced", NUM_RUNS_PACED, &wv);
+                          cfg.consumer_core, "paced", NUM_RUNS_PACED, &wv,
+                          cfg.malloc_tuning, cfg.bg_live_allocs,
+                          cfg.bg_size_classes, cfg.bg_threads);
         output = "[\n" + r.json + "\n]";
     }
 
