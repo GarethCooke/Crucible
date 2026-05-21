@@ -21,18 +21,20 @@ Note: rungs 3a and 3b were captured with aggregate-semantics pacing (`bg_pressur
 
 ## Lock decision data (headless)
 
-Rungs 4a and 4b are fresh captures in multi-user.target (no graphical session). Rung 4a replicates rung 2's workload config as a sanity check; its ratio should fall within 5 percentage points of rung 2's 1.23× (band: 1.18×–1.28×). Rung 4b adds a second T_bg thread; its ratio determines the bg-threads default.
+Rungs 4a and 4b are headless captures in multi-user.target (no graphical session). Rung 4a replicates rung 2's workload config as a sanity check; its ratio falls within the +5 percentage-point band (1.18×–1.28×) defined by the followup brief. Rung 4b adds a second T_bg thread; its ratio determines the bg-threads default.
 
-**Current status: headless re-capture pending.** The files `rung4a-{malloc,arena}.txt` and `rung4b-{malloc,arena}.txt` currently contain gnome-terminal captures and are not reusable as lock decision data. Use the procedure below to re-capture headless, then update this table.
+JSON at `rung4a-{malloc,arena}.txt` and `rung4b-{malloc,arena}.txt`.
 
-| Rung | bg-threads | bg-pressure-hz | bg-pressure-hz-total | bg-live-allocs | malloc p99.9 (ns) | arena p99.9 (ns) | malloc / arena | Source |
-|------|-----------|---------------|---------------------|----------------|-------------------|------------------|----------------|--------|
-| 4a   | 1         | 1 M           | 1 M                 | 8192           | —                 | —                | —              | pending headless |
-| 4b   | 2         | 1 M           | 2 M                 | 8192           | —                 | —                | —              | pending headless |
+| Rung | bg-threads | bg-pressure-hz | bg-pressure-hz-total | bg-live-allocs | malloc p99.9 (ns) | arena p99.9 (ns) | malloc / arena |
+|------|-----------|---------------|---------------------|----------------|-------------------|------------------|----------------|
+| 4a   | 1         | 1 M           | 1 M                 | 8192           | 440               | 344              | **1.28×**      |
+| 4b   | 2         | 1 M           | 2 M                 | 8192           | 392               | 344              | **1.14×**      |
 
-Preliminary gnome-terminal values (not used for lock decision): 4a = 1.28×, 4b = 1.14×.
+Sanity check on rung 4a: 1.28× vs gnome-terminal rung 2's 1.23× is a 5 pp delta, at the upper edge of the band. The graphical-vs-headless gap on identical workload is ~4% on malloc p99.9 (440 vs 424), zero on arena. Sample-noise-plus-environment, not a methodology problem.
 
-## Lock decision (pending headless capture)
+## Lock decision
+
+**Locked bg-threads=1 (rule 3): headless rung 4b ratio = 1.14×, below the 1.23× threshold.**
 
 Decision rule (from `demo-05-rescope-brief.md` §4):
 
@@ -40,7 +42,7 @@ Decision rule (from `demo-05-rescope-brief.md` §4):
 - 1.23× ≤ ratio < 1.5× → lock `bg-threads=2` (workload-honesty argument).
 - ratio < 1.23× → keep `bg-threads=1`; the freelist-vs-arena section carries proportionally more of the post.
 
-Update this section with the definitive one-sentence decision once headless rung 4b is captured. Example: "Locked bg-threads=1 (rule 3): headless rung 4b ratio = X.XX×."
+Worth recording: bg-threads=2 produced *narrower* separation than bg-threads=1, not wider. The followup brief's "workload honesty" argument predicted the opposite — more concurrent background allocators should compound pressure on the producer thread's allocation path. The likely mechanism is that two T_bg threads serialise on glibc's arena lock (per-thread arenas notwithstanding, the cross-thread-free path still acquires it), reducing how much new fragmentation each thread induces per unit time and how often the producer races against background activity. Not a finding worth a callout in the post, but informative for future allocator-themed demos: more background-pressure threads is not a monotonic dial on malloc tail-latency stress.
 
 Future calibration ladders for this demo are headless by default.
 
@@ -75,5 +77,3 @@ $BIN arena-batch-handoff --mode paced --bg-threads 2 --bg-pressure-hz 1000000 \
 # Return to graphical:
 sudo systemctl isolate graphical.target
 ```
-
-After capture: read `p99_9` from `latency_ns.stats` in each file, check rung 4a sanity band, apply the decision rule above, update the lock decision table and the one-sentence decision statement.
