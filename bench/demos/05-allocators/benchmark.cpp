@@ -266,18 +266,18 @@ static RunResult run_one(Alloc& alloc,
         });
 
         // ── Background pressure thread(s) (T_bg) ──
-        // When bg_threads > 1, divide the rate evenly across threads.
-        // Each thread gets its own PRNG seed (42 + index) and pins to core 6, 7, ...
+        // bg_pressure_hz is per-thread; aggregate churn = bg_pressure_hz × bg_threads.
+        // Cores: bg-threads=1 → core 6; bg-threads=2 → cores 6,7 (same CCX1 as P/C).
+        // bg-threads=3,4 spill to CCX0 — supported for completeness, not for headline use.
         std::atomic<bool> bg_stop{false};
         std::vector<std::thread> bg_thread_list;
         if (bg_pressure_hz > 0) {
-            const uint64_t per_thread_hz = bg_pressure_hz / static_cast<uint64_t>(bg_threads);
             for (int t = 0; t < bg_threads; ++t) {
                 const int core    = BG_CORE + t;
                 const uint32_t sd = static_cast<uint32_t>(42 + t);
-                bg_thread_list.emplace_back([&, core, sd, per_thread_hz] {
+                bg_thread_list.emplace_back([&, core, sd] {
                     pin_to_core(core);
-                    background_pressure_loop(per_thread_hz, ns_per_cycle, bg_stop,
+                    background_pressure_loop(bg_pressure_hz, ns_per_cycle, bg_stop,
                                              bg_live_allocs, bg_size_classes, sd);
                 });
             }
@@ -430,18 +430,21 @@ static std::string emit_run_json(const char* variant,
     const char* malloc_tuning_str = (malloc_tuning == MallocTuning::Arena1) ? "arena1" : "default";
     const std::string sc_json = bg_size_classes_json(bg_size_classes);
 
+    const uint64_t bg_pressure_hz_total = bg_pressure_hz * static_cast<uint64_t>(bg_threads);
     char pressure_cfg[256];
     std::snprintf(pressure_cfg, sizeof(pressure_cfg),
         "\"pressure_config\":{"
         "\"malloc_tuning\":\"%s\","
         "\"bg_live_allocs\":%zu,"
         "\"bg_size_classes\":\"%s\","
-        "\"bg_threads\":%d"
+        "\"bg_threads\":%d,"
+        "\"bg_pressure_hz_total\":%llu"
         "},",
         malloc_tuning_str,
         bg_live_allocs,
         bg_size_classes_str(bg_size_classes),
-        bg_threads);
+        bg_threads,
+        (unsigned long long)bg_pressure_hz_total);
 
     char hdr[1280];
     std::snprintf(hdr, sizeof(hdr),
@@ -659,8 +662,14 @@ int main(int argc, char* argv[]) {
             else { std::fprintf(stderr, "ERROR: unknown --bg-size-classes '%s'\n", argv[i]); return 1; }
         } else if (arg == "--bg-threads" && i + 1 < argc) {
             cfg.bg_threads = std::stoi(argv[++i]);
-            if (cfg.bg_threads < 1 || cfg.bg_threads > 2) {
-                std::fprintf(stderr, "ERROR: --bg-threads must be 1 or 2 (>2 escapes CCX)\n");
+            if (cfg.bg_threads == 0) {
+                std::fprintf(stderr,
+                    "ERROR: --bg-threads 0 is not valid; use --bg-pressure-hz 0 to disable T_bg\n");
+                return 1;
+            }
+            if (cfg.bg_threads > 4) {
+                std::fprintf(stderr,
+                    "ERROR: --bg-threads max is 4 (values 3–4 spill to CCX0 and alter locality)\n");
                 return 1;
             }
         } else {
