@@ -20,6 +20,8 @@ import os
 import sys
 from pathlib import Path
 
+from stats_utils import validate_run
+
 
 VARIANTS = ["lockfree-handrolled", "lockfree-boost", "mutex-condvar"]
 MODES    = ["paced", "saturated", "sweep"]
@@ -39,37 +41,7 @@ def load_runs(vpath: Path, tag: str) -> list:
         data = [data]
 
     for run in data:
-        variant = run.get("variant", "?")
-        mode    = run.get("mode", "?")
-
-        # top-bucket contamination
-        if run.get("top_bucket_count", 0) > 0:
-            print(
-                f"FLAG [{variant}/{mode}]: {run['top_bucket_count']} top-bucket sample(s) "
-                "— likely kernel preemption or page fault contamination.",
-                file=sys.stderr,
-            )
-
-        # TSC drift
-        drift = run.get("calibration_drift_pct", 0.0)
-        if drift > 0.1:
-            print(
-                f"FLAG [{variant}/{mode}]: TSC calibration drift {drift:.4f}% "
-                "exceeds 0.1% threshold.",
-                file=sys.stderr,
-            )
-
-        # max >= p99_9 guarantee
-        stats = run.get("latency_ns", {}).get("stats", {})
-        if stats:
-            mx    = stats.get("max", 0)
-            p99_9 = stats.get("p99_9", 0)
-            if mx < p99_9:
-                print(
-                    f"FLAG [{variant}/{mode}]: max ({mx}) < p99_9 ({p99_9}) in stats — "
-                    "histogram percentile convention bug?",
-                    file=sys.stderr,
-                )
+        validate_run(run)
 
     return data
 

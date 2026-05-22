@@ -53,6 +53,7 @@ export function variantColor(variant: string): string {
 }
 
 // Maps a numeric index to a series colour, cycling through the palette.
+// Clamps negative indices to 0 so callers don't need a guard.
 export function variantColorByIndex(idx: number): string {
-  return palette.series[idx % palette.series.length] as string
+  return palette.series[Math.max(0, idx) % palette.series.length] as string
 }

@@ -1,14 +1,15 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
-import { select } from 'd3-selection'
 import { scaleLog } from 'd3-scale'
 import { axisBottom, axisLeft } from 'd3-axis'
 import { line } from 'd3-shape'
-import { getColors, typography, variantColorByIndex } from './theme'
-import { appendGrid, appendLegendLines } from './d3helpers'
+import { variantColorByIndex } from './theme'
+import {
+  appendGrid, appendLegendLines,
+  setupSVG, appendXAxis, appendYAxis, appendXLabel, appendYLabel, legendPosition,
+} from './d3helpers'
 import { tokens } from '@/lib/design-tokens'
-import { useTheme } from '@/hooks/useTheme'
+import { useChartEffect } from '@/hooks/useChartEffect'
 import { ChartZoom } from './ChartZoom'
 import { ChartShell } from './ChartShell'
 import type { PressureSweepRun, LatencyStats } from '@/lib/perf-types'
@@ -36,19 +37,11 @@ export function PressureSweepChart({
   yAxisLabel,
   title,
 }: Props) {
-  const ref = useRef<SVGSVGElement>(null)
-  const theme = useTheme()
-
-  useEffect(() => {
-    if (!ref.current) return
-
+  const ref = useChartEffect((el) => {
     const orderedVariants = variants ?? [...new Set(runs.map((r) => r.variant))]
-
-    select(ref.current).selectAll('*').remove()
     if (runs.length === 0) return
-
-    render(ref.current, runs, orderedVariants, metric, yAxisLabel, title)
-  }, [runs, variants, metric, yAxisLabel, title, theme])
+    render(el, runs, orderedVariants, metric, yAxisLabel, title)
+  }, [runs, variants, metric, yAxisLabel, title])
 
   return (
     <ChartZoom>
@@ -71,24 +64,15 @@ function render(
   yAxisLabel?: string,
   title?: string,
 ) {
-  const colors = getColors()
-  const W = el.clientWidth || 680
   const H = 380
+  const W = el.clientWidth || 680
   const isNarrow = W < tokens.chart.mobileBreakpoint
   const margin = isNarrow
     ? { top: 32, right: 16, bottom: 130, left: 80 }
     : { top: 32, right: 150, bottom: 60, left: 80 }
-  const inner = { w: W - margin.left - margin.right, h: H - margin.top - margin.bottom }
-
-  const svg = select(el)
-    .attr('width', W)
-    .attr('height', H)
-    .attr('viewBox', `0 0 ${W} ${H}`)
-    .style('font-family', typography.fontMono)
-
-  svg.append('title').text(title ?? 'Background pressure vs tail latency')
-
-  const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`)
+  const { svg, g, inner, colors } = setupSVG(
+    el, W, H, margin, title ?? 'Background pressure vs tail latency',
+  )
 
   // Separate null-background (no-T_bg) runs from pressure sweep runs.
   const baselineRuns = runs.filter((r) => r.background_pressure_hz === null)
@@ -146,7 +130,7 @@ function render(
   // Draw one line per variant.
   for (const [variantName, arr] of byVariant.entries()) {
     const varIdx = orderedVariants.indexOf(variantName)
-    const color  = variantColorByIndex(varIdx < 0 ? 0 : varIdx)
+    const color  = variantColorByIndex(varIdx)
 
     const points: [number, number][] = arr
       .map((r) => [r.background_pressure_hz!, getStatValue(r, metric)] as [number, number])
@@ -175,7 +159,7 @@ function render(
   // Draw faint horizontal reference lines for each variant's no-T_bg baseline.
   for (const baseRun of baselineRuns) {
     const varIdx = orderedVariants.indexOf(baseRun.variant)
-    const color  = variantColorByIndex(varIdx < 0 ? 0 : varIdx)
+    const color  = variantColorByIndex(varIdx)
     const v      = getStatValue(baseRun, metric)
     if (v <= 0) continue
 
@@ -201,49 +185,14 @@ function render(
       }).tickSize(0)
     : axisBottom(x).ticks(6, '~s').tickSize(0)
 
-  g.append('g')
-    .attr('transform', `translate(0,${inner.h})`)
-    .call(xAxis)
-    .call((s) => s.select('.domain').attr('stroke', colors.border))
-    .call((s) =>
-      s.selectAll('text')
-        .attr('font-size', typography.axisSize)
-        .attr('fill', colors.textMuted)
-        .attr('dy', '1.4em'),
-    )
+  appendXAxis(g, inner, colors, xAxis)
+  appendXLabel(svg, 'background pressure (ops/sec, log scale)', margin.left + inner.w / 2, H - 6, colors)
 
-  svg.append('text')
-    .attr('x', margin.left + inner.w / 2)
-    .attr('y', H - 6)
-    .attr('text-anchor', 'middle')
-    .attr('font-size', typography.annotationSize)
-    .attr('fill', colors.textMuted)
-    .attr('font-family', typography.fontMono)
-    .text('background pressure (ops/sec, log scale)')
-
-  g.append('g')
-    .call(axisLeft(y).ticks(6, '~g'))
-    .call((s) => s.select('.domain').remove())
-    .call((s) =>
-      s.selectAll('text')
-        .attr('font-size', typography.axisSize)
-        .attr('fill', colors.textMuted),
-    )
-    .call((s) => s.selectAll('line').remove())
-
-  svg.append('text')
-    .attr('transform', 'rotate(-90)')
-    .attr('x', -(margin.top + inner.h / 2))
-    .attr('y', 16)
-    .attr('text-anchor', 'middle')
-    .attr('font-size', typography.annotationSize)
-    .attr('fill', colors.textMuted)
-    .attr('font-family', typography.fontMono)
-    .text(yAxisLabel ?? `${METRIC_LABEL[metric]} latency (ns, log scale)`)
+  appendYAxis(g, colors, axisLeft(y).ticks(6, '~g'))
+  appendYLabel(svg, yAxisLabel ?? `${METRIC_LABEL[metric]} latency (ns, log scale)`, -(margin.top + inner.h / 2), 16, colors)
 
   // Legend.
-  const legendX  = isNarrow ? margin.left : margin.left + inner.w + 10
-  const legendY  = isNarrow ? margin.top + inner.h + 16 : margin.top
+  const { x: legendX, y: legendY } = legendPosition(isNarrow, margin, inner, 10)
 
   const variantItems = orderedVariants
     .filter((v) => byVariant.has(v))

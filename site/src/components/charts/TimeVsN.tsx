@@ -1,5 +1,4 @@
-import { readFile } from 'fs/promises'
-import path from 'path'
+import { loadPerfData } from '@/lib/perf-data'
 import { TimeVsNChart, type TimeVsNRun } from './TimeVsNChart'
 import { NoData } from './NoData'
 
@@ -11,22 +10,16 @@ interface Props {
 }
 
 export async function TimeVsN({ slug, variants, stat = 'median', title }: Props) {
-  const filePath = path.join(process.cwd(), 'src/data/perf', `${slug}.json`)
-
   try {
-    const raw = await readFile(filePath, 'utf-8')
-    const data = JSON.parse(raw) as {
-      title?: string
-      runs: TimeVsNRun[]
-    }
-    if (!title) title = data.title
+    const data = await loadPerfData<{ title?: string; runs: TimeVsNRun[] }>(slug)
+    const resolvedTitle = title ?? data.title
     const runs = variants
       ? data.runs.filter((r) => variants.includes(r.variant))
       : data.runs
 
     if (runs.length === 0) throw new Error('no matching runs')
 
-    return <TimeVsNChart runs={runs} stat={stat} title={title} />
+    return <TimeVsNChart runs={runs} stat={stat} title={resolvedTitle} />
   } catch {
     return (
       <NoData>

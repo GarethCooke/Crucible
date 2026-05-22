@@ -1,18 +1,20 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
-import { select } from 'd3-selection'
 import type { Selection } from 'd3-selection'
 import { scaleBand, scaleLinear } from 'd3-scale'
 import type { ScaleBand, ScaleLinear } from 'd3-scale'
 import { axisBottom, axisLeft } from 'd3-axis'
 import { max, group } from 'd3-array'
-import { getColors, typography, variantColor } from './theme'
-import { appendGrid, appendLegendRects } from './d3helpers'
+import { typography, variantColor } from './theme'
+import {
+  appendGrid, appendLegendRects,
+  setupSVG, appendXAxis, appendYAxis,
+} from './d3helpers'
 import { tokens } from '@/lib/design-tokens'
-import { useTheme } from '@/hooks/useTheme'
+import { useChartEffect } from '@/hooks/useChartEffect'
 import { ChartZoom } from './ChartZoom'
 import { ChartShell } from './ChartShell'
+import { getColors } from './theme'
 
 // ─── Run types ───────────────────────────────────────────────────────────────
 
@@ -68,18 +70,14 @@ interface Props {
 }
 
 export function ThroughputBarsChart({ runs, stat = 'median', targetN, title, metric }: Props) {
-  const ref = useRef<SVGSVGElement>(null)
-  const theme = useTheme()
-
-  useEffect(() => {
-    if (!ref.current || runs.length === 0) return
-    select(ref.current).selectAll('*').remove()
+  const ref = useChartEffect((el) => {
+    if (runs.length === 0) return
     if (isThreadRun(runs[0])) {
-      renderGrouped(ref.current, runs as ThreadRun[], stat, title)
+      renderGrouped(el, runs as ThreadRun[], stat, title)
     } else {
-      renderLegacy(ref.current, runs as LegacyRun[], stat, targetN, title, metric)
+      renderLegacy(el, runs as LegacyRun[], stat, targetN, title, metric)
     }
-  }, [runs, stat, targetN, title, metric, theme])
+  }, [runs, stat, targetN, title, metric])
 
   return (
     <ChartZoom>
@@ -114,34 +112,24 @@ function renderLegacy(
   title?: string,
   metric?: 'ops_per_sec',
 ) {
-  const colors = getColors()
   const ns = Array.from(new Set(runs.map((r) => r.n))).sort((a, b) => a - b)
   const n = targetN ?? ns[ns.length - 1]
   const data = runs.filter((r) => r.n === n)
   if (data.length === 0) return
 
-  const W = el.clientWidth || 600
   const H = 260
+  const W = el.clientWidth || 600
   const isNarrow = W < tokens.chart.mobileBreakpoint
   const margin = { top: 24, right: 16, bottom: isNarrow ? 60 : 40, left: 64 }
-  const inner = { w: W - margin.left - margin.right, h: H - margin.top - margin.bottom }
+  const { svg, g, inner, colors } = setupSVG(el, W, H, margin, title ?? DEFAULT_TITLE_LEGACY)
 
   const useOps = metric === 'ops_per_sec'
 
-  const svg = select(el)
-    .attr('width', W)
-    .attr('height', H)
-    .attr('viewBox', `0 0 ${W} ${H}`)
-    .style('font-family', typography.fontMono)
-
-  svg.append('title').text(title ?? DEFAULT_TITLE_LEGACY)
   svg.append('desc').text(
     useOps
       ? data.map((d) => `${d.variant}: ${fmtOps(d.ops_per_sec)}`).join('. ')
       : data.map((d) => `${d.variant}: ${(d.ns_per_op[stat] ?? d.ns_per_op.median).toFixed(2)} ns/op`).join('. ')
   )
-
-  const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`)
 
   const x = scaleBand().domain(data.map((d) => d.variant)).range([0, inner.w]).padding(0.45)
   const vals = useOps
@@ -188,7 +176,7 @@ function renderLegacy(
     .attr('fill', colors.textMuted)
     .text((d) => `${((d.branch_misses_per_op ?? 0) * 100).toFixed(1)}% miss`)
 
-  appendAxesLegacy(g, svg, x, y, inner, W, H, margin, stat, n, isNarrow, useOps)
+  appendAxesLegacy(g, svg, x, y, inner, H, margin, stat, n, colors, isNarrow, useOps)
 }
 
 // ─── Grouped renderer (false sharing) ────────────────────────────────────────
@@ -199,21 +187,10 @@ function renderGrouped(
   stat: 'median' | 'min' | 'p99',
   title?: string,
 ) {
-  const colors = getColors()
-  const W = el.clientWidth || 600
   const H = 280
+  const W = el.clientWidth || 600
   const margin = { top: 32, right: 96, bottom: 64, left: 72 }
-  const inner = { w: W - margin.left - margin.right, h: H - margin.top - margin.bottom }
-
-  const svg = select(el)
-    .attr('width', W)
-    .attr('height', H)
-    .attr('viewBox', `0 0 ${W} ${H}`)
-    .style('font-family', typography.fontMono)
-
-  svg.append('title').text(title ?? DEFAULT_TITLE_GROUPED)
-
-  const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`)
+  const { svg, g, inner, colors } = setupSVG(el, W, H, margin, title ?? DEFAULT_TITLE_GROUPED)
 
   const threadCounts = Array.from(new Set(runs.map((r) => r.threads))).sort((a, b) => a - b)
   const variants = ['unpadded', 'padded']
@@ -273,17 +250,7 @@ function renderGrouped(
     })
   })
 
-  // X axis: thread counts
-  g.append('g')
-    .attr('transform', `translate(0,${inner.h})`)
-    .call(axisBottom(x0).tickSize(0))
-    .call((sel) => sel.select('.domain').attr('stroke', colors.border))
-    .call((sel) =>
-      sel.selectAll('text')
-        .attr('font-size', typography.axisSize)
-        .attr('fill', colors.textSecondary)
-        .attr('dy', '1.4em')
-    )
+  appendXAxis(g, inner, colors, axisBottom(x0).tickSize(0), true)
 
   svg.append('text')
     .attr('x', margin.left + inner.w / 2)
@@ -294,15 +261,7 @@ function renderGrouped(
     .attr('font-family', typography.fontMono)
     .text(`threads  ·  ${stat} ns/op`)
 
-  g.append('g')
-    .call(axisLeft(y).ticks(5).tickFormat((v) => `${v} ns`))
-    .call((sel) => sel.select('.domain').remove())
-    .call((sel) =>
-      sel.selectAll('text')
-        .attr('font-size', typography.axisSize)
-        .attr('fill', colors.textMuted)
-    )
-    .call((sel) => sel.selectAll('line').remove())
+  appendYAxis(g, colors, axisLeft(y).ticks(5).tickFormat((v) => `${v} ns`))
 
   appendLegendRects(svg, [
     { label: 'Unpadded', color: variantColor('unpadded') },
@@ -312,21 +271,22 @@ function renderGrouped(
 
 // ─── Shared helpers ───────────────────────────────────────────────────────────
 
+type Colors = ReturnType<typeof getColors>
+
 function appendAxesLegacy(
   g: Selection<SVGGElement, unknown, null, undefined>,
   svg: Selection<SVGSVGElement, unknown, null, undefined>,
   x: ScaleBand<string>,
   y: ScaleLinear<number, number>,
   inner: { w: number; h: number },
-  W: number,
   H: number,
   margin: { top: number; right: number; bottom: number; left: number },
   stat: string,
   n: number,
+  colors: Colors,
   isNarrow = false,
   useOps = false,
 ) {
-  const colors = getColors()
   g.append('g')
     .attr('transform', `translate(0,${inner.h})`)
     .call(axisBottom(x).tickSize(0))
@@ -346,15 +306,7 @@ function appendAxesLegacy(
       }
     })
 
-  g.append('g')
-    .call(axisLeft(y).ticks(5).tickFormat(useOps ? fmtOpsTick : (v) => `${v} ns`))
-    .call((sel) => sel.select('.domain').remove())
-    .call((sel) =>
-      sel.selectAll('text')
-        .attr('font-size', typography.axisSize)
-        .attr('fill', colors.textMuted)
-    )
-    .call((sel) => sel.selectAll('line').remove())
+  appendYAxis(g, colors, axisLeft(y).ticks(5).tickFormat(useOps ? fmtOpsTick : (v) => `${v} ns`))
 
   svg.append('text')
     .attr('x', margin.left)

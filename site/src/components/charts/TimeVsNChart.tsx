@@ -1,14 +1,15 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
-import { select } from 'd3-selection'
 import { scaleLog, scaleLinear } from 'd3-scale'
 import { axisBottom, axisLeft } from 'd3-axis'
 import { max } from 'd3-array'
 import { line } from 'd3-shape'
-import { getColors, typography, variantColor } from './theme'
-import { appendGrid, appendLegendLines } from './d3helpers'
-import { useTheme } from '@/hooks/useTheme'
+import { typography, variantColor } from './theme'
+import {
+  appendGrid, appendLegendLines,
+  setupSVG, appendXAxis, appendYAxis, appendXLabel, appendYLabel,
+} from './d3helpers'
+import { useChartEffect } from '@/hooks/useChartEffect'
 import { ChartZoom } from './ChartZoom'
 import { ChartShell } from './ChartShell'
 
@@ -25,14 +26,10 @@ interface Props {
 }
 
 export function TimeVsNChart({ runs, stat = 'median', title }: Props) {
-  const ref = useRef<SVGSVGElement>(null)
-  const theme = useTheme()
-
-  useEffect(() => {
-    if (!ref.current || runs.length === 0) return
-    select(ref.current).selectAll('*').remove()
-    render(ref.current, runs, stat, title)
-  }, [runs, stat, title, theme])
+  const ref = useChartEffect((el) => {
+    if (runs.length === 0) return
+    render(el, runs, stat, title)
+  }, [runs, stat, title])
 
   return (
     <ChartZoom>
@@ -44,21 +41,10 @@ export function TimeVsNChart({ runs, stat = 'median', title }: Props) {
 const DEFAULT_TITLE = 'Time vs N benchmark chart'
 
 function render(el: SVGSVGElement, runs: TimeVsNRun[], stat: 'median' | 'min' | 'p99', title?: string) {
-  const colors = getColors()
-  const W = el.clientWidth || 700
   const H = 320
+  const W = el.clientWidth || 700
   const margin = { top: 32, right: 112, bottom: 56, left: 72 }
-  const inner = { w: W - margin.left - margin.right, h: H - margin.top - margin.bottom }
-
-  const svg = select(el)
-    .attr('width', W)
-    .attr('height', H)
-    .attr('viewBox', `0 0 ${W} ${H}`)
-    .style('font-family', typography.fontMono)
-
-  svg.append('title').text(title ?? DEFAULT_TITLE)
-
-  const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`)
+  const { svg, g, inner, colors } = setupSVG(el, W, H, margin, title ?? DEFAULT_TITLE)
 
   const variants = Array.from(new Set(runs.map((r) => r.variant)))
   const ns = Array.from(new Set(runs.map((r) => r.n))).sort((a, b) => a - b)
@@ -145,41 +131,11 @@ function render(el: SVGSVGElement, runs: TimeVsNRun[], stat: 'median' | 'min' | 
       return `${n}`
     })
 
-  g.append('g')
-    .attr('transform', `translate(0,${inner.h})`)
-    .call(xAxis)
-    .call((sel) => sel.select('.domain').attr('stroke', colors.border))
-    .call((sel) =>
-      sel.selectAll('text')
-        .attr('font-size', typography.axisSize)
-        .attr('fill', colors.textSecondary)
-        .attr('dy', '1.4em')
-    )
+  appendXAxis(g, inner, colors, xAxis, true)
+  appendXLabel(svg, 'N (elements)  ·  log scale', margin.left + inner.w / 2, H - 8, colors)
 
-  svg.append('text')
-    .attr('x', margin.left + inner.w / 2)
-    .attr('y', H - 8)
-    .attr('text-anchor', 'middle')
-    .attr('font-size', typography.annotationSize)
-    .attr('fill', colors.textMuted)
-    .attr('font-family', typography.fontMono)
-    .text('N (elements)  ·  log scale')
-
-  g.append('g')
-    .call(axisLeft(y).ticks(5).tickFormat((v) => `${(+v).toFixed(2)} ns`))
-    .call((sel) => sel.select('.domain').remove())
-    .call((sel) => sel.selectAll('text').attr('font-size', typography.axisSize).attr('fill', colors.textMuted))
-    .call((sel) => sel.selectAll('line').remove())
-
-  svg.append('text')
-    .attr('transform', 'rotate(-90)')
-    .attr('x', -(margin.top + inner.h / 2))
-    .attr('y', 14)
-    .attr('text-anchor', 'middle')
-    .attr('font-size', typography.captionSize)
-    .attr('fill', colors.textMuted)
-    .attr('font-family', typography.fontMono)
-    .text(`${stat} ns / element`)
+  appendYAxis(g, colors, axisLeft(y).ticks(5).tickFormat((v) => `${(+v).toFixed(2)} ns`))
+  appendYLabel(svg, `${stat} ns / element`, -(margin.top + inner.h / 2), 14, colors, typography.captionSize)
 
   appendLegendLines(svg, variants.map((v) => ({
     label: v.charAt(0).toUpperCase() + v.slice(1),

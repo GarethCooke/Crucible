@@ -1,14 +1,15 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
-import { select } from 'd3-selection'
 import { scaleLog } from 'd3-scale'
 import { axisBottom, axisLeft } from 'd3-axis'
 import { line, area } from 'd3-shape'
-import { getColors, typography, variantColorByIndex } from './theme'
+import { typography, variantColorByIndex } from './theme'
 import { tokens } from '@/lib/design-tokens'
-import { appendGrid, appendLegendLines, appendLegendRects } from './d3helpers'
-import { useTheme } from '@/hooks/useTheme'
+import {
+  appendGrid, appendLegendLines, appendLegendRects,
+  setupSVG, appendXAxis, appendYAxis, appendXLabel, appendYLabel, legendPosition,
+} from './d3helpers'
+import { useChartEffect } from '@/hooks/useChartEffect'
 import { ChartZoom } from './ChartZoom'
 import { ChartShell } from './ChartShell'
 import type { LatencyHistogramData } from '@/lib/perf-types'
@@ -53,26 +54,19 @@ export function LatencyHistogramChart({
   markers = ['p50', 'p99', 'p99_9'],
   title,
 }: Props) {
-  const ref = useRef<SVGSVGElement>(null)
-  const theme = useTheme()
-
-  useEffect(() => {
-    if (!ref.current) return
-
+  const ref = useChartEffect((el) => {
     const ordered = variants
       ? variants.map((v) => runs.find((r) => r.variant === v)).filter(Boolean) as LatencyRun[]
       : runs
     const valid = ordered.filter((r) => r.latency_ns && r.latency_ns.counts.length > 0)
-
-    select(ref.current).selectAll('*').remove()
     if (valid.length === 0) return
 
     if (view === 'ccdf') {
-      renderCCDF(ref.current, valid, markers, ordered, title)
+      renderCCDF(el, valid, markers, ordered, title)
     } else {
-      renderPDF(ref.current, valid, ordered, title)
+      renderPDF(el, valid, ordered, title)
     }
-  }, [runs, variants, view, markers, title, theme])
+  }, [runs, variants, view, markers, title])
 
   return (
     <ChartZoom>
@@ -90,24 +84,13 @@ function renderCCDF(
   allVariants: LatencyRun[],
   title?: string,
 ) {
-  const colors = getColors()
-  const W = el.clientWidth || 640
   const H = 360
+  const W = el.clientWidth || 640
   const isNarrow = W < tokens.chart.mobileBreakpoint
   const margin = isNarrow
     ? { top: 32, right: 16, bottom: 80, left: 56 }
     : { top: 32, right: 120, bottom: 56, left: 72 }
-  const inner  = { w: W - margin.left - margin.right, h: H - margin.top - margin.bottom }
-
-  const svg = select(el)
-    .attr('width', W)
-    .attr('height', H)
-    .attr('viewBox', `0 0 ${W} ${H}`)
-    .style('font-family', typography.fontMono)
-
-  svg.append('title').text(title ?? DEFAULT_TITLE_CCDF)
-
-  const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`)
+  const { svg, g, inner, colors } = setupSVG(el, W, H, margin, title ?? DEFAULT_TITLE_CCDF)
 
   type Point = { x: number; y: number }
   const series: Array<{ variant: string; color: string; points: Point[] }> = []
@@ -202,46 +185,13 @@ function renderCCDF(
       .text(`${markerLabels[m]} ${ns} ns`)
   })
 
-  g.append('g')
-    .attr('transform', `translate(0,${inner.h})`)
-    .call(axisBottom(x).ticks(6, '~s').tickSize(0))
-    .call((s) => s.select('.domain').attr('stroke', colors.border))
-    .call((s) =>
-      s.selectAll('text')
-        .attr('font-size', typography.axisSize)
-        .attr('fill', colors.textMuted)
-        .attr('dy', '1.4em')
-    )
-  svg.append('text')
-    .attr('x', margin.left + inner.w / 2)
-    .attr('y', H - 6)
-    .attr('text-anchor', 'middle')
-    .attr('font-size', typography.annotationSize)
-    .attr('fill', colors.textMuted)
-    .attr('font-family', typography.fontMono)
-    .text('latency (ns, log scale)')
+  appendXAxis(g, inner, colors, axisBottom(x).ticks(6, '~s').tickSize(0))
+  appendXLabel(svg, 'latency (ns, log scale)', margin.left + inner.w / 2, H - 6, colors)
 
-  g.append('g')
-    .call(axisLeft(y).ticks(6, '~g'))
-    .call((s) => s.select('.domain').remove())
-    .call((s) =>
-      s.selectAll('text')
-        .attr('font-size', typography.axisSize)
-        .attr('fill', colors.textMuted)
-    )
-    .call((s) => s.selectAll('line').remove())
-  svg.append('text')
-    .attr('transform', 'rotate(-90)')
-    .attr('x', -(margin.top + inner.h / 2))
-    .attr('y', 14)
-    .attr('text-anchor', 'middle')
-    .attr('font-size', typography.annotationSize)
-    .attr('fill', colors.textMuted)
-    .attr('font-family', typography.fontMono)
-    .text('P(latency ≥ x)  — CCDF (log scale)')
+  appendYAxis(g, colors, axisLeft(y).ticks(6, '~g'))
+  appendYLabel(svg, 'P(latency ≥ x)  — CCDF (log scale)', -(margin.top + inner.h / 2), 14, colors)
 
-  const legendX = isNarrow ? margin.left : margin.left + inner.w + 8
-  const legendY = isNarrow ? margin.top + inner.h + 16 : margin.top
+  const { x: legendX, y: legendY } = legendPosition(isNarrow, margin, inner)
   appendLegendLines(svg, series.map(({ variant, color }) => ({ label: variant, color })),
     { x: legendX, y: legendY },
     { textSecondary: colors.textSecondary })
@@ -255,24 +205,13 @@ function renderPDF(
   allVariants: LatencyRun[],
   title?: string,
 ) {
-  const colors = getColors()
-  const W = el.clientWidth || 640
   const H = 320
+  const W = el.clientWidth || 640
   const isNarrow = W < tokens.chart.mobileBreakpoint
   const margin = isNarrow
     ? { top: 32, right: 16, bottom: 80, left: 56 }
     : { top: 32, right: 120, bottom: 56, left: 72 }
-  const inner  = { w: W - margin.left - margin.right, h: H - margin.top - margin.bottom }
-
-  const svg = select(el)
-    .attr('width', W)
-    .attr('height', H)
-    .attr('viewBox', `0 0 ${W} ${H}`)
-    .style('font-family', typography.fontMono)
-
-  svg.append('title').text(title ?? DEFAULT_TITLE_PDF)
-
-  const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`)
+  const { svg, g, inner, colors } = setupSVG(el, W, H, margin, title ?? DEFAULT_TITLE_PDF)
 
   type Segment = { x0: number; x1: number; y: number }
   const allSeries: Array<{ variant: string; color: string; segs: Segment[] }> = []
@@ -338,46 +277,13 @@ function renderPDF(
       .attr('d', linePath)
   })
 
-  g.append('g')
-    .attr('transform', `translate(0,${inner.h})`)
-    .call(axisBottom(x).ticks(6, '~s').tickSize(0))
-    .call((s) => s.select('.domain').attr('stroke', colors.border))
-    .call((s) =>
-      s.selectAll('text')
-        .attr('font-size', typography.axisSize)
-        .attr('fill', colors.textMuted)
-        .attr('dy', '1.4em')
-    )
-  svg.append('text')
-    .attr('x', margin.left + inner.w / 2)
-    .attr('y', H - 6)
-    .attr('text-anchor', 'middle')
-    .attr('font-size', typography.annotationSize)
-    .attr('fill', colors.textMuted)
-    .attr('font-family', typography.fontMono)
-    .text('latency (ns, log scale)')
+  appendXAxis(g, inner, colors, axisBottom(x).ticks(6, '~s').tickSize(0))
+  appendXLabel(svg, 'latency (ns, log scale)', margin.left + inner.w / 2, H - 6, colors)
 
-  g.append('g')
-    .call(axisLeft(y).ticks(5, '~g'))
-    .call((s) => s.select('.domain').remove())
-    .call((s) =>
-      s.selectAll('text')
-        .attr('font-size', typography.axisSize)
-        .attr('fill', colors.textMuted)
-    )
-    .call((s) => s.selectAll('line').remove())
-  svg.append('text')
-    .attr('transform', 'rotate(-90)')
-    .attr('x', -(margin.top + inner.h / 2))
-    .attr('y', 14)
-    .attr('text-anchor', 'middle')
-    .attr('font-size', typography.annotationSize)
-    .attr('fill', colors.textMuted)
-    .attr('font-family', typography.fontMono)
-    .text('sample count (log scale)')
+  appendYAxis(g, colors, axisLeft(y).ticks(5, '~g'))
+  appendYLabel(svg, 'sample count (log scale)', -(margin.top + inner.h / 2), 14, colors)
 
-  const legendX = isNarrow ? margin.left : margin.left + inner.w + 8
-  const legendY = isNarrow ? margin.top + inner.h + 16 : margin.top
+  const { x: legendX, y: legendY } = legendPosition(isNarrow, margin, inner)
   appendLegendRects(svg, allSeries.map(({ variant, color }) => ({ label: variant, color })),
     { x: legendX, y: legendY },
     { textSecondary: colors.textSecondary })

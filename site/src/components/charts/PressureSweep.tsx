@@ -1,5 +1,4 @@
-import { readFile } from 'fs/promises'
-import path from 'path'
+import { loadPerfData } from '@/lib/perf-data'
 import { PressureSweepChart } from './PressureSweepChart'
 import { NoData } from './NoData'
 import type { PressureSweepRun } from '@/lib/perf-types'
@@ -31,19 +30,17 @@ export async function PressureSweep({
   metric = 'p99_9',
   yAxisLabel,
 }: PressureSweepProps) {
-  const filePath = path.join(process.cwd(), 'src/data/perf', `${slug}.json`)
+  const noData = (msg: string) => (
+    <NoData>
+      {msg} Run <code>./bench/scripts/run_one.sh {slug}</code> on the reference machine.
+    </NoData>
+  )
 
   let data: PerfData
   try {
-    const raw = await readFile(filePath, 'utf-8')
-    data = JSON.parse(raw) as PerfData
+    data = await loadPerfData<PerfData>(slug)
   } catch {
-    return (
-      <NoData>
-        No benchmark data found for <span>{slug}</span>. Run{' '}
-        <code>./bench/scripts/run_one.sh {slug}</code> on the reference machine.
-      </NoData>
-    )
+    return noData(`No benchmark data found for ${slug}.`)
   }
 
   // Filter pressure_sweep runs, then optionally filter by variants.
@@ -69,12 +66,7 @@ export async function PressureSweep({
   })
 
   if (!hasData) {
-    return (
-      <NoData>
-        No pressure sweep data found for <span>{slug}</span>. Run{' '}
-        <code>./bench/scripts/run_one.sh {slug}</code> on the reference machine.
-      </NoData>
-    )
+    return noData(`No pressure sweep data found for ${slug}.`)
   }
 
   const title = `${slug} — background pressure vs ${metric} latency`

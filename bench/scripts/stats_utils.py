@@ -1,6 +1,37 @@
 """Shared statistics utilities for benchmark result scripts."""
 
+import sys
 from typing import Callable
+
+
+def validate_run(run: dict) -> None:
+    """Print FLAG messages for known data-quality issues. Does not raise."""
+    variant = run.get("variant", "?")
+    mode    = run.get("mode", "?")
+    tag     = f"[{variant}/{mode}]"
+
+    if run.get("top_bucket_count", 0) > 0:
+        print(
+            f"FLAG {tag}: {run['top_bucket_count']} top-bucket sample(s)"
+            " — likely kernel preemption or page fault.",
+            file=sys.stderr,
+        )
+
+    drift = run.get("calibration_drift_pct", 0.0)
+    if drift > 0.1:
+        print(
+            f"FLAG {tag}: TSC drift {drift:.4f}% > 0.1% threshold.",
+            file=sys.stderr,
+        )
+
+    stats = run.get("latency_ns", {}).get("stats", {})
+    if stats:
+        mx, p99_9 = stats.get("max", 0), stats.get("p99_9", 0)
+        if mx < p99_9:
+            print(
+                f"FLAG {tag}: max ({mx}) < p99_9 ({p99_9}) — histogram bug?",
+                file=sys.stderr,
+            )
 
 
 def build_groups(benchmarks: list, parse_name_fn: Callable) -> dict:

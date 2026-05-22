@@ -26,6 +26,8 @@ import os
 import sys
 from pathlib import Path
 
+from stats_utils import validate_run
+
 
 VARIANTS = ["cross-thread-malloc", "freelist-return-queue", "arena-batch-handoff"]
 
@@ -44,36 +46,10 @@ def load_runs(vpath: Path) -> list:
         data = [data]
 
     for run in data:
+        validate_run(run)
+
         variant = run.get("variant", "?")
         mode    = run.get("mode", "?")
-
-        # Top-bucket contamination flag.
-        if run.get("top_bucket_count", 0) > 0:
-            print(
-                f"FLAG [{variant}/{mode}]: {run['top_bucket_count']} top-bucket "
-                "sample(s) — likely kernel preemption or page fault.",
-                file=sys.stderr,
-            )
-
-        # TSC drift flag.
-        drift = run.get("calibration_drift_pct", 0.0)
-        if drift > 0.1:
-            print(
-                f"FLAG [{variant}/{mode}]: TSC drift {drift:.4f}% > 0.1% threshold.",
-                file=sys.stderr,
-            )
-
-        # max >= p99_9 guarantee (the demo-04 bug must not recur).
-        stats = run.get("latency_ns", {}).get("stats", {})
-        if stats:
-            mx    = stats.get("max", 0)
-            p99_9 = stats.get("p99_9", 0)
-            if mx < p99_9:
-                print(
-                    f"FLAG [{variant}/{mode}]: max ({mx}) < p99_9 ({p99_9}) — "
-                    "histogram bug?",
-                    file=sys.stderr,
-                )
 
         # Pressure sweep sanity: background_pressure_hz must be present.
         if mode == "pressure_sweep" and "background_pressure_hz" not in run:

@@ -1,14 +1,15 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
-import { select } from 'd3-selection'
 import { scaleBand, scaleLinear } from 'd3-scale'
 import { axisBottom, axisLeft } from 'd3-axis'
 import type { NumberValue } from 'd3-scale'
 import { max, group } from 'd3-array'
-import { getColors, typography, variantColor } from './theme'
-import { appendGrid, appendLegendRects } from './d3helpers'
-import { useTheme } from '@/hooks/useTheme'
+import { typography, variantColor } from './theme'
+import {
+  appendGrid, appendLegendRects,
+  setupSVG, appendXAxis, appendYAxis, appendXLabel, appendYLabel,
+} from './d3helpers'
+import { useChartEffect } from '@/hooks/useChartEffect'
 import { ChartZoom } from './ChartZoom'
 import { ChartShell } from './ChartShell'
 import { formatSI } from '@/lib/format'
@@ -43,14 +44,10 @@ interface Props {
 }
 
 export function CounterOverlayChart({ runs, metric, title }: Props) {
-  const ref = useRef<SVGSVGElement>(null)
-  const theme = useTheme()
-
-  useEffect(() => {
-    if (!ref.current || runs.length === 0) return
-    select(ref.current).selectAll('*').remove()
-    render(ref.current, runs, metric, title)
-  }, [runs, metric, title, theme])
+  const ref = useChartEffect((el) => {
+    if (runs.length === 0) return
+    render(el, runs, metric, title)
+  }, [runs, metric, title])
 
   return (
     <ChartZoom>
@@ -63,21 +60,10 @@ const DEFAULT_TITLE_COUNTER    = 'CPU counter metric bar chart'
 const DEFAULT_TITLE_BRANCHMISS = 'Branch miss rate bar chart'
 
 function render(el: SVGSVGElement, runs: CounterRun[], metric: Metric, title?: string) {
-  const colors = getColors()
-  const W = el.clientWidth || 600
   const H = 240
+  const W = el.clientWidth || 600
   const margin = { top: 32, right: 96, bottom: 64, left: 72 }
-  const inner = { w: W - margin.left - margin.right, h: H - margin.top - margin.bottom }
-
-  const svg = select(el)
-    .attr('width', W)
-    .attr('height', H)
-    .attr('viewBox', `0 0 ${W} ${H}`)
-    .style('font-family', typography.fontMono)
-
-  svg.append('title').text(title ?? DEFAULT_TITLE_COUNTER)
-
-  const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`)
+  const { svg, g, inner, colors } = setupSVG(el, W, H, margin, title ?? DEFAULT_TITLE_COUNTER)
 
   const threadCounts = Array.from(new Set(runs.map((r) => r.threads))).sort((a, b) => a - b)
   const variants = ['unpadded', 'padded']
@@ -127,48 +113,14 @@ function render(el: SVGSVGElement, runs: CounterRun[], metric: Metric, title?: s
     })
   })
 
-  g.append('g')
-    .attr('transform', `translate(0,${inner.h})`)
-    .call(axisBottom(x0).tickSize(0))
-    .call((sel) => sel.select('.domain').attr('stroke', colors.border))
-    .call((sel) =>
-      sel.selectAll('text')
-        .attr('font-size', typography.axisSize)
-        .attr('fill', colors.textSecondary)
-        .attr('dy', '1.4em')
-    )
-
-  svg.append('text')
-    .attr('x', margin.left + inner.w / 2)
-    .attr('y', H - 8)
-    .attr('text-anchor', 'middle')
-    .attr('font-size', typography.annotationSize)
-    .attr('fill', colors.textMuted)
-    .attr('font-family', typography.fontMono)
-    .text('threads')
+  appendXAxis(g, inner, colors, axisBottom(x0).tickSize(0), true)
+  appendXLabel(svg, 'threads', margin.left + inner.w / 2, H - 8, colors)
 
   const yFormat = metric === 'cache_miss_ratio'
     ? (v: NumberValue) => `${(+v * 100).toFixed(0)}%`
     : (v: NumberValue) => `${v}`
-  g.append('g')
-    .call(axisLeft(y).ticks(5).tickFormat(yFormat))
-    .call((sel) => sel.select('.domain').remove())
-    .call((sel) =>
-      sel.selectAll('text')
-        .attr('font-size', typography.axisSize)
-        .attr('fill', colors.textMuted)
-    )
-    .call((sel) => sel.selectAll('line').remove())
-
-  svg.append('text')
-    .attr('transform', 'rotate(-90)')
-    .attr('x', -(margin.top + inner.h / 2))
-    .attr('y', 12)
-    .attr('text-anchor', 'middle')
-    .attr('font-size', typography.captionSize)
-    .attr('fill', colors.textMuted)
-    .attr('font-family', typography.fontMono)
-    .text(METRIC_LABELS[metric])
+  appendYAxis(g, colors, axisLeft(y).ticks(5).tickFormat(yFormat))
+  appendYLabel(svg, METRIC_LABELS[metric], -(margin.top + inner.h / 2), 12, colors, typography.captionSize)
 
   svg.append('text')
     .attr('x', margin.left)
@@ -187,14 +139,10 @@ function render(el: SVGSVGElement, runs: CounterRun[], metric: Metric, title?: s
 // ─── Branch-miss overlay (branch-prediction demo) ────────────────────────────
 
 export function BranchMissOverlayChart({ runs, title, maxN }: { runs: BranchMissRun[]; title?: string; maxN?: number }) {
-  const ref = useRef<SVGSVGElement>(null)
-  const theme = useTheme()
-
-  useEffect(() => {
-    if (!ref.current || runs.length === 0) return
-    select(ref.current).selectAll('*').remove()
-    renderBranchMiss(ref.current, runs, title, maxN)
-  }, [runs, title, maxN, theme])
+  const ref = useChartEffect((el) => {
+    if (runs.length === 0) return
+    renderBranchMiss(el, runs, title, maxN)
+  }, [runs, title, maxN])
 
   return (
     <ChartZoom>
@@ -204,21 +152,10 @@ export function BranchMissOverlayChart({ runs, title, maxN }: { runs: BranchMiss
 }
 
 function renderBranchMiss(el: SVGSVGElement, runs: BranchMissRun[], title?: string, maxN?: number) {
-  const colors = getColors()
-  const W = el.clientWidth || 600
   const H = 220
+  const W = el.clientWidth || 600
   const margin = { top: 32, right: 24, bottom: 56, left: 72 }
-  const inner = { w: W - margin.left - margin.right, h: H - margin.top - margin.bottom }
-
-  const svg = select(el)
-    .attr('width', W)
-    .attr('height', H)
-    .attr('viewBox', `0 0 ${W} ${H}`)
-    .style('font-family', typography.fontMono)
-
-  svg.append('title').text(title ?? DEFAULT_TITLE_BRANCHMISS)
-
-  const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`)
+  const { svg, g, inner, colors } = setupSVG(el, W, H, margin, title ?? DEFAULT_TITLE_BRANCHMISS)
 
   const x = scaleBand().domain(runs.map((r) => r.variant)).range([0, inner.w]).padding(0.45)
   const y = scaleLinear().domain([0, 0.55]).range([inner.h, 0]).nice()
@@ -248,40 +185,13 @@ function renderBranchMiss(el: SVGSVGElement, runs: BranchMissRun[], title?: stri
     .attr('fill', colors.textPrimary)
     .text((d) => `${(d.branch_misses_per_op * 100).toFixed(1)}%`)
 
-  g.append('g')
-    .attr('transform', `translate(0,${inner.h})`)
-    .call(axisBottom(x).tickSize(0))
-    .call((sel) => sel.select('.domain').attr('stroke', colors.border))
-    .call((sel) =>
-      sel.selectAll('text')
-        .attr('font-size', typography.axisSize)
-        .attr('fill', colors.textSecondary)
-        .attr('dy', '1.4em')
-        .text((d) => (d as string).charAt(0).toUpperCase() + (d as string).slice(1))
-    )
+  appendXAxis(g, inner, colors, axisBottom(x).tickSize(0), true)
 
-  g.append('g')
-    .call(axisLeft(y).ticks(5).tickFormat((v) => `${(+v * 100).toFixed(0)}%`))
-    .call((sel) => sel.select('.domain').remove())
-    .call((sel) => sel.selectAll('text').attr('font-size', typography.axisSize).attr('fill', colors.textMuted))
-    .call((sel) => sel.selectAll('line').remove())
+  appendYAxis(g, colors, axisLeft(y).ticks(5).tickFormat((v) => `${(+v * 100).toFixed(0)}%`))
+  appendYLabel(svg, 'branch misses / op', -(margin.top + inner.h / 2), 14, colors, typography.captionSize)
 
-  svg.append('text')
-    .attr('transform', 'rotate(-90)')
-    .attr('x', -(margin.top + inner.h / 2))
-    .attr('y', 14)
-    .attr('text-anchor', 'middle')
-    .attr('font-size', typography.captionSize)
-    .attr('fill', colors.textMuted)
-    .attr('font-family', typography.fontMono)
-    .text('branch misses / op')
-
-  svg.append('text')
-    .attr('x', margin.left + inner.w / 2)
-    .attr('y', H - 8)
-    .attr('text-anchor', 'middle')
-    .attr('font-size', typography.annotationSize)
-    .attr('fill', colors.textMuted)
-    .attr('font-family', typography.fontMono)
-    .text(maxN != null ? `branch misses / op  ·  N = ${formatSI(maxN)}` : 'branch misses / op')
+  appendXLabel(svg,
+    maxN != null ? `branch misses / op  ·  N = ${formatSI(maxN)}` : 'branch misses / op',
+    margin.left + inner.w / 2, H - 8, colors,
+  )
 }

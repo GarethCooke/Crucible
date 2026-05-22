@@ -1,5 +1,4 @@
-import { readFile } from 'fs/promises'
-import path from 'path'
+import { loadPerfData } from '@/lib/perf-data'
 import { CounterOverlayChart, type CounterRun } from './CounterOverlayChart'
 import { BranchMissOverlayChart, type BranchMissRun } from './CounterOverlayChart'
 import { NoData } from './NoData'
@@ -18,27 +17,26 @@ interface Props {
   title?: string
 }
 
-export async function CounterOverlay({ slug, metric, placement, variants, title }: Props) {
-  const filePath = path.join(process.cwd(), 'src/data/perf', `${slug}.json`)
-  const noData = (
-    <NoData>
-      No data found for <span>{slug}</span>.
-      Run <code>./bench/scripts/run_one.sh {slug}</code> on the reference machine.
-    </NoData>
-  )
+const noData = (slug: string) => (
+  <NoData>
+    No data found for <span>{slug}</span>.
+    Run <code>./bench/scripts/run_one.sh {slug}</code> on the reference machine.
+  </NoData>
+)
 
+export async function CounterOverlay({ slug, metric, placement, variants, title }: Props) {
   if (metric === 'branch_misses_per_op') {
     // Branch-prediction schema: top-level branch_misses_per_op per run.
     // Show per-variant bars at the largest captured N.
     let branchRuns: BranchMissRun[] = []
     let maxN = 0
+    let resolvedTitle = title
     try {
-      const raw = await readFile(filePath, 'utf-8')
-      const data = JSON.parse(raw) as {
+      const data = await loadPerfData<{
         title?: string
         runs: { variant: string; n: number; branch_misses_per_op: number }[]
-      }
-      if (!title) title = data.title
+      }>(slug)
+      if (!resolvedTitle) resolvedTitle = data.title
       const allRuns = variants
         ? data.runs.filter((r) => variants.includes(r.variant))
         : data.runs
@@ -48,23 +46,23 @@ export async function CounterOverlay({ slug, metric, placement, variants, title 
         .filter((r) => r.n === maxN)
         .map((r) => ({ variant: r.variant, branch_misses_per_op: r.branch_misses_per_op }))
     } catch {
-      return noData
+      return noData(slug)
     }
-    if (branchRuns.length === 0) return noData
-    return <BranchMissOverlayChart runs={branchRuns} title={title} maxN={maxN} />
+    if (branchRuns.length === 0) return noData(slug)
+    return <BranchMissOverlayChart runs={branchRuns} title={resolvedTitle} maxN={maxN} />
   }
 
   // False-sharing schema: metrics nested in run.counters.
   let runs: CounterRun[] = []
+  let resolvedTitle = title
   try {
-    const raw = await readFile(filePath, 'utf-8')
-    const data = JSON.parse(raw) as { title?: string; runs: (CounterRun & { placement?: string })[] }
+    const data = await loadPerfData<{ title?: string; runs: (CounterRun & { placement?: string })[] }>(slug)
     const all = data.runs.filter((r) => r.counters != null)
     runs = placement ? all.filter((r) => r.placement === placement) : all
-    if (!title) title = data.title
+    if (!resolvedTitle) resolvedTitle = data.title
   } catch {
-    return noData
+    return noData(slug)
   }
 
-  return <CounterOverlayChart runs={runs} metric={metric as Exclude<Metric, 'branch_misses_per_op'>} title={title} />
+  return <CounterOverlayChart runs={runs} metric={metric as Exclude<Metric, 'branch_misses_per_op'>} title={resolvedTitle} />
 }
