@@ -14,11 +14,13 @@ that makes the SIMD wins reachable at all.
 
 European call option price under Black-Scholes:
 
-```text
-C  = S·N(d₁) − K·e^(−rT)·N(d₂)
-d₁ = (ln(S/K) + (r + σ²/2)T) / (σ√T)
-d₂ = d₁ − σ√T
-```
+$$
+\begin{aligned}
+C   &= S \cdot N(d_1) - K \cdot e^{-rT} \cdot N(d_2) \\[10pt]
+d_1 &= \frac{\ln(S/K) + \left(r + \dfrac{\sigma^2}{2}\right)T}{\sigma\sqrt{T}} \\[10pt]
+d_2 &= d_1 - \sigma\sqrt{T}
+\end{aligned}
+$$
 
 Input: 1,048,576 option structs — arrays of `S`, `K`, `T`, `r`, `σ` (all `float`,
 aligned to 32 bytes). Output: array of call prices `C`.

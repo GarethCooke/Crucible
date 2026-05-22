@@ -5,6 +5,8 @@ import matter from 'gray-matter'
 import { MDXRemote } from 'next-mdx-remote/rsc'
 import rehypePrettyCode from 'rehype-pretty-code'
 import remarkGfm from 'remark-gfm'
+import remarkMath from 'remark-math'
+import rehypeKatex from 'rehype-katex'
 import type { Metadata } from 'next'
 import { CodeCompare } from '@/components/CodeCompare'
 import { Benchmark } from '@/components/Benchmark'
@@ -114,8 +116,9 @@ export default async function PostPage({ params }: { params: { slug: string } })
           components={components}
           options={{
             mdxOptions: {
-              remarkPlugins: [remarkGfm],
+              remarkPlugins: [remarkGfm, remarkMath],
               rehypePlugins: [
+                rehypeKatex,
                 [
                   rehypePrettyCode,
                   {
