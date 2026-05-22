@@ -176,7 +176,7 @@ cmake --build build --target bench_05_allocators
 ./bench/scripts/run_one.sh 05-allocators
 ```
 
-Source: `bench/demos/05-allocators/`.
+Source: [`bench/demos/05-allocators/`](https://github.com/GarethCooke/Crucible/tree/master/bench/demos/05-allocators).
 
 Hardware: AMD Ryzen 7 3800X (Zen 2), 3.9 GHz base, governor = performance, turbo disabled (verified via cpupower), SMT off (BIOS), `isolcpus=0-7` requested at boot (core 0 carries unavoidable kernel housekeeping per probe; benchmark process pinned to cores 4–7). Producer to core 4, consumer to core 5, T_bg to core 6 (all CCX1). GCC 13.3, `-O3 -march=native -std=c++20`.
 
