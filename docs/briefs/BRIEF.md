@@ -246,3 +246,25 @@ Post structure for `01-branch-prediction.mdx`:
 Project name: **Crucible**. Subdomain: `crucible.garethcooke.com`. Project page on the main portfolio at `garethcooke.com/projects/crucible` follows the FrontierView card → overview → external link pattern.
 
 Branding should match `garethcooke.com` aesthetic — dark theme, cyan accent. **No IguanaWare branding** — perf work needs to feel rigorous, not playful.
+
+## Pre-flight checks for prose-against-data briefs
+
+When a brief prescribes prose edits against specific data values (e.g. percentile claims in MDX based on JSON benchmark output), the brief MUST include a pre-flight check that validates two things:
+
+1. **The data file's `captured_at` timestamp** matches the timestamp the brief was written against. Capture re-runs change every measurement value; a brief authored against one capture can't be safely applied to another.
+2. **A handful of sentinel statistics** match the values the brief assumes. Catches the case where two captures share a timestamp but differ in values (shouldn't happen, but the check is cheap).
+
+The check runs as a Python snippet at the top of the brief, before any edits. On failure: `STOP, surface the mismatches, contact Opus for a new brief.` No interpretation, no partial application.
+
+Reference implementation: any of the `pre-demo-5-25c-*` or later briefs.
+
+Why this matters: brief 25b (May 22) was authored against a `2026-05-20` JSON capture that didn't match the repo's `2026-05-21` capture. The pre-flight in its successor brief 25c caught the mismatch and prevented a wrong-direction rewrite from landing.
+
+### When to skip
+
+Pre-flight isn't needed for briefs that:
+
+- Don't reference specific data values (e.g. pure refactoring, structural, code-only briefs).
+- Reference data values only in passing for context, where the brief's correctness doesn't depend on those values being accurate.
+
+When in doubt, include the pre-flight — it's a five-line Python snippet and costs nothing if everything's fine.

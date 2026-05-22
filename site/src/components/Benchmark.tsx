@@ -26,8 +26,10 @@ interface BenchmarkProps {
   metric?: Metric
   /** Override the title from the JSON data file. */
   title?: string
-  mode?: 'paced' | 'saturated' | 'sweep'
+  mode?: 'paced' | 'saturated' | 'sweep' | 'pressure_sweep'
   offered_rate_hz?: number
+  /** Filter runs by background pressure level (demo 05). */
+  background_pressure_hz?: number
   view?: 'ccdf' | 'pdf'
   markers?: Array<'p50' | 'p99' | 'p99_9'>
 }
@@ -36,6 +38,7 @@ interface RunRecord {
   variant: string
   mode?: string
   offered_rate_hz?: number
+  background_pressure_hz?: number | null
   n: number
   ns_per_op: { median: number; min: number; p99: number; iqr: number }
   ops_per_sec: number
@@ -49,34 +52,39 @@ interface PerfData {
   runs: RunRecord[]
 }
 
-// Filter runs to those matching the requested mode and offered_rate_hz.
+// Filter runs to those matching the requested mode, offered_rate_hz, and background_pressure_hz.
 // Falls back gracefully for old data files that have no mode field.
 function filterRuns(
   runs: RunRecord[],
   mode: string | undefined,
   offered_rate_hz: number | undefined,
   variants: string[] | undefined,
+  background_pressure_hz?: number,
 ): RunRecord[] {
   let filtered = runs
 
   if (mode !== undefined) {
     const withMode = filtered.filter((r) => r.mode === mode)
-    if (withMode.length > 0) return applyRemainingFilters(withMode, offered_rate_hz, variants)
-    if (mode === 'sweep') return []  // sweep data must be explicitly tagged; no fallback
+    if (withMode.length > 0) return applyRemainingFilters(withMode, offered_rate_hz, variants, background_pressure_hz)
+    if (mode === 'sweep' || mode === 'pressure_sweep') return []  // must be explicitly tagged; no fallback
     filtered = filtered.filter((r) => !r.mode)
   }
 
-  return applyRemainingFilters(filtered, offered_rate_hz, variants)
+  return applyRemainingFilters(filtered, offered_rate_hz, variants, background_pressure_hz)
 }
 
 function applyRemainingFilters(
   runs: RunRecord[],
   offered_rate_hz: number | undefined,
   variants: string[] | undefined,
+  background_pressure_hz?: number,
 ): RunRecord[] {
   let filtered = runs
   if (offered_rate_hz !== undefined) {
     filtered = filtered.filter((r) => r.offered_rate_hz === offered_rate_hz)
+  }
+  if (background_pressure_hz !== undefined) {
+    filtered = filtered.filter((r) => r.background_pressure_hz === background_pressure_hz)
   }
   if (variants !== undefined) {
     filtered = filtered.filter((r) => variants.includes(r.variant))
@@ -96,6 +104,7 @@ export async function Benchmark({
   title: titleProp,
   mode,
   offered_rate_hz,
+  background_pressure_hz,
   view = 'ccdf',
   markers = ['p50', 'p99', 'p99_9'],
 }: BenchmarkProps) {
@@ -128,7 +137,7 @@ export async function Benchmark({
       ? filterRuns(data.runs, 'sweep', undefined, variants)
       : []
 
-  let runs = filterRuns(data.runs, mode, offered_rate_hz, variants)
+  let runs = filterRuns(data.runs, mode, offered_rate_hz, variants, background_pressure_hz)
   if (placement) {
     runs = runs.filter((r) => (r as { placement?: string }).placement === placement)
   }

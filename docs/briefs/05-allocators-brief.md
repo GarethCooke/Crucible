@@ -210,7 +210,7 @@ void background_pressure_loop(uint64_t target_rate_hz, std::atomic<bool>& stop) 
 
 When `target_rate_hz == 0`, T_bg is **not spawned at all** (treated as a separate baseline run). Don't run T_bg at "zero rate" — it's noise.
 
-**Calibration:** the default background pressure for the paced headline measurement is **1,000,000 ops/sec** of mixed-size churn. Confirm during implementation that this is sustained on the reference machine (T_bg's pacing loop doesn't fall behind by more than ~5%) and that it produces a visible separation between malloc and pool variants in the headline latency distribution. If at 1M/s the separation is too small (<2× p99.9 ratio), raise to 3M/s. If T_bg can't sustain 3M/s on the reference machine, the demo is in trouble and we need to re-scope — flag immediately, don't paper over it.
+**Calibration:** the default background pressure for the paced headline measurement is **1,000,000 ops/sec per T_bg thread** of mixed-size churn, with the number of T_bg threads selected by the calibration step (see open item 5'). Confirm during implementation that each thread sustains its target rate on the reference machine (pacing loop doesn't fall behind by more than ~5%). The malloc-vs-arena p99.9 separation is expected to be approximately 30–50% under the chosen headline config; if the captured separation differs from this band by more than 10 percentage points, surface it before writing the post.
 
 ## Variants
 
@@ -534,8 +534,8 @@ Adapt the structure from demo 4. Required sections:
 4. *Background heap pressure* — what it is, why it's there, why the demo is dishonest without it.
 5. *Headline latency picture* — `<LatencyHistogram>` showing all three variants overlaid at the default pressure. CCDF view, p50/p99/p99.9 markers.
 6. *Throughput* — `<ThroughputBars>` as a secondary view. Brief commentary.
-7. *Pressure sweep* — `<PressureSweep>` showing p99.9 across the sweep. The story of how malloc's tail grows while the pool variants stay flat.
-8. *The freelist-vs-arena trade-off* — the post's interesting twist. The arena wins on median, the freelist wins on p99. Show the data; reason about why.
+7. *The freelist-vs-arena trade-off* — the post's interesting twist. The arena wins on median, the freelist wins on p99. Show the data; reason about why.
+8. *Pressure sweep* — `<PressureSweep>` showing p99.9 across the sweep. The story of how malloc's tail grows while the pool variants stay flat.
 9. *Cross-CCX side note* — one paragraph + one `<LatencyHistogram>` from the cross-CCX JSON. What changes; why we're not making it the headline.
 10. *What this doesn't show* — explicit list of scoping decisions (no jemalloc, single producer/consumer, fixed Order size, no variable-length fields, no NUMA crossing).
 11. *Reproducing this* — link to bench source, the run command, the hardware spec.
@@ -603,7 +603,7 @@ Length target: comparable to demo 4. Do not pad. Every chart needs a paragraph t
 
 4. **Calibration of consumer work weight.** Target 150-300 ns. If the chosen implementation lands outside that band, adjust the table sizes or drop/add a check until it fits. Document the measured wall-clock in the README and in `consumer_work_target_ns` in the JSON. Do not silently ship with 600 ns of work and call it 300.
 
-5. **Calibration of background pressure default.** Target 1 M/sec churn, must produce visible variant separation in the paced headline. If at 1 M/s the malloc p99.9 vs arena p99.9 ratio is below 2×, raise pressure (up to 3 M/sec). If at 3 M/sec the separation is still below 2× **stop and flag** — the demo's premise is in trouble and we need to re-scope before writing the post.
+5'. **Calibration of background pressure default.** The headline config is `bg-pressure-hz=1M`, `bg-live-allocs=8192`, `bg-threads=N` where N ∈ {1, 2} is chosen by the calibration step in `demo-05-rescope-brief.md`. The malloc-vs-arena p99.9 separation under the chosen config is the working magnitude for the post — quote whatever the data actually shows. The earlier "2× p99.9 ratio" target was retired after the pre-headline calibration ladder showed it unreachable on this workload; the post will be written against the observed effect.
 
 6. **Freelist drain batch size.** Default 32. If during calibration the producer's allocate latency shows a visible drain-induced spike at this batch size, sweep 8 / 32 / 128 and pick the one that keeps the producer-side allocate latency tightest. Lock in before the headline measurement.
 

@@ -6,7 +6,13 @@
       "PowerShell(node -e \"console.log\\(require\\('c:/Development/Projects/Crucible/site/node_modules/rehype-pretty-code/package.json'\\).version\\)\")",
       "Bash(python3 -c ' *)",
       "Bash(Get-ChildItem -Path \"c:\\\\Development\\\\Projects\\\\Crucible\\\\site\\\\src\\\\components\\\\\" -File | Select-Object Name)",
-      "Bash(git -C \"c:\\\\Development\\\\Projects\\\\Crucible\" diff)"
+      "Bash(git -C \"c:\\\\Development\\\\Projects\\\\Crucible\" diff)",
+      "Bash(mkdir -p \"c:/Development/Projects/Crucible/bench/demos/05-allocators/allocators\")",
+      "Bash(cat > *)"
+    ],
+    "additionalDirectories": [
+      "c:\\Development\\Projects\\Crucible\\bench\\demos\\05-allocators",
+      "c:\\Development\\Projects\\Crucible\\bench\\demos\\05-allocators\\allocators"
     ]
   }
 }
