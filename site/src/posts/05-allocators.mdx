@@ -4,13 +4,13 @@ date: "2026-05-21"
 summary: "Cross-thread Order lifecycle benchmarked across three allocator strategies — malloc, freelist with return queue, and arena with batch handoff. The result that survives contact with the data isn't the one the design discussion would lead you to expect."
 ---
 
-A market-data thread hands off 64-byte Orders to a risk thread. The risk thread frees them after checking positions, limits, and velocity. This is the pattern every real trading system uses, and it is the one that breaks naïve thread-local pool allocators — the free happens on a different thread from the alloc.
+A market-data thread hands off 64-byte Orders to a risk thread. The risk thread frees them after checking positions, limits, and velocity. This is the pattern every real trading system uses, and it is the one that breaks naïve thread-local pool allocators (those whose pool can only return memory on the allocating thread) — the free happens on a different thread from the alloc.
 
 ## The thesis
 
 In a cross-thread trading pipeline, the allocator design is a derivative of the threading model. Malloc's median is fine; its tail drifts under background heap pressure — other subsystems sharing the heap, fragmentation accumulating, arena locks contending. The size of that drift depends on topology: modest (1.1–1.3× p99.9) when producer and consumer share a CCX, substantial (2.4×) when they don't.
 
-This post measures three strategies for the cross-thread free pattern: the baseline that most real systems actually ship, and two honest domain-specific designs. The result that survives contact with the data isn't the one the design discussion would lead you to expect.
+This post measures three strategies for the cross-thread free pattern: the baseline that most real systems actually ship, and two honest domain-specific designs. The result that survives contact with the data isn't the one the design discussion would lead you to expect: the bump-pointer arena's theoretical fast-path advantage doesn't materialise against the freelist's amortised return queue, and the gap between the pool variants and `new`/`delete` is much smaller on same-CCX than the design framing implies.
 
 ## Setup
 
@@ -113,7 +113,7 @@ The arena's design has one property the freelist's doesn't: **its p99.9 is flat 
   title="Paced throughput at 1 MHz offered load (ops/sec — higher is better)"
 />
 
-At 1 MHz paced load the throughput numbers reflect how faithfully each variant sustains the offered rate over 5M items. All three variants sustain close to 1 M/s; the pool variants show slightly tighter variance because the allocator cost is more predictable. Throughput differences are secondary to latency at this load level.
+At 1 MHz paced load the throughput numbers reflect how faithfully each variant sustains the offered rate over 5M items. All three variants sustain close to 1 M/s; the freelist variant shows slightly tighter variance than malloc or arena because its amortised return-queue drain smooths over per-allocation cost spikes. Throughput differences are secondary to latency at this load level.
 
 ## Background pressure sweep
 
@@ -153,6 +153,8 @@ The headline runs place producer and consumer on the same CCX (cores 4 and 5, sh
 Cross-CCX configuration: producer on core 4 (CCX1), consumer on core 1 (CCX0), T_bg on core 6 (CCX1). The p50 floor rises to 408 ns across all three variants — the Infinity Fabric round-trip is the new baseline, identical for everyone.
 
 The tail picture is where the variants part. The freelist and arena both top out at p99.9 = 720 ns — within sample-noise of each other, both about 2.1–2.3× their same-CCX baselines. Malloc reaches p99 = 1120 ns and p99.9 = 1760 ns. That's 1.63× the pool variants at p99 and 2.44× at p99.9 in absolute terms, and a 4.5× expansion of malloc's same-CCX baseline (392 → 1760) versus the pools' 2.1–2.3× expansion. The cross-CCX environment amplifies malloc's allocator-overhead tail disproportionately — the lock-contention paths and arena coordination that malloc has to do internally pay an extra Infinity-Fabric round-trip every time they cross between threads on different L3 domains.
+
+Single-sample max values cross-CCX don't track the percentile ordering: freelist 7,200, malloc 10,460, arena 12,200. Same caveat as the same-CCX headline — one sample out of five million doesn't carry a robust ordering, and these numbers reflect where an interrupt or scheduling event happened to land rather than a structural property of the variant.
 
 This is the gap the design discussion at the top was implicitly pointing at. It happens to live in the cross-CCX corner, not the headline.
 

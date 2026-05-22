@@ -126,16 +126,24 @@ def _build_notes(runs: list, cross_ccx: bool) -> str:
                 f"{min(bgs)/1000:.0f}k–{max(bgs)/1e6:.0f}M Hz)."
             )
 
-    ccx_note = " Cross-CCX side experiment included." if cross_ccx else ""
+    if cross_ccx:
+        topology = (
+            "Producer pinned to core 4 (CCX1), consumer to core 1 (CCX0) — "
+            "cross-CCX configuration on Zen 2 3800X (queue traverses Infinity Fabric "
+            "rather than shared L3). Background pressure thread (T_bg) pinned to core 6 (CCX1). "
+        )
+    else:
+        topology = (
+            "Producer pinned to core 4, consumer to core 5 (same CCX1 on Zen 2 3800X). "
+            "Background pressure thread (T_bg) pinned to core 6 (same CCX1). "
+        )
     return (
-        "Producer pinned to core 4, consumer to core 5 (same CCX1 on Zen 2 3800X). "
-        "Background pressure thread (T_bg) pinned to core 6 (same CCX1). "
-        "Order struct: 64 B, alignas(64). "
+        topology
+        + "Order struct: 64 B, alignas(64). "
         "End-to-end latency: rdtscp after allocate() → rdtscp after simulated risk check. "
         "Warmup: 100k items pre-roll per iteration."
         + paced_suffix
         + sweep_suffix
-        + ccx_note
     )
 
 

@@ -1336,5 +1336,5 @@
       "arena_capacity_orders": 4096
     }
   ],
-  "notes": "Producer pinned to core 4, consumer to core 5 (same CCX1 on Zen 2 3800X). Background pressure thread (T_bg) pinned to core 6 (same CCX1). Order struct: 64 B, alignas(64). End-to-end latency: rdtscp after allocate() \u2192 rdtscp after simulated risk check. Warmup: 100k items pre-roll per iteration. Paced: 1 MHz offered load, 1 M/s background pressure. Cross-CCX side experiment included."
+  "notes": "Producer pinned to core 4 (CCX1), consumer to core 1 (CCX0) -- cross-CCX configuration on Zen 2 3800X (queue traverses Infinity Fabric rather than shared L3). Background pressure thread (T_bg) pinned to core 6 (CCX1). Order struct: 64 B, alignas(64). End-to-end latency: rdtscp after allocate() -> rdtscp after simulated risk check. Warmup: 100k items pre-roll per iteration. Paced: 1 MHz offered load, 1 M/s background pressure."
 }
