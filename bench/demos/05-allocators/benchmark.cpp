@@ -29,15 +29,11 @@
 
 #include <algorithm>
 #include <atomic>
-#include <chrono>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <ctime>
-#include <memory>
-#include <optional>
-#include <pthread.h>
 #include <random>
 #include <sched.h>
 #include <string>
@@ -46,6 +42,7 @@
 #include <vector>
 
 #include <malloc.h>
+#include <pthread.h>
 #include <x86intrin.h>
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -69,6 +66,15 @@ static constexpr int      SWEEP_STEPS_DEF = 8;
 enum class Mode { Paced, PressureSweep };
 enum class MallocTuning { Default, Arena1 };
 
+// Static background-pressure knobs that are constant across a sweep.
+// bg_pressure_hz itself varies per sweep point and is passed separately.
+struct PressureConfig {
+    size_t        bg_live_allocs  = 8192;
+    BgSizeClasses bg_size_classes = BgSizeClasses::Default;
+    int           bg_threads      = 1;
+    MallocTuning  malloc_tuning   = MallocTuning::Arena1;
+};
+
 struct BenchConfig {
     Mode          mode             = Mode::Paced;
     uint64_t      offered_rate_hz  = 1'000'000;
@@ -78,10 +84,7 @@ struct BenchConfig {
     int           sweep_steps      = SWEEP_STEPS_DEF;
     bool          verify_warmup    = false;
     int           consumer_core    = 5;  // override with --consumer-core for cross-CCX
-    MallocTuning  malloc_tuning    = MallocTuning::Arena1;
-    size_t        bg_live_allocs   = 8192;
-    BgSizeClasses bg_size_classes  = BgSizeClasses::Default;
-    int           bg_threads       = 1;
+    PressureConfig pressure;
 };
 
 // ─── TSC helpers ─────────────────────────────────────────────────────────────
@@ -155,6 +158,7 @@ static void pin_to_core(int core) {
 
 // ─── RNG helpers ─────────────────────────────────────────────────────────────
 // Fixed seeds for reproducibility (documented in README).
+// Modulo bias is intentional — distributional quality doesn't affect benchmark conclusions.
 
 static inline int64_t generate_price(std::mt19937& rng) {
     // Fixed-point price in [9900, 10100] scaled by 100 (i.e. $99.00–$101.00)
@@ -200,10 +204,8 @@ static RunResult run_one(Alloc& alloc,
                          uint64_t bg_pressure_hz,
                          int consumer_core,
                          size_t num_iterations,
-                         WarmupVerify* wv,
-                         size_t bg_live_allocs,
-                         BgSizeClasses bg_size_classes,
-                         int bg_threads) {
+                         WarmupVerify* warmup_verify,
+                         const PressureConfig& pressure) {
 
     const uint64_t period_cycles = pacing_period_cycles(offered_rate_hz, ns_per_cycle);
 
@@ -212,12 +214,12 @@ static RunResult run_one(Alloc& alloc,
     for (size_t iter = 0; iter < num_iterations; ++iter) {
         SPSCQueue<Order*, QUEUE_DEPTH> queue;
 
-        init_risk_tables();
+        RiskState risk_state;
+        risk_state.init();
 
         std::atomic<bool>   consumer_ready{false};
         std::atomic<bool>   start_signal{false};
         std::atomic<size_t> warmup_consumed{0};
-        std::atomic<bool>   measurement_active{false};
         std::atomic<bool>   producer_done{false};
 
         // ── Consumer thread (T_c) ──
@@ -248,14 +250,14 @@ static RunResult run_one(Alloc& alloc,
                 if (!queue.try_pop(o)) { _mm_pause(); continue; }
 
                 const uint64_t now_ns = tsc_to_ns_u64(rdtscp_ordered(), ns_per_cycle);
-                simulated_risk_check(o, now_ns);
+                risk_state.check(o, now_ns);
 
                 const uint64_t latency_ns =
                     tsc_to_ns_u64(rdtscp_ordered() - o->ts_create_tsc, ns_per_cycle);
 
-                if (wv && wv->enabled) {
-                    if (measured < 10'000)        wv->early.record(latency_ns);
-                    else if (measured >= 100'000) wv->late.record(latency_ns);
+                if (warmup_verify && warmup_verify->enabled) {
+                    if (measured < 10'000)        warmup_verify->early.record(latency_ns);
+                    else if (measured >= 100'000) warmup_verify->late.record(latency_ns);
                 }
 
                 result.hist.record(latency_ns);
@@ -272,13 +274,14 @@ static RunResult run_one(Alloc& alloc,
         std::atomic<bool> bg_stop{false};
         std::vector<std::thread> bg_thread_list;
         if (bg_pressure_hz > 0) {
-            for (int t = 0; t < bg_threads; ++t) {
+            for (int t = 0; t < pressure.bg_threads; ++t) {
                 const int core    = BG_CORE + t;
                 const uint32_t sd = static_cast<uint32_t>(42 + t);
                 bg_thread_list.emplace_back([&, core, sd] {
                     pin_to_core(core);
                     background_pressure_loop(bg_pressure_hz, ns_per_cycle, bg_stop,
-                                             bg_live_allocs, bg_size_classes, sd);
+                                             pressure.bg_live_allocs,
+                                             pressure.bg_size_classes, sd);
                 });
             }
         }
@@ -290,17 +293,22 @@ static RunResult run_one(Alloc& alloc,
 
         std::mt19937 prod_rng(12345 + iter);  // fixed seed per iteration, reproducible
 
-        // Warmup — produce ITEMS_WARMUP orders without pacing.
-        for (size_t i = 0; i < ITEMS_WARMUP; ++i) {
-            Order* o = alloc.allocate();
-            o->ts_create_tsc = 0;  // warmup: not measured
-            o->seq           = ~uint64_t(0);
+        // Shared Order-fill logic; ts and seq differ between warmup and measurement.
+        auto fill_order = [&](Order* o, size_t i, uint64_t ts, uint64_t seq) {
+            o->ts_create_tsc = ts;
+            o->seq           = seq;
             o->price         = generate_price(prod_rng);
             o->qty           = generate_qty(prod_rng);
             o->client_id     = static_cast<uint32_t>(i & 255);
             o->symbol_id     = static_cast<uint32_t>(i & 1023);
             o->risk_seq      = 0;
             o->side          = (prod_rng() & 1) ? Side::Buy : Side::Sell;
+        };
+
+        // Warmup — produce ITEMS_WARMUP orders without pacing.
+        for (size_t i = 0; i < ITEMS_WARMUP; ++i) {
+            Order* o = alloc.allocate();
+            fill_order(o, i, 0, ~uint64_t(0));  // ts=0: not measured; seq=sentinel
             while (!queue.try_push(o)) { _mm_pause(); }
         }
 
@@ -320,14 +328,7 @@ static RunResult run_one(Alloc& alloc,
             }
 
             Order* o = alloc.allocate();
-            o->ts_create_tsc = rdtscp_ordered();
-            o->seq           = i;
-            o->price         = generate_price(prod_rng);
-            o->qty           = generate_qty(prod_rng);
-            o->client_id     = static_cast<uint32_t>(i & 255);
-            o->symbol_id     = static_cast<uint32_t>(i & 1023);
-            o->risk_seq      = 0;
-            o->side          = (prod_rng() & 1) ? Side::Buy : Side::Sell;
+            fill_order(o, i, rdtscp_ordered(), i);
             // arena_idx is set by allocate() for variant 3; zeroed by new/freelist.
             while (!queue.try_push(o)) { _mm_pause(); }
         }
@@ -365,13 +366,10 @@ static RunResult run_variant_arena(ArenaBatchAllocator& alloc,
                                     uint64_t bg_pressure_hz,
                                     int consumer_core,
                                     size_t num_iterations,
-                                    WarmupVerify* wv,
-                                    size_t bg_live_allocs,
-                                    BgSizeClasses bg_size_classes,
-                                    int bg_threads) {
+                                    WarmupVerify* warmup_verify,
+                                    const PressureConfig& pressure) {
     RunResult r = run_one(alloc, ns_per_cycle, offered_rate_hz, bg_pressure_hz,
-                          consumer_core, num_iterations, wv,
-                          bg_live_allocs, bg_size_classes, bg_threads);
+                          consumer_core, num_iterations, warmup_verify, pressure);
     r.arena_wait_count = alloc.wait_count;
     if (alloc.wait_count > 0) {
         std::fprintf(stderr,
@@ -384,6 +382,16 @@ static RunResult run_variant_arena(ArenaBatchAllocator& alloc,
 
 // ─── JSON emission ───────────────────────────────────────────────────────────
 
+// Variant-specific allocator knobs. Pass a zero-initialised instance for
+// variants whose knobs don't apply; emit_run_json omits fields with value 0.
+struct AllocatorKnobs {
+    size_t freelist_initial_slots = 0;
+    size_t return_queue_depth     = 0;
+    size_t freelist_drain_batch   = 0;
+    size_t arena_count            = 0;
+    size_t arena_capacity_orders  = 0;
+};
+
 // Builds a single run JSON object. bg_pressure_hz == 0 emits null for
 // background_pressure_hz (no-background baseline run).
 static std::string emit_run_json(const char* variant,
@@ -393,20 +401,9 @@ static std::string emit_run_json(const char* variant,
                                   uint32_t consumer_work_target_ns,
                                   size_t num_iterations,
                                   const RunResult& r,
-                                  double ns_per_cycle,
                                   double calibration_drift_pct,
-                                  // variant-specific knobs (pass 0/nullptr to omit)
-                                  size_t freelist_initial_slots,
-                                  size_t return_queue_depth,
-                                  size_t freelist_drain_batch,
-                                  size_t arena_count,
-                                  size_t arena_capacity_orders,
-                                  // pressure config
-                                  MallocTuning malloc_tuning,
-                                  size_t bg_live_allocs,
-                                  BgSizeClasses bg_size_classes,
-                                  int bg_threads) {
-    (void)ns_per_cycle;
+                                  const AllocatorKnobs& knobs,
+                                  const PressureConfig& pressure) {
     const auto& h = r.hist;
 
     const double total_items = static_cast<double>(ITEMS_MEASURED) * num_iterations;
@@ -427,79 +424,98 @@ static std::string emit_run_json(const char* variant,
         std::snprintf(bg_field, sizeof(bg_field), "%llu",
                       (unsigned long long)bg_pressure_hz);
 
-    const char* malloc_tuning_str = (malloc_tuning == MallocTuning::Arena1) ? "arena1" : "default";
-    const std::string sc_json = bg_size_classes_json(bg_size_classes);
+    const char* malloc_tuning_str =
+        (pressure.malloc_tuning == MallocTuning::Arena1) ? "arena1" : "default";
+    const std::string sc_json = bg_size_classes_json(pressure.bg_size_classes);
 
-    const uint64_t bg_pressure_hz_total = bg_pressure_hz * static_cast<uint64_t>(bg_threads);
+    const uint64_t bg_pressure_hz_total =
+        bg_pressure_hz * static_cast<uint64_t>(pressure.bg_threads);
+
     char pressure_cfg[256];
-    std::snprintf(pressure_cfg, sizeof(pressure_cfg),
-        "\"pressure_config\":{"
-        "\"malloc_tuning\":\"%s\","
-        "\"bg_live_allocs\":%zu,"
-        "\"bg_size_classes\":\"%s\","
-        "\"bg_threads\":%d,"
-        "\"bg_pressure_hz_total\":%llu"
-        "},",
-        malloc_tuning_str,
-        bg_live_allocs,
-        bg_size_classes_str(bg_size_classes),
-        bg_threads,
-        (unsigned long long)bg_pressure_hz_total);
+    {
+        const int n = std::snprintf(pressure_cfg, sizeof(pressure_cfg),
+            "\"pressure_config\":{"
+            "\"malloc_tuning\":\"%s\","
+            "\"bg_live_allocs\":%zu,"
+            "\"bg_size_classes\":\"%s\","
+            "\"bg_threads\":%d,"
+            "\"bg_pressure_hz_total\":%llu"
+            "},",
+            malloc_tuning_str,
+            pressure.bg_live_allocs,
+            bg_size_classes_str(pressure.bg_size_classes),
+            pressure.bg_threads,
+            (unsigned long long)bg_pressure_hz_total);
+        if (n < 0 || static_cast<size_t>(n) >= sizeof(pressure_cfg)) {
+            std::fprintf(stderr,
+                "INTERNAL ERROR: pressure_cfg buffer too small (%d chars needed)\n", n);
+            std::exit(1);
+        }
+    }
 
-    char hdr[1280];
-    std::snprintf(hdr, sizeof(hdr),
-        "{"
-        "\"variant\":\"%s\","
-        "\"mode\":\"%s\","
-        "\"offered_rate_hz\":%llu,"
-        "\"background_pressure_hz\":%s,"
-        "\"background_size_classes\":%s,"
-        "%s"
-        "\"consumer_work_target_ns\":%u,"
-        "\"n\":%zu,"
-        "\"items_measured\":%zu,"
-        "\"items_warmup\":%zu,"
-        "\"iterations\":%zu,"
-        "\"ns_per_op\":{\"median\":%.1f,\"min\":%.1f,\"p99\":%.1f,\"iqr\":%.1f},"
-        "\"ops_per_sec\":%.0f,"
-        "\"latency_ns\":{"
-          "\"scheme\":\"log2_subbuckets_16\","
-          "\"percentile_convention\":\"log2_bucket_midpoint\","
-          "\"bucket_count\":%zu,"
-          "\"min_bucket_ns\":1,"
-          "\"counts\":",
-        variant,
-        mode_str,
-        (unsigned long long)offered_rate_hz,
-        bg_field,
-        sc_json.c_str(),
-        pressure_cfg,
-        consumer_work_target_ns,
-        QUEUE_DEPTH,
-        ITEMS_MEASURED,
-        ITEMS_WARMUP,
-        num_iterations,
-        median, min_ns, p99, iqr,
-        ops_per_sec,
-        crucible::HISTOGRAM_BUCKET_COUNT);
+    char hdr[1536];
+    {
+        const int n = std::snprintf(hdr, sizeof(hdr),
+            "{"
+            "\"variant\":\"%s\","
+            "\"mode\":\"%s\","
+            "\"offered_rate_hz\":%llu,"
+            "\"background_pressure_hz\":%s,"
+            "\"background_size_classes\":%s,"
+            "%s"
+            "\"consumer_work_target_ns\":%u,"
+            "\"n\":%zu,"
+            "\"items_measured\":%zu,"
+            "\"items_warmup\":%zu,"
+            "\"iterations\":%zu,"
+            "\"ns_per_op\":{\"median\":%.1f,\"min\":%.1f,\"p99\":%.1f,\"iqr\":%.1f},"
+            "\"ops_per_sec\":%.0f,"
+            "\"latency_ns\":{"
+              "\"scheme\":\"log2_subbuckets_16\","
+              "\"percentile_convention\":\"log2_bucket_midpoint\","
+              "\"bucket_count\":%zu,"
+              "\"min_bucket_ns\":1,"
+              "\"counts\":",
+            variant,
+            mode_str,
+            (unsigned long long)offered_rate_hz,
+            bg_field,
+            sc_json.c_str(),
+            pressure_cfg,
+            consumer_work_target_ns,
+            QUEUE_DEPTH,
+            ITEMS_MEASURED,
+            ITEMS_WARMUP,
+            num_iterations,
+            median, min_ns, p99, iqr,
+            ops_per_sec,
+            crucible::HISTOGRAM_BUCKET_COUNT);
+        if (n < 0 || static_cast<size_t>(n) >= sizeof(hdr)) {
+            std::fprintf(stderr,
+                "INTERNAL ERROR: hdr buffer too small (%d chars needed)\n", n);
+            std::exit(1);
+        }
+    }
 
     // Variant-specific knobs.
-    std::string knobs;
-    if (freelist_initial_slots > 0) {
+    std::string knobs_json;
+    if (knobs.freelist_initial_slots > 0) {
         char buf[128];
         std::snprintf(buf, sizeof(buf),
             ",\"freelist_initial_slots\":%zu"
             ",\"return_queue_depth\":%zu"
             ",\"freelist_drain_batch\":%zu",
-            freelist_initial_slots, return_queue_depth, freelist_drain_batch);
-        knobs = buf;
-    } else if (arena_count > 0) {
+            knobs.freelist_initial_slots,
+            knobs.return_queue_depth,
+            knobs.freelist_drain_batch);
+        knobs_json = buf;
+    } else if (knobs.arena_count > 0) {
         char buf[128];
         std::snprintf(buf, sizeof(buf),
             ",\"arena_count\":%zu"
             ",\"arena_capacity_orders\":%zu",
-            arena_count, arena_capacity_orders);
-        knobs = buf;
+            knobs.arena_count, knobs.arena_capacity_orders);
+        knobs_json = buf;
     }
 
     char trailer_head[128];
@@ -507,7 +523,7 @@ static std::string emit_run_json(const char* variant,
         "},\"top_bucket_count\":%zu,\"calibration_drift_pct\":%.4f",
         r.top_bucket_count, calibration_drift_pct);
     std::string trailer = trailer_head;
-    trailer += knobs;
+    trailer += knobs_json;
     trailer += "}";
 
     std::string result;
@@ -534,55 +550,49 @@ static RunOutput dispatch(std::string_view variant,
                            int consumer_core,
                            const char* mode_str,
                            size_t num_iterations,
-                           WarmupVerify* wv,
-                           MallocTuning malloc_tuning,
-                           size_t bg_live_allocs,
-                           BgSizeClasses bg_size_classes,
-                           int bg_threads) {
+                           WarmupVerify* warmup_verify,
+                           const PressureConfig& pressure) {
     // consumer_work_target_ns: measured during calibration; see README.
     // Set to 200 as the calibrated target; update after measurement confirms it.
     constexpr uint32_t CONSUMER_WORK_NS = 200;
+
+    // Compute drift once; re-running calibrate_tsc() per variant would waste
+    // up to 300 ms per dispatch call (one 100 ms spin per variant branch).
+    const double calibration_drift_pct =
+        std::abs(calibrate_tsc() - ns_per_cycle) / ns_per_cycle * 100.0;
 
     RunOutput out;
 
     if (variant == "cross-thread-malloc") {
         MallocAllocator alloc;
         out.result = run_one(alloc, ns_per_cycle, offered_rate_hz, bg_pressure_hz,
-                             consumer_core, num_iterations, wv,
-                             bg_live_allocs, bg_size_classes, bg_threads);
+                             consumer_core, num_iterations, warmup_verify, pressure);
         out.json = emit_run_json("cross-thread-malloc", mode_str,
             offered_rate_hz, bg_pressure_hz, CONSUMER_WORK_NS, num_iterations,
-            out.result, ns_per_cycle,
-            std::abs(calibrate_tsc() - ns_per_cycle) / ns_per_cycle * 100.0,
-            0, 0, 0, 0, 0,
-            malloc_tuning, bg_live_allocs, bg_size_classes, bg_threads);
+            out.result, calibration_drift_pct,
+            AllocatorKnobs{},
+            pressure);
 
     } else if (variant == "freelist-return-queue") {
         FreelistReturnAllocator alloc;
         out.result = run_one(alloc, ns_per_cycle, offered_rate_hz, bg_pressure_hz,
-                             consumer_core, num_iterations, wv,
-                             bg_live_allocs, bg_size_classes, bg_threads);
+                             consumer_core, num_iterations, warmup_verify, pressure);
         out.json = emit_run_json("freelist-return-queue", mode_str,
             offered_rate_hz, bg_pressure_hz, CONSUMER_WORK_NS, num_iterations,
-            out.result, ns_per_cycle,
-            std::abs(calibrate_tsc() - ns_per_cycle) / ns_per_cycle * 100.0,
-            alloc.initial_slots, alloc.return_depth, alloc.drain_batch,
-            0, 0,
-            malloc_tuning, bg_live_allocs, bg_size_classes, bg_threads);
+            out.result, calibration_drift_pct,
+            AllocatorKnobs{alloc.initial_slots, alloc.return_depth, alloc.drain_batch},
+            pressure);
 
     } else {
         ArenaBatchAllocator alloc;
         out.result = run_variant_arena(alloc, ns_per_cycle, offered_rate_hz,
                                         bg_pressure_hz, consumer_core,
-                                        num_iterations, wv,
-                                        bg_live_allocs, bg_size_classes, bg_threads);
+                                        num_iterations, warmup_verify, pressure);
         out.json = emit_run_json("arena-batch-handoff", mode_str,
             offered_rate_hz, bg_pressure_hz, CONSUMER_WORK_NS, num_iterations,
-            out.result, ns_per_cycle,
-            std::abs(calibrate_tsc() - ns_per_cycle) / ns_per_cycle * 100.0,
-            0, 0, 0,
-            alloc.arena_count, alloc.arena_capacity,
-            malloc_tuning, bg_live_allocs, bg_size_classes, bg_threads);
+            out.result, calibration_drift_pct,
+            AllocatorKnobs{0, 0, 0, alloc.arena_count, alloc.arena_capacity},
+            pressure);
     }
 
     return out;
@@ -634,40 +644,72 @@ int main(int argc, char* argv[]) {
             else { std::fprintf(stderr, "ERROR: unknown mode '%s'\n", argv[i]); return 1; }
             mode_set = true;
         } else if (arg == "--offered-rate-hz" && i + 1 < argc) {
-            cfg.offered_rate_hz = std::stoull(argv[++i]);
+            try { cfg.offered_rate_hz = std::stoull(argv[++i]); }
+            catch (...) {
+                std::fprintf(stderr, "ERROR: --offered-rate-hz requires a positive integer\n");
+                return 1;
+            }
         } else if (arg == "--bg-pressure-hz" && i + 1 < argc) {
-            cfg.bg_pressure_hz = std::stoull(argv[++i]);
+            try { cfg.bg_pressure_hz = std::stoull(argv[++i]); }
+            catch (...) {
+                std::fprintf(stderr, "ERROR: --bg-pressure-hz requires a non-negative integer\n");
+                return 1;
+            }
         } else if (arg == "--bg-from" && i + 1 < argc) {
-            cfg.bg_from_hz = std::stoull(argv[++i]);
+            try { cfg.bg_from_hz = std::stoull(argv[++i]); }
+            catch (...) {
+                std::fprintf(stderr, "ERROR: --bg-from requires a positive integer\n");
+                return 1;
+            }
         } else if (arg == "--bg-to" && i + 1 < argc) {
-            cfg.bg_to_hz = std::stoull(argv[++i]);
+            try { cfg.bg_to_hz = std::stoull(argv[++i]); }
+            catch (...) {
+                std::fprintf(stderr, "ERROR: --bg-to requires a positive integer\n");
+                return 1;
+            }
         } else if (arg == "--steps" && i + 1 < argc) {
-            cfg.sweep_steps = std::stoi(argv[++i]);
+            try { cfg.sweep_steps = std::stoi(argv[++i]); }
+            catch (...) {
+                std::fprintf(stderr, "ERROR: --steps requires a positive integer\n");
+                return 1;
+            }
         } else if (arg == "--verify-warmup") {
             cfg.verify_warmup = true;
             if (!mode_set) cfg.mode = Mode::Paced;
         } else if (arg == "--consumer-core" && i + 1 < argc) {
-            cfg.consumer_core = std::stoi(argv[++i]);
+            try { cfg.consumer_core = std::stoi(argv[++i]); }
+            catch (...) {
+                std::fprintf(stderr, "ERROR: --consumer-core requires an integer\n");
+                return 1;
+            }
         } else if (arg == "--malloc-tuning" && i + 1 < argc) {
             std::string_view v = argv[++i];
-            if      (v == "arena1")  cfg.malloc_tuning = MallocTuning::Arena1;
-            else if (v == "default") cfg.malloc_tuning = MallocTuning::Default;
+            if      (v == "arena1")  cfg.pressure.malloc_tuning = MallocTuning::Arena1;
+            else if (v == "default") cfg.pressure.malloc_tuning = MallocTuning::Default;
             else { std::fprintf(stderr, "ERROR: unknown --malloc-tuning '%s'\n", argv[i]); return 1; }
         } else if (arg == "--bg-live-allocs" && i + 1 < argc) {
-            cfg.bg_live_allocs = std::stoull(argv[++i]);
+            try { cfg.pressure.bg_live_allocs = std::stoull(argv[++i]); }
+            catch (...) {
+                std::fprintf(stderr, "ERROR: --bg-live-allocs requires a positive integer\n");
+                return 1;
+            }
         } else if (arg == "--bg-size-classes" && i + 1 < argc) {
             std::string_view v = argv[++i];
-            if      (v == "default") cfg.bg_size_classes = BgSizeClasses::Default;
-            else if (v == "large")   cfg.bg_size_classes = BgSizeClasses::Large;
+            if      (v == "default") cfg.pressure.bg_size_classes = BgSizeClasses::Default;
+            else if (v == "large")   cfg.pressure.bg_size_classes = BgSizeClasses::Large;
             else { std::fprintf(stderr, "ERROR: unknown --bg-size-classes '%s'\n", argv[i]); return 1; }
         } else if (arg == "--bg-threads" && i + 1 < argc) {
-            cfg.bg_threads = std::stoi(argv[++i]);
-            if (cfg.bg_threads == 0) {
+            try { cfg.pressure.bg_threads = std::stoi(argv[++i]); }
+            catch (...) {
+                std::fprintf(stderr, "ERROR: --bg-threads requires a positive integer\n");
+                return 1;
+            }
+            if (cfg.pressure.bg_threads == 0) {
                 std::fprintf(stderr,
                     "ERROR: --bg-threads 0 is not valid; use --bg-pressure-hz 0 to disable T_bg\n");
                 return 1;
             }
-            if (cfg.bg_threads > 4) {
+            if (cfg.pressure.bg_threads > 4) {
                 std::fprintf(stderr,
                     "ERROR: --bg-threads max is 4 (values 3–4 spill to CCX0 and alter locality)\n");
                 return 1;
@@ -678,7 +720,7 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    if (cfg.malloc_tuning == MallocTuning::Arena1) {
+    if (cfg.pressure.malloc_tuning == MallocTuning::Arena1) {
         if (mallopt(M_ARENA_MAX, 1) != 1) {
             std::fprintf(stderr,
                 "warning: mallopt(M_ARENA_MAX, 1) returned non-1; "
@@ -689,8 +731,8 @@ int main(int argc, char* argv[]) {
     const double ns_per_cycle = calibrate_tsc();
     std::fprintf(stderr, "TSC calibration: %.6f ns/cycle\n", ns_per_cycle);
 
-    WarmupVerify wv;
-    wv.enabled = cfg.verify_warmup;
+    WarmupVerify warmup_verify;
+    warmup_verify.enabled = cfg.verify_warmup;
 
     std::string output;
 
@@ -705,9 +747,8 @@ int main(int argc, char* argv[]) {
         // Point 0: no background pressure (T_bg not spawned).
         std::fprintf(stderr, "  pressure_sweep baseline: T_bg off\n");
         auto r0 = dispatch(variant, ns_per_cycle, cfg.offered_rate_hz, 0,
-                           cfg.consumer_core, "pressure_sweep", NUM_RUNS_SWEEP, &wv,
-                           cfg.malloc_tuning, cfg.bg_live_allocs,
-                           cfg.bg_size_classes, cfg.bg_threads);
+                           cfg.consumer_core, "pressure_sweep", NUM_RUNS_SWEEP,
+                           &warmup_verify, cfg.pressure);
         output += r0.json;
         output += ",\n";
 
@@ -721,9 +762,8 @@ int main(int argc, char* argv[]) {
                          s + 1, n, static_cast<double>(bg_hz));
 
             auto r = dispatch(variant, ns_per_cycle, cfg.offered_rate_hz, bg_hz,
-                              cfg.consumer_core, "pressure_sweep", NUM_RUNS_SWEEP, &wv,
-                              cfg.malloc_tuning, cfg.bg_live_allocs,
-                              cfg.bg_size_classes, cfg.bg_threads);
+                              cfg.consumer_core, "pressure_sweep", NUM_RUNS_SWEEP,
+                              &warmup_verify, cfg.pressure);
             output += r.json;
             if (s + 1 < n) output += ",\n";
         }
@@ -733,24 +773,23 @@ int main(int argc, char* argv[]) {
         // Paced mode (headline measurement or --verify-warmup).
         auto r = dispatch(variant, ns_per_cycle, cfg.offered_rate_hz,
                           cfg.bg_pressure_hz,
-                          cfg.consumer_core, "paced", NUM_RUNS_PACED, &wv,
-                          cfg.malloc_tuning, cfg.bg_live_allocs,
-                          cfg.bg_size_classes, cfg.bg_threads);
+                          cfg.consumer_core, "paced", NUM_RUNS_PACED,
+                          &warmup_verify, cfg.pressure);
         output = "[\n" + r.json + "\n]";
     }
 
     std::printf("%s\n", output.c_str());
 
     // ── Warmup verification report ───────────────────────────────────────────
-    if (wv.enabled) {
+    if (warmup_verify.enabled) {
         std::fprintf(stderr,
             "\n=== Warmup verification ===\n"
             "Items 0-9,999   (early): p50=%llu ns  p99=%llu ns\n"
             "Items 100,000+  (late):  p50=%llu ns  p99=%llu ns\n",
-            (unsigned long long)wv.early.percentile(50.0),
-            (unsigned long long)wv.early.percentile(99.0),
-            (unsigned long long)wv.late.percentile(50.0),
-            (unsigned long long)wv.late.percentile(99.0));
+            (unsigned long long)warmup_verify.early.percentile(50.0),
+            (unsigned long long)warmup_verify.early.percentile(99.0),
+            (unsigned long long)warmup_verify.late.percentile(50.0),
+            (unsigned long long)warmup_verify.late.percentile(99.0));
     }
 
     return 0;

@@ -5,6 +5,7 @@
 
 #include <atomic>
 #include <cstddef>
+#include <cstdio>
 #include <cstdlib>
 #include <random>
 #include <string>
@@ -21,10 +22,24 @@ static constexpr size_t BG_NUM_CLASSES_DEFAULT     = 6;
 static constexpr size_t BG_SIZE_CLASSES_LARGE[] = {64, 128, 512, 2048, 8192, 32768, 131072};
 static constexpr size_t BG_NUM_CLASSES_LARGE    = 7;
 
+// Build JSON array from the constexpr arrays so both definitions stay in sync.
 inline std::string bg_size_classes_json(BgSizeClasses sc) {
-    if (sc == BgSizeClasses::Large)
-        return "[64,128,512,2048,8192,32768,131072]";
-    return "[32,64,128,256,512,1024]";
+    const size_t* classes;
+    size_t n;
+    if (sc == BgSizeClasses::Large) {
+        classes = BG_SIZE_CLASSES_LARGE;
+        n       = BG_NUM_CLASSES_LARGE;
+    } else {
+        classes = BG_SIZE_CLASSES_DEFAULT;
+        n       = BG_NUM_CLASSES_DEFAULT;
+    }
+    std::string s = "[";
+    for (size_t i = 0; i < n; ++i) {
+        if (i > 0) s += ",";
+        s += std::to_string(classes[i]);
+    }
+    s += "]";
+    return s;
 }
 
 inline const char* bg_size_classes_str(BgSizeClasses sc) {
@@ -62,6 +77,10 @@ inline void background_pressure_loop(uint64_t target_rate_hz,
     // Pre-fill — creates fragmentation before measurement starts.
     for (size_t i = 0; i < bg_live_allocs; ++i) {
         void* p = std::malloc(classes[i % num_classes]);
+        if (!p) {
+            std::fprintf(stderr, "ERROR: malloc returned nullptr during T_bg pre-fill\n");
+            std::exit(1);
+        }
         *reinterpret_cast<uint8_t*>(p) = 0xCC;
         live.push_back(p);
     }
@@ -82,6 +101,10 @@ inline void background_pressure_loop(uint64_t target_rate_hz,
         if ((rng() & 1) || live.empty()) {
             const size_t sz = classes[rng() % num_classes];
             void* p = std::malloc(sz);
+            if (!p) {
+                std::fprintf(stderr, "ERROR: malloc returned nullptr in T_bg main loop\n");
+                std::exit(1);
+            }
             *reinterpret_cast<uint8_t*>(p) = 0xCC;
             if (live.size() < cap)
                 live.push_back(p);
