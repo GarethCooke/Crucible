@@ -61,7 +61,7 @@ The consumer does real work: three table lookups (positions by symbol, limits by
 
 ### Background heap pressure
 
-T_bg runs a tight loop of mixed-size `malloc`/`free` calls against six size classes (32–1024 B), prefilling 8192 live allocations at thread start to create fragmentation from t=0. The default rate for headline measurements is 1 M ops/sec of churn, with `bg-threads=1`. Both values come from the calibration ladder in `bench/calibration-notes/README.md`; the lock decision is documented there.
+T_bg runs a tight loop of mixed-size `malloc`/`free` calls against six size classes (32–1024 B), prefilling 8192 live allocations at thread start to create fragmentation from t=0. The default rate for headline measurements is 1 M ops/sec of churn, with `bg-threads=1`. Both values come from the calibration ladder in [`bench/calibration-notes/README.md`](https://github.com/GarethCooke/Crucible/blob/master/bench/calibration-notes/README.md); the lock decision is documented there.
 
 ## Headline latency (CCDF)
 
