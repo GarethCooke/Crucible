@@ -144,7 +144,12 @@ as the pipeline repeatedly flushes and restarts.
 ## The gap across the cache hierarchy
 
 The 6.7× headline is measured at N = 32 M (128 MiB), where both variants are
-DRAM-bound. Looking across all six sizes reveals a more interesting story:
+DRAM-bound. Looking across all six sizes reveals a more interesting story. The
+same L3→DRAM cliff visible here — where memory bandwidth becomes the binding
+constraint — is also the headline picture in [Demo 6](/posts/06-aos-vs-soa),
+which asks the layout question that runs on top of this one: when the inner
+loop only touches a few fields of a wide struct, does the struct layout amplify
+or hide the bandwidth cliff?
 
 <Benchmark
   slug="01-branch-prediction"

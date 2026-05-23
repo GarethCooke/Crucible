@@ -241,6 +241,11 @@ each 256-bit instruction splits into two 128-bit µops internally — FMA reclai
 what µop split costs you. On Zen 3+ and Sapphire Rapids, where 256-bit ops
 dispatch natively, the same code path would be closer to a clean 4×.
 
+The SoA layout that made this vectorisation possible is its own story — when
+the struct is wide and the inner loop touches only a few fields, the layout
+choice determines whether SIMD is reachable at all. [Demo 6](/posts/06-aos-vs-soa)
+quantifies the bandwidth-amplification model that underlies it.
+
 ---
 
 *AMD Ryzen 7 3800X, Zen 2, 3.9 GHz base, governor = performance, turbo disabled
