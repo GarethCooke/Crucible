@@ -49,10 +49,11 @@ double scan_soa_scalar(const RecordSoA& s, size_t n, int k) {
 }
 
 // ─── SoA auto-vectorised ──────────────────────────────────────────────────────
-// No vectorisation pragma — gets project default -O3 -march=native. Compiler
-// should emit AVX2 vaddpd ymm / vmovapd ymm over the column inner loop.
-// Stacks SIMD throughput on top of the bandwidth advantage.
-__attribute__((noinline))
+// fast-math is required: GCC won't reorder FP ops to vectorize a reduction
+// without -fassociative-math. The attribute applies to this function only.
+// Emits AVX2 vaddpd ymm over the column inner loop, stacking SIMD throughput
+// on top of the bandwidth advantage of SoA layout.
+__attribute__((noinline, optimize("O3,fast-math")))
 double scan_soa_autovec(const RecordSoA& s, size_t n, int k) {
     double sum = 0.0;
     const double* cols[16] = {

@@ -19,7 +19,7 @@
 static std::string run_objdump(const char* bin_path) {
     char cmd[4096 + 64];
     std::snprintf(cmd, sizeof(cmd),
-        "objdump -d --no-show-raw-insn '%s' 2>&1", bin_path);
+        "objdump -d -C --no-show-raw-insn '%s' 2>&1", bin_path);
     FILE* fp = popen(cmd, "r");
     if (!fp) return "";
     std::string out;
@@ -38,7 +38,11 @@ static std::string extract_fn(const std::string& disasm, const char* sym) {
     std::string ln;
     while (std::getline(ss, ln)) {
         if (!in_fn) {
-            if (ln.find(marker) != std::string::npos) in_fn = true;
+            // Only match function header lines (column 0), not call sites.
+            // Headers look like: "0000addr <sym...>:"
+            if (!ln.empty() && ln[0] != ' ' && ln[0] != '\t'
+                    && ln.find(marker) != std::string::npos)
+                in_fn = true;
         } else {
             if (ln.empty() || (ln[0] != ' ' && ln[0] != '\t'
                                && ln.find(marker) == std::string::npos
@@ -96,7 +100,8 @@ int main(int argc, char* argv[]) {
         const std::string fn_asm = extract_fn(disasm, c.sym);
         if (fn_asm.empty()) {
             std::fprintf(stdout,
-                "  [WARN] %s: symbol not found in disassembly\n", c.sym);
+                "  [FAIL] %s: symbol not found in disassembly\n", c.sym);
+            exit_code = 1;
             continue;
         }
 

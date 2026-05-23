@@ -423,7 +423,7 @@ static int do_verify_codegen() {
 
     // Run objdump and capture output.
     char cmd[4096 + 64];
-    std::snprintf(cmd, sizeof(cmd), "objdump -d --no-show-raw-insn '%s' 2>&1", bin_path);
+    std::snprintf(cmd, sizeof(cmd), "objdump -d -C --no-show-raw-insn '%s' 2>&1", bin_path);
 
     FILE* fp = popen(cmd, "r");
     if (!fp) {
@@ -439,8 +439,8 @@ static int do_verify_codegen() {
 
     // Helper: extract lines belonging to a function symbol.
     auto extract_fn = [&](const char* sym) -> std::string {
-        // Look for "<sym>:" or "<sym(...)>:" in the disassembly.
-        // objdump demangling may add parameter types; match on sym as substring.
+        // Only match function header lines (column 0), not call sites.
+        // Headers look like: "0000addr <sym...>:"
         std::string marker = std::string("<") + sym;
         std::string fn_asm;
         bool in_fn = false;
@@ -448,14 +448,14 @@ static int do_verify_codegen() {
         std::string ln;
         while (std::getline(ss, ln)) {
             if (!in_fn) {
-                if (ln.find(marker) != std::string::npos) in_fn = true;
+                if (!ln.empty() && ln[0] != ' ' && ln[0] != '\t'
+                        && ln.find(marker) != std::string::npos)
+                    in_fn = true;
             } else {
-                // A blank line or next function header ends the block.
-                if (ln.empty() || (ln.size() > 0 && ln[0] != ' ' && ln[0] != '\t'
+                if (ln.empty() || (ln[0] != ' ' && ln[0] != '\t'
                                    && ln.find(marker) == std::string::npos
-                                   && ln.find('<') != std::string::npos)) {
+                                   && ln.find('<') != std::string::npos))
                     break;
-                }
                 fn_asm += ln + "\n";
             }
         }
@@ -501,8 +501,8 @@ static int do_verify_codegen() {
     for (const auto& c : checks) {
         const std::string fn_asm = extract_fn(c.sym);
         if (fn_asm.empty()) {
-            std::fprintf(stderr, "  [WARN] %s: symbol not found — binary may not include it\n",
-                c.sym);
+            std::fprintf(stdout, "  [FAIL] %s: symbol not found in disassembly\n", c.sym);
+            exit_code = 1;
             continue;
         }
 
@@ -551,6 +551,29 @@ int main(int argc, char* argv[]) {
             "Variants: aos-scalar | soa-scalar | soa-autovec\n",
             argv[0], argv[0], argv[0]);
         return 1;
+    }
+
+    // ── Help ─────────────────────────────────────────────────────────────────
+    if (std::string_view(argv[1]) == "--help" || std::string_view(argv[1]) == "-h") {
+        std::printf(
+            "Usage: %s <variant> --n N --k K [--iterations I]\n"
+            "       %s --machine-info\n"
+            "       %s <variant> --verify-codegen\n"
+            "\n"
+            "Variants:\n"
+            "  aos-scalar   AoS layout, scalar (no SIMD)\n"
+            "  soa-scalar   SoA layout, scalar (vectorisation suppressed)\n"
+            "  soa-autovec  SoA layout, auto-vectorised (AVX2 packed-double)\n"
+            "\n"
+            "Flags:\n"
+            "  --n N            Number of records (required for measurement)\n"
+            "  --k K            Number of fields to sum per record, 1..16 (required)\n"
+            "  --iterations I   Measurement iterations (default: %zu)\n"
+            "  --verify-codegen Disassemble self and check SIMD codegen contracts\n"
+            "  --machine-info   Emit machine metadata as JSON and exit\n"
+            "  --help, -h       Show this help\n",
+            argv[0], argv[0], argv[0], DEFAULT_ITERS);
+        return 0;
     }
 
     // ── Machine info ─────────────────────────────────────────────────────────
