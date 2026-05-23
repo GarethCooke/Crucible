@@ -62,7 +62,7 @@ double median_ns_per_op(F&& fn, size_t n, int k) {
 int main() {
     // Working-set sweep: 8 log-spaced points L1 → DRAM at 128 B/struct.
     constexpr size_t Ns[] = {64, 256, 1024, 4096, 16384, 65536, 262144, 1048576};
-    constexpr int    Ks[] = {1, 2, 4, 8, 16};
+    constexpr int    Ks[] = {1, 2, 4, 8, 12,16};
     constexpr int    N_COUNT = sizeof(Ns) / sizeof(Ns[0]);
     constexpr int    K_COUNT = sizeof(Ks) / sizeof(Ks[0]);
 
