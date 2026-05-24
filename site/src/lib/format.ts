@@ -13,3 +13,12 @@ export function formatSI(n: number): string {
   }
   return `${n}`
 }
+
+export function capitalize(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1)
+}
+
+// Returns the sorted unique set of `n` values from a runs array.
+export function uniqueSortedNs(runs: { n: number }[]): number[] {
+  return Array.from(new Set(runs.map((r) => r.n))).sort((a, b) => a - b)
+}

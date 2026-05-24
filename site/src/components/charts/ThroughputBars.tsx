@@ -1,5 +1,4 @@
-import { readFile } from 'fs/promises'
-import path from 'path'
+import { loadPerfData } from '@/lib/perf-data'
 import { ThroughputBarsChart, type Run } from './ThroughputBarsChart'
 import { NoData } from './NoData'
 
@@ -31,17 +30,15 @@ export async function ThroughputBars({
   let runs: Run[] = runsIn ?? []
 
   if (slug) {
-    const filePath = path.join(process.cwd(), 'src/data/perf', `${slug}.json`)
     try {
-      const raw = await readFile(filePath, 'utf-8')
-      const data = JSON.parse(raw) as { title?: string; runs: Run[] }
+      const data = await loadPerfData<{ title?: string; runs: Run[] }>(slug)
       runs = data.runs
       if (!title) title = data.title
     } catch {
       return (
         <NoData>
           No data found for <span>{slug}</span>.
-          Run <code>tools/perf_capture.sh</code> on the reference machine.
+          Run <code>./bench/scripts/run_one.sh {slug}</code> on the reference machine.
         </NoData>
       )
     }

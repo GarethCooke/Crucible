@@ -12,6 +12,7 @@ interface Props {
   nFilter?: number
   xAxis?: 'n' | 'k'
   thresholdMarkers?: ThresholdMarker[]
+  annotateMaxGap?: boolean
 }
 
 export async function TimeVsN({
@@ -24,6 +25,7 @@ export async function TimeVsN({
   nFilter,
   xAxis = 'n',
   thresholdMarkers,
+  annotateMaxGap = false,
 }: Props) {
   if (xAxis === 'k' && nFilter == null) {
     console.warn(`TimeVsN: xAxis="k" requires nFilter for slug="${slug}". Rendering NoData.`)
@@ -60,6 +62,7 @@ export async function TimeVsN({
         kFilter={kFilter}
         xAxis={xAxis}
         thresholdMarkers={thresholdMarkers}
+        annotateMaxGap={annotateMaxGap}
       />
     )
   } catch {

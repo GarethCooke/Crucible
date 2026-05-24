@@ -9,6 +9,7 @@ import {
   appendGrid, appendLegendLines,
   setupSVG, appendXAxis, appendYAxis, appendXLabel, appendYLabel,
 } from './d3helpers'
+import { capitalize, uniqueSortedNs } from '@/lib/format'
 import { useChartEffect } from '@/hooks/useChartEffect'
 import { ChartZoom } from './ChartZoom'
 import { ChartShell } from './ChartShell'
@@ -30,6 +31,8 @@ interface Props {
   kFilter?: number | 'all'
   xAxis?: 'n' | 'k'
   thresholdMarkers?: ThresholdMarker[]
+  /** Annotate the largest sorted/unsorted gap (demo 1 only). Default false. */
+  annotateMaxGap?: boolean
 }
 
 // Dash patterns keyed by K value. K=1 is solid.
@@ -41,15 +44,15 @@ const K_DASH: Record<number, string> = {
   16: '12,4',
 }
 
-export function TimeVsNChart({ runs, stat = 'median', title, yAxisLabel, kFilter, xAxis = 'n', thresholdMarkers }: Props) {
+export function TimeVsNChart({ runs, stat = 'median', title, yAxisLabel, kFilter, xAxis = 'n', thresholdMarkers, annotateMaxGap = false }: Props) {
   const ref = useChartEffect((el) => {
     if (runs.length === 0) return
     if (xAxis === 'k') {
       renderKAxis(el, runs, stat, title, yAxisLabel)
     } else {
-      renderNAxis(el, runs, stat, title, yAxisLabel, kFilter, thresholdMarkers)
+      renderNAxis(el, runs, stat, title, yAxisLabel, kFilter, thresholdMarkers, annotateMaxGap)
     }
-  }, [runs, stat, title, yAxisLabel, kFilter, xAxis, thresholdMarkers])
+  }, [runs, stat, title, yAxisLabel, kFilter, xAxis, thresholdMarkers, annotateMaxGap])
 
   return (
     <ChartZoom>
@@ -68,6 +71,7 @@ function renderNAxis(
   yAxisLabel?: string,
   kFilter?: number | 'all',
   thresholdMarkers?: ThresholdMarker[],
+  annotateMaxGap = false,
 ) {
   const groupByK = kFilter === 'all'
   const H = 320
@@ -76,7 +80,7 @@ function renderNAxis(
   const margin = { top: 32, right: groupByK ? 160 : 112, bottom: 56, left: 72 }
   const { svg, g, inner, colors } = setupSVG(el, W, H, margin, title ?? DEFAULT_TITLE)
 
-  const ns = Array.from(new Set(runs.map((r) => r.n))).sort((a, b) => a - b)
+  const ns = uniqueSortedNs(runs)
   const nsPerElem = (r: TimeVsNRun) => r.ns_per_op[stat] ?? r.ns_per_op.median
 
   const x = scaleLog().domain([ns[0], ns[ns.length - 1]]).range([0, inner.w])
@@ -170,40 +174,41 @@ function renderNAxis(
       .attr('opacity', 0.9)
   })
 
-  // Annotate the largest gap between sorted/unsorted variants (demo 1 feature).
-  const sorted   = runs.filter((r) => r.variant === 'sorted')
-  const unsorted = runs.filter((r) => r.variant === 'unsorted')
-  if (sorted.length > 0 && unsorted.length > 0) {
-    let maxRatio = 0, maxN = 0
-    ns.slice(1).forEach((n) => {
-      const s = sorted.find((r) => r.n === n)
-      const u = unsorted.find((r) => r.n === n)
-      if (s && u) {
-        const ratio = nsPerElem(u) / nsPerElem(s)
-        if (ratio > maxRatio) { maxRatio = ratio; maxN = n }
+  if (annotateMaxGap) {
+    const sorted   = runs.filter((r) => r.variant === 'sorted')
+    const unsorted = runs.filter((r) => r.variant === 'unsorted')
+    if (sorted.length > 0 && unsorted.length > 0) {
+      let maxRatio = 0, maxN = 0
+      ns.slice(1).forEach((n) => {
+        const s = sorted.find((r) => r.n === n)
+        const u = unsorted.find((r) => r.n === n)
+        if (s && u) {
+          const ratio = nsPerElem(u) / nsPerElem(s)
+          if (ratio > maxRatio) { maxRatio = ratio; maxN = n }
+        }
+      })
+      if (maxN > 0) {
+        const sx = x(maxN)
+        const sRun = sorted.find((r) => r.n === maxN)!
+        const uRun = unsorted.find((r) => r.n === maxN)!
+        const sy = y(nsPerElem(sRun))
+        const uy = y(nsPerElem(uRun))
+        const midY = (sy + uy) / 2
+
+        g.append('line')
+          .attr('x1', sx + 8).attr('x2', sx + 8)
+          .attr('y1', sy).attr('y2', uy)
+          .attr('stroke', colors.textMuted)
+          .attr('stroke-width', 1)
+          .attr('stroke-dasharray', '2,2')
+
+        g.append('text')
+          .attr('x', sx + 12)
+          .attr('y', midY + 4)
+          .attr('font-size', typography.annotationSize)
+          .attr('fill', colors.textMuted)
+          .text(`${maxRatio.toFixed(1)}×`)
       }
-    })
-    if (maxN > 0) {
-      const sx = x(maxN)
-      const sRun = sorted.find((r) => r.n === maxN)!
-      const uRun = unsorted.find((r) => r.n === maxN)!
-      const sy = y(nsPerElem(sRun))
-      const uy = y(nsPerElem(uRun))
-      const midY = (sy + uy) / 2
-
-      g.append('line')
-        .attr('x1', sx + 8).attr('x2', sx + 8)
-        .attr('y1', sy).attr('y2', uy)
-        .attr('stroke', colors.textMuted)
-        .attr('stroke-width', 1)
-        .attr('stroke-dasharray', '2,2')
-
-      g.append('text')
-        .attr('x', sx + 12)
-        .attr('y', midY + 4)
-        .attr('font-size', typography.annotationSize)
-        .attr('fill', colors.textMuted)
-        .text(`${maxRatio.toFixed(1)}×`)
     }
   }
 
@@ -226,7 +231,7 @@ function renderNAxis(
   const legendItems = seriesList.map(({ variant, k }) => ({
     label: k != null
       ? `${variant} (K=${k})`
-      : (variant.charAt(0).toUpperCase() + variant.slice(1)),
+      : capitalize(variant),
     color: variantColor(variant),
     dash: k != null ? (K_DASH[k] ?? 'none') : 'none',
   }))
@@ -294,7 +299,7 @@ function renderKAxis(
   appendYLabel(svg, yAxisLabel ?? `${stat} ns / element`, -(margin.top + inner.h / 2), 14, colors, typography.captionSize)
 
   appendLegendLines(svg, variants.map((v) => ({
-    label: v.charAt(0).toUpperCase() + v.slice(1),
+    label: capitalize(v),
     color: variantColor(v),
   })), { x: margin.left + inner.w + 8, y: margin.top, spacing: 20 }, { textSecondary: colors.textSecondary })
 }

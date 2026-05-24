@@ -95,7 +95,7 @@ export default async function PostPage({ params }: { params: { slug: string } })
         </div>
       </div>
 
-      <header className="mb-12 fu">
+      <header className="mb-12">
         <p className="font-mono text-xs uppercase tracking-widest mb-3" style={{ color: 'var(--cyan)' }}>
           {data.date ?? ''}
         </p>
@@ -112,7 +112,7 @@ export default async function PostPage({ params }: { params: { slug: string } })
         )}
       </header>
 
-      <div className="prose fu1">
+      <div className="prose">
         <MDXRemote
           source={content}
           components={components}
