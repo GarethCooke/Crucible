@@ -4,6 +4,13 @@ date: "2026-05-24"
 summary: "Scanning a 128 B option-quote struct across the Zen 2 cache hierarchy. The AoS-vs-SoA gap is 7× when one field per element is hot and vanishes when every field is — and the SIMD win lands largest where memory bandwidth is smallest."
 ---
 
+A trading-shop hot path scanning a wide struct across a working-set sweep:
+the layout question is where this post lives. The folklore answer is SoA
+wins when you touch few fields, AoS wins when you touch many, with a
+crossover somewhere in between. There's no crossover. There's a cliff at
+the L3 boundary, and SIMD inverts the usual intuition about where
+vectorisation pays.
+
 ## The setup
 
 A trading shop's hot path is rarely "do something to every field of every quote." It's "scan a million quotes for the one field that matters right now." Filter by symbol. Re-mark by `mid`. Recompute Greeks across the chain. Compress a snapshot for the wire. Each pass touches a small subset of fields, scans a lot of objects, and lives or dies on memory bandwidth.
@@ -12,22 +19,20 @@ Array-of-structs vs struct-of-arrays is the layout decision under all of this. T
 
 So when does the layout actually matter, and by how much?
 
-Going in, I expected a crossover: AoS wins when you touch most fields per element (no transposition overhead, cache lines used to the brim), SoA wins when you touch few (no wasted bandwidth on fields you skip), with a useful "it depends" turning point somewhere in the middle of `K`.
-
-The data has no crossover. What it has instead is more interesting.
+A reasonable prior on this is a crossover: AoS wins when you touch most fields per element, SoA wins when you touch few, with a turning point somewhere in the middle of `K`. The data has no crossover. The mechanism is different.
 
 ## The thesis
 
 Two things are happening on a Zen 2 core scanning a 128 B struct:
 
 1. **Bandwidth amplification.** When the inner loop touches one 8 B field per element, AoS pays for the full 64 B cache line and uses 8 B of it. SoA pays for the 8 B and skips the rest. That's an ~8× difference in bytes-from-memory per useful byte. It shows up as ~7× in wall time, and it doesn't move with anything else you do at the layout level.
-2. **A cache cliff, not a staircase.** The "cache hierarchy" on this machine is binary in practice: things either fit in L3 or they don't. Crossing the L3 boundary at AoS K=1 multiplies cost by 4×. Crossing the L2 boundary on the way in costs ~15% and is barely visible. The intermediate tiers don't earn a step.
+2. **A cache cliff, not a staircase.** The "cache hierarchy" on this machine is binary in practice: things either fit in L3 or they don't. Crossing the L3 boundary at AoS K=1 multiplies cost by 4×. Crossing the L2 boundary on the way out costs ~15% (the L2-floor 1.31 → L3-plateau 1.48 step) and is barely visible against the cliff that follows.
 
 The result is a layout decision that lives at the L3 boundary. Below L3, layout doesn't matter much — the cache absorbs the bandwidth waste. Above L3, layout is the difference between an L3-resident scan and a DRAM-bound one, and you pay the cliff in full.
 
 SIMD is its own twist on top — discussed in §[SIMD](#simd-escapes-compute-not-memory) — and inverts the usual intuition about where vectorisation pays.
 
-## The benchmark
+## The setup
 
 `bench/demos/06-aos-vs-soa/` sweeps three variants across two axes:
 
@@ -58,9 +63,9 @@ The variants:
 
 Each call computes a real reduction (an accumulating XOR of bit-cast fields) so the optimiser can't drop the load. The reduction is cheap enough not to dominate the timing at any working-set size; it's there to keep the loop honest. Each cell is ≥5 outer repetitions, median of `ns_per_op` reported. `iterations` and `items_measured` are recorded in the JSON.
 
-Working-set sweep N ∈ \{1k, 4k, 8k, 16k, 32k, 65k, 131k, 262k, 524k, 1 048 576\} elements (so 128 B × N covers 128 KB through 128 MB — L1 through deep DRAM). `K` ∈ \{1, 2, 4, 8, 16\}. Three variants. 150 cells; 135 of them retained after dropping the warm-up cells the harness emits but doesn't keep.
+Working-set sweep N ∈ \{4k, 8k, 16k, 32k, 65k, 131k, 262k, 524k, 1 048 576\} elements (so 128 B × N covers 512 KB through 128 MB — the L2 boundary through deep DRAM). `K` ∈ \{1, 2, 4, 8, 16\}. Three variants. 135 cells total.
 
-The reference machine, the headless capture rules, and the methodology details (shielded core, governor `performance`, turbo off, `cset` reset, ≥5 reps median) are unchanged from [demos 1–5](/methodology). One known gap: `l1d_misses_per_op` is null in this capture — `perf_capture.sh` doesn't subscribe to `l1d.replacement` on this kernel. The L1D story below leans on the LLC and instructions-per-cycle counters, which are populated everywhere.
+The reference machine, headless boot, core isolation, and statistical reporting (median `ns_per_op` across 5 outer repetitions per cell) follow the conventions documented at [Methodology](/methodology). One known gap: `l1d_misses_per_op` is null in this capture — `perf_capture.sh` doesn't subscribe to `l1d.replacement` on this kernel. The L1D story below leans on the LLC and instructions-per-cycle counters, which are populated everywhere.
 
 ## The headline picture: a cliff, not a staircase
 
@@ -81,12 +86,12 @@ The shape:
 | --------------------------- | ---------- | ------------------------------------------- |
 | N = 4 096 (≈ 512 KB, L2)    | 1.31       | L2-resident floor                           |
 | N = 8 192 → 65 536 (L3)     | 1.48–1.51  | L3 plateau, near-flat across the whole tier |
-| N = 131 072 (16 MB, L3 lip) | 3.72       | Mid-cliff — L3 boundary minus a margin      |
+| N = 131 072 (16 MB, L3 capacity) | 3.41       | L3 boundary, mid-cliff                      |
 | N = 1 048 576 (128 MB)      | 5.37       | DRAM-bound                                  |
 
-L2-resident floor 1.31 → DRAM band 5.37 = **4.11× cliff**. There is no visible step between L1 (the smallest working sets) and L2, and no visible step within L3. The chart looks like a flat low region, a near-vertical cliff at the L3 boundary, and a noisy DRAM band on the right.
+L2-resident floor 1.31 → DRAM band 5.37 = **4.11× cliff**. There is no visible step within L3 — the eight-point plateau from N=8 K to N=65 K is near-flat. The chart looks like a flat low region, a near-vertical cliff at the L3 boundary, and a noisy DRAM band on the right. (The L1→L2 transition isn't measured; the smallest working set in the sweep, N=4 096, already fills L2.)
 
-The DRAM band is non-monotonic — N = 262 144 lands at 4.17 ns, N = 524 288 at 3.99 ns, N = 1 048 576 at 5.37 ns. The IQR/median spread is well under 1% at each point, so it's a real signal, not measurement noise. The most likely cause is a TLB / transparent-huge-page / DRAM bank-parallelism interaction: at certain working-set sizes the page table fits in the L1 TLB, at others it spills; transparent-huge-page promotion is probabilistic at this scale. None of that changes the cliff. The chart should be read as "above L3 capacity, AoS-K=1 costs 4–5.5 ns/element with some microarchitectural variation," not as a clean rising line.
+The DRAM band is non-monotonic — N = 262 144 lands at 4.17 ns, N = 524 288 at 3.99 ns, N = 1 048 576 at 5.37 ns. IQR/median is at most 1.7% at any of the three points — well below the ~25% swings between adjacent points, so the shape is a real signal rather than measurement noise. The most likely cause is a TLB / transparent-huge-page / DRAM bank-parallelism interaction: at certain working-set sizes the page table fits in the L1 TLB, at others it spills; transparent-huge-page promotion is probabilistic at this scale. None of that changes the cliff. The chart should be read as "above L3 capacity, AoS-K=1 costs 4–5.5 ns/element with some microarchitectural variation," not as a clean rising line.
 
 Then the same trace for SoA, K=1:
 
@@ -103,7 +108,7 @@ SoA at K=1 doesn't see the cliff. At N = 1 048 576 the working set for one field
 
 > **AoS K=1 / SoA K=1, N = 1 048 576: 6.98×**
 
-This is the headline result and it survives every sanity check the calibration ran. Predicted by the bytes-touched ratio (64/8 = 8×), observed at 7×. The two-point gap between model and measurement is real — it's a combination of partial cache-line utilisation by SoA (the column at K=1 still loads 64 B lines, just with 8 useful bytes each, same as AoS) and AoS-side prefetcher behaviour rescuing some of the wasted bandwidth. It does not change the conclusion.
+Predicted by the bytes-touched ratio (64/8 = 8×), observed at 7×. The two-point gap between model and measurement is real — it's a combination of partial cache-line utilisation by SoA (the column at K=1 still loads 64 B lines, just with 8 useful bytes each, same as AoS) and AoS-side prefetcher behaviour rescuing some of the wasted bandwidth. It does not change the conclusion.
 
 ## Bandwidth amplification, properly stated
 
@@ -140,7 +145,7 @@ The K sweep at N = 1 048 576:
 | --- | ----------- | ----------- | --------- | ------------------- |
 | 1   | 5.37        | 0.77        | **6.98×** | 8.00×               |
 | 2   | (cliff)     | (sub-L3)    | 3.37×     | 4.00×               |
-| 4   | (cliff)     | (cliff)     | 1.36×     | 2.00×               |
+| 4   | (cliff)     | (cliff)     | 1.31×     | 2.00×               |
 | 8   | 6.49        | 6.30        | 1.03×     | 1.00×               |
 | 16  | 12.63       | 12.62       | 1.00×     | 1.00×               |
 
@@ -184,7 +189,7 @@ This is the section worth taking seriously. The post's claims are bounded.
 - **Random access.** Every measurement above is a sequential scan. Random access on this workload would change every number — the prefetcher would lose, the TLB miss rate would explode, AoS's "wasted" bandwidth would matter less because random AoS and random SoA both read full lines and use what they touch. That's a different demo.
 - **Hand-tuned SIMD with intrinsics.** The `soa-autovec` variant is what GCC 13 chose; it isn't what a careful intrinsic-and-FMA implementation would do. [Demo 3](/posts/03-simd-blackscholes) shows the gap between autovec and hand-tuned on a compute-bound kernel — it's substantial.
 - **Mixed read/write workloads.** The reduction here is read-only. Write-heavy passes (mark-to-market, snapshot serialisation) introduce store-buffer and write-combining behaviour the loads-only timing doesn't capture.
-- **Multi-thread / cross-CCX.** Single thread, pinned to core 4, CCX 1, 16 MB L3 to itself. The cross-CCX picture is in [demo 4](/posts/04-spsc-queue)'s notes and is a different shape — once the L3 is contended, the cliff moves.
+- **Multi-thread / cross-CCX.** Single thread, pinned to core 4, CCX1, 16 MB L3 to itself. The cross-CCX picture is in [demo 5](/posts/05-allocators)'s side note — the Infinity-Fabric round-trip changes which working sets are bandwidth-bound in the first place.
 - **L1D miss counters.** This capture's `perf_capture.sh` doesn't subscribe to `l1d.replacement`, so the L1D row in the JSON is null. The cache-tier story above relies on LLC misses (populated everywhere) and on the qualitative L1 → L2 transition being too small to be visible in `ns_per_op`. The L1D counter would have made the smallest of the three transitions checkable. It isn't in this capture.
 - **The 128 B struct.** Wider struct ⇒ steeper bandwidth-amplification curve; narrower struct ⇒ shallower. The qualitative story (cliff at L3, gap closes by K = struct-width / 8) is robust; the specific 7× number is not portable to a 64 B struct.
 
@@ -203,4 +208,8 @@ Where this connects: [demo 1](/posts/01-branch-prediction) established what the 
 
 ---
 
-_All numbers from [`site/src/data/perf/06-aos-vs-soa.json`](https://github.com/your-handle/crucible/blob/main/site/src/data/perf/06-aos-vs-soa.json). Capture: AMD Ryzen 7 3800X (Zen 2, SMT off), headless Ubuntu 24.04, `sudo cset shield --reset` before run, governor `performance`, BIOS Core Performance Boost off, ≥5 outer repetitions, median `ns_per_op` reported. Reproduce via `bench/demos/06-aos-vs-soa/README.md`._
+*AMD Ryzen 7 3800X, Zen 2 (SMT off), 3.9 GHz base, governor = performance, turbo disabled (BIOS Core Performance Boost off), cores 0–7 isolated, single thread pinned to core 4 (CCX1), headless Ubuntu 24.04. GCC 13.3, -O3 -march=znver2 -fno-tree-vectorize. 5 outer repetitions per cell, median ns_per_op reported (scan-throughput convention).*
+
+*Source: [`bench/demos/06-aos-vs-soa/`](https://github.com/GarethCooke/Crucible/tree/master/bench/demos/06-aos-vs-soa) · [JSON](https://github.com/GarethCooke/Crucible/blob/master/site/src/data/perf/06-aos-vs-soa.json).*
+
+*[Methodology →](/methodology)*

@@ -258,9 +258,8 @@ can't keep pace with the producer long before the lock-free consumer reaches its
 
 ---
 
-_Percentile values shown in charts above are computed from raw histograms in the corresponding JSON entries: log₂-subbucket-16 binning, bucket-midpoint percentile convention. Top-bucket counts and TSC drift across all 30 runs were zero. See [Methodology](/methodology) for the rdtscp calibration path._
+_Percentile values shown in charts above are computed from raw histograms in the corresponding JSON entries: log₂-subbucket-16 binning, bucket-midpoint percentile convention. Top-bucket counts and TSC drift across all 5 runs were zero. See [Methodology](/methodology) for the rdtscp calibration path._
 
-*AMD Ryzen 7 3800X (Zen 2), producer core 4 + consumer core 5 (same CCX1),
-governor = performance, Turbo Boost off, SMT off (BIOS), GCC 13.3, -O3 -march=native.*
+*AMD Ryzen 7 3800X, Zen 2 (SMT off), 3.9 GHz base, governor = performance, turbo disabled (BIOS Core Performance Boost off), cores 0–7 isolated. Producer core 4 + consumer core 5 (same CCX1). Headless Ubuntu 24.04. GCC 13.3, -O3 -march=native. 5 outer runs × 1M timed samples per run, percentiles from merged histograms (tail-latency-distribution convention).*
 
 *[Methodology →](/methodology)*
