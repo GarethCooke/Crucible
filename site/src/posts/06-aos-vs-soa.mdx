@@ -1,315 +1,206 @@
 ---
-title: "AoS vs SoA: bandwidth amplification across the cache hierarchy"
-date: "2026-05-23"
-summary: "For a sequential analytical scan over a wide struct, SoA wins at every field-count tested — and the margin scales almost linearly with how many fields you skip. One analytic model, three numbers to verify it."
+title: "AoS vs SoA: bandwidth amplification, not a crossover"
+date: "2026-05-24"
+excerpt: "Scanning a 128 B option-quote struct across the Zen 2 cache hierarchy. The AoS-vs-SoA gap is 7× when one field per element is hot and vanishes when every field is — and the SIMD win lands largest where memory bandwidth is smallest."
 ---
 
-An option-chain scanner walks millions of rows, picking off a handful of fields
-per row — mid, IV, delta, maybe size. The layout question is whether to store
-the chain as an array of fat option records (AoS) or as parallel column arrays
-(SoA). The conventional wisdom is "SoA wins." This post asks: by how much, and
-why, and at what field count does it stop mattering?
+## The setup
 
-The answer is an analytic model that predicts the AoS/SoA ratio from cache-line
-geometry — and the reference machine data fits it to within 75–86%.
+A trading shop's hot path is rarely "do something to every field of every quote." It's "scan a million quotes for the one field that matters right now." Filter by symbol. Re-mark by `mid`. Recompute Greeks across the chain. Compress a snapshot for the wire. Each pass touches a small subset of fields, scans a lot of objects, and lives or dies on memory bandwidth.
 
-## Two observations from the data
+Array-of-structs vs struct-of-arrays is the layout decision under all of this. The folklore answer is that SoA is the modern, SIMD-friendly choice and AoS is what you do when you don't know any better — except real codebases stay AoS because the struct is also written, copied, serialised, and logged, and AoS keeps "an Order" or "a Quote" as one contiguous thing the rest of the program can reason about.
 
-**1. The bandwidth-amplification model.** A 128 B / 16-field record with 8-byte
-fields loads one 64 B cache line per record under AoS — but uses only `K × 8`
-bytes of that line, where K is the number of fields the inner loop actually
-touches. The wasted fraction is `1 - (K × 8) / 64 = 1 - K/8`. In ratio terms,
-AoS pays a bandwidth amplification of:
+So when does the layout actually matter, and by how much?
 
-$$\text{AoS/SoA ratio} \approx \frac{64}{K \times 8} = \frac{8}{K}$$
+Going in, I expected a crossover: AoS wins when you touch most fields per element (no transposition overhead, cache lines used to the brim), SoA wins when you touch few (no wasted bandwidth on fields you skip), with a useful "it depends" turning point somewhere in the middle of `K`.
 
-SoA pays one cache line per _eight_ records at K = 1, so the model predicts an
-8× advantage for SoA. The reference machine observes 6.79× — 85% of the
-idealised prediction. At K = 2 the model predicts 4×, the data shows 3.46×
-(86%). At K = 4: model 2×, data 1.52× (76%). The model is the right
-zeroth-order theory; the ~20% gap is SoA's per-cache-line transfer overhead,
-which the model assumes is zero but in practice is not.
+The data has no crossover. What it has instead is more interesting.
 
-**2. The cache hierarchy is binary for streaming scans, not a staircase.** Zen 2's
-L1 stride prefetcher handles a perfectly-sequential scan with zero effort, hiding
-the L1→L2 and L2→L3 transitions completely. The data for `aos-scalar` at K = 1
-shows roughly the same per-element cost — about 1.6 ns — across four orders of
-magnitude in working set (from L1-resident through full L3). Then, at the L3→DRAM
-boundary, latency jumps to about 5.2 ns: a **3.35× cliff** with no intermediate
-plateaus.
+## The thesis
 
-The textbook staircase — L1 slow, L2 slower, L3 slower still, DRAM slowest —
-does not appear. What appears is a binary: cache or not cache.
+Two things are happening on a Zen 2 core scanning a 128 B struct:
 
-## Setup
+1. **Bandwidth amplification.** When the inner loop touches one 8 B field per element, AoS pays for the full 64 B cache line and uses 8 B of it. SoA pays for the 8 B and skips the rest. That's an ~8× difference in bytes-from-memory per useful byte. It shows up as ~7× in wall time, and it doesn't move with anything else you do at the layout level.
+2. **A cache cliff, not a staircase.** The "cache hierarchy" on this machine is binary in practice: things either fit in L3 or they don't. Crossing the L3 boundary at AoS K=1 multiplies cost by 4×. Crossing the L2 boundary on the way in costs ~15% and is barely visible. The intermediate tiers don't earn a step.
 
-### The struct
+The result is a layout decision that lives at the L3 boundary. Below L3, layout doesn't matter much — the cache absorbs the bandwidth waste. Above L3, layout is the difference between an L3-resident scan and a DRAM-bound one, and you pay the cliff in full.
 
-A fixed 128 B record, exactly two cache lines, with 16 `double` fields:
+SIMD is its own twist on top — discussed in §[SIMD](#simd-escapes-compute-not-memory) — and inverts the usual intuition about where vectorisation pays.
+
+## The benchmark
+
+`bench/demos/06-aos-vs-soa/` sweeps three variants across two axes:
 
 ```cpp
-struct alignas(64) RecordAoS {
-    double f0,  f1,  f2,  f3;
-    double f4,  f5,  f6,  f7;
-    double f8,  f9,  f10, f11;
-    double f12, f13, f14, f15;
+struct alignas(64) Quote {
+    int64_t timestamp_ns;   // field 0  — hot in tick replay
+    int64_t symbol_id;      // field 1
+    double  bid_px, ask_px; // fields 2, 3
+    int64_t bid_sz, ask_sz; // fields 4, 5
+    double  last_px;        // field 6
+    int64_t last_sz;        // field 7
+    int64_t seq;            // field 8
+    int64_t venue_id;       // field 9
+    double  mid_px;         // field 10
+    int64_t flags;          // field 11
+    char    pad[24];        // pad to 128 B
 };
-static_assert(sizeof(RecordAoS) == 128);
-static_assert(alignof(RecordAoS) == 64);
+static_assert(sizeof(Quote) == 128, "Quote must span exactly two cache lines");
 ```
 
-128 B is the smallest size at which a contiguous-prefix scan of fewer than half
-the fields can leave bytes on the table: a 64 B struct fills one cache line at
-any K ≥ 1, so there is no bandwidth waste to measure. `double` rather than
-`int64_t` so that the auto-vectorised SoA path emits AVX2 `vaddpd`, mirroring
-the SIMD framing in [Demo 3](/posts/03-simd-blackscholes).
+Twelve named fields, two 64 B cache lines per element, sequential access. The hot-field count `K` is a benchmark parameter from 1 to 16 — when `K > 12` the inner loop loops back to field 0; what matters for the comparison is the byte-budget the loop touches per element, not the field semantics.
 
-SoA is sixteen separately-allocated, 64-byte-aligned `double` arrays — one per
-field. Sixteen separate allocations rather than one partitioned block so that
-any TLB pressure at large N is honestly captured.
+The variants:
 
-### The kernel
+- **`aos-scalar`** — `std::vector<Quote>`, inner loop reads `K` fields per element. Compiled `-O3 -march=znver2 -fno-tree-vectorize`. This is the layout the rest of the program sees.
+- **`soa-scalar`** — `std::array<std::vector<…>, 12>`, one tightly packed array per field. Same outer loop, same reduction. Same `-fno-tree-vectorize` flag.
+- **`soa-autovec`** — identical source to `soa-scalar` minus the `-fno-tree-vectorize`. The GCC 13 autovectoriser turns the inner loops into AVX2 (Zen 2 ISA). The point of this variant isn't "look, SIMD is faster"; it's the question §[SIMD](#simd-escapes-compute-not-memory) answers.
 
-A sum-reduction across the first K fields of N records:
+Each call computes a real reduction (an accumulating XOR of bit-cast fields) so the optimiser can't drop the load. The reduction is cheap enough not to dominate the timing at any working-set size; it's there to keep the loop honest. Each cell is ≥5 outer repetitions, median of `ns_per_op` reported. `iterations` and `items_measured` are recorded in the JSON.
 
-```cpp
-// AoS — touches first K fields of each record
-double scan_aos(const RecordAoS* records, size_t n, int k) {
-    double sum = 0.0;
-    for (size_t i = 0; i < n; ++i) {
-        const double* fields = &records[i].f0;
-        for (int j = 0; j < k; ++j)
-            sum += fields[j];
-    }
-    return sum;
-}
+Working-set sweep N ∈ {1k, 4k, 8k, 16k, 32k, 65k, 131k, 262k, 524k, 1 048 576} elements (so 128 B × N covers 128 KB through 128 MB — L1 through deep DRAM). `K` ∈ {1, 2, 4, 8, 16}. Three variants. 150 cells; 135 of them retained after dropping the warm-up cells the harness emits but doesn't keep.
 
-// SoA — scans K full columns
-double scan_soa_scalar(const RecordSoA& s, size_t n, int k) {
-    double sum = 0.0;
-    const double* cols[16] = { s.f0.data, s.f1.data, /* ... */ };
-    for (int j = 0; j < k; ++j) {
-        const double* col = cols[j];
-        for (size_t i = 0; i < n; ++i)
-            sum += col[i];
-    }
-    return sum;
-}
-```
+The reference machine, the headless capture rules, and the methodology details (shielded core, governor `performance`, turbo off, `cset` reset, ≥5 reps median) are unchanged from [demos 1–5](/methodology). One known gap: `l1d_misses_per_op` is null in this capture — `perf_capture.sh` doesn't subscribe to `l1d.replacement` on this kernel. The L1D story below leans on the LLC and instructions-per-cycle counters, which are populated everywhere.
 
-Access pattern: **sequential, contiguous-prefix** — K fields drawn from
-`{f0, f1, ..., f(K-1)}` in order. This is not "any K-of-16 fields"; a strided
-or non-contiguous selection would encounter different TLB and prefetch behaviour
-and is out of scope. K is a runtime parameter, not a compile-time specialisation.
+## The headline picture: a cliff, not a staircase
 
-### Three variants
+The cleanest view of the headline is AoS at K=1 across N. One field per element, one struct layout, scan from L1-resident to deep-DRAM:
 
-| Variant | What it measures |
-|---------|------------------|
-| `aos-scalar` | AoS bandwidth penalty. Strided 128 B access defeats auto-vectorisation. |
-| `soa-scalar` | SoA bandwidth advantage, isolating layout from SIMD: `no-tree-vectorize` applied at the function level. |
-| `soa-autovec` | SoA bandwidth + SIMD: compiler emits AVX2 `vaddpd ymm` over the column loop. |
-
-Codegen verified with `--verify-codegen` (objdump check):
-`scan_soa_scalar` must contain no `ymm` packed-double ops; `scan_soa_autovec`
-must contain `vaddpd ymm`.
-
-## The headline: AoS at K = 1 across the cache hierarchy
-
-<Benchmark
+<TimeVsN
   slug="06-aos-vs-soa"
-  chart="time-vs-n"
   variants={["aos-scalar"]}
-  k={1}
-  stat="median"
-  yAxisLabel="ns / element (log scale)"
-  xAxisLabel="Working-set elements (log scale)"
-  title="AoS scalar, K=1: per-element scan time across the cache hierarchy"
+  kFilter={1}
+  yAxisLabel="ns per element"
+  thresholdMarkers={["L2", "L3"]}
+  title="AoS scalar, K=1 — one field per element, across the working set"
 />
 
-What to see: the line is essentially flat from N = 4 096 (L2-resident, 512 KB)
-through N = 65 536 (L3-resident, 8 MB) — about 1.6 ns/element throughout. Then
-it cliffs at N = 262 144 (DRAM-bound, 32 MB). By N = 1 048 576 (128 MB), the
-cost is about 5.2 ns/element — a **3.35×** jump with no intermediate step.
+The shape:
 
-The missing staircase is the prefetcher's work. Zen 2's hardware prefetcher
-detects the perfectly-sequential 128 B stride in a handful of elements and
-issues prefetches ahead of the access stream. From the CPU's perspective, L1, L2,
-and L3 look the same: the next cache line arrives before it is needed. Only when
-the working set no longer fits in the last-level cache does the prefetcher lose
-— it can prefetch into L3 but cannot prefetch from DRAM fast enough to keep up.
-The binary cliff is the point where DRAM bandwidth becomes the binding constraint.
+| Working set                 | ns/element | Notes                                       |
+| --------------------------- | ---------- | ------------------------------------------- |
+| N = 4 096 (≈ 512 KB, L2)    | 1.31       | L2-resident floor                           |
+| N = 8 192 → 65 536 (L3)     | 1.48–1.51  | L3 plateau, near-flat across the whole tier |
+| N = 131 072 (16 MB, L3 lip) | 3.72       | Mid-cliff — L3 boundary minus a margin      |
+| N = 1 048 576 (128 MB)      | 5.37       | DRAM-bound                                  |
 
-For reference, [Demo 1](/posts/01-branch-prediction) covers the same
-cache-hierarchy staircase from the branch-prediction angle; the same hardware
-underlies both effects.
+L2-resident floor 1.31 → DRAM band 5.37 = **4.11× cliff**. There is no visible step between L1 (the smallest working sets) and L2, and no visible step within L3. The chart looks like a flat low region, a near-vertical cliff at the L3 boundary, and a noisy DRAM band on the right.
 
-## The bandwidth-amplification model
+The DRAM band is non-monotonic — N = 262 144 lands at 4.17 ns, N = 524 288 at 3.99 ns, N = 1 048 576 at 5.37 ns. The IQR/median spread is well under 1% at each point, so it's a real signal, not measurement noise. The most likely cause is a TLB / transparent-huge-page / DRAM bank-parallelism interaction: at certain working-set sizes the page table fits in the L1 TLB, at others it spills; transparent-huge-page promotion is probabilistic at this scale. None of that changes the cliff. The chart should be read as "above L3 capacity, AoS-K=1 costs 4–5.5 ns/element with some microarchitectural variation," not as a clean rising line.
 
-At N = 1 048 576 (DRAM-bound), the AoS/SoA scalar ratio across K:
+Then the same trace for SoA, K=1:
 
-<Benchmark
+<TimeVsN
   slug="06-aos-vs-soa"
-  chart="throughput-bars"
+  variants={["soa-scalar"]}
+  kFilter={1}
+  yAxisLabel="ns per element"
+  thresholdMarkers={["L2", "L3"]}
+  title="SoA scalar, K=1 — same one field, contiguous"
+/>
+
+SoA at K=1 doesn't see the cliff. At N = 1 048 576 the working set for one field is 8 MB — half the L3 capacity per CCX. The scan never reaches DRAM. SoA K=1 at the largest N lands at **0.77 ns/element**, against AoS's 5.37 ns. The ratio at the headline working set:
+
+> **AoS K=1 / SoA K=1, N = 1 048 576: 6.98×**
+
+This is the headline result and it survives every sanity check the calibration ran. Predicted by the bytes-touched ratio (64/8 = 8×), observed at 7×. The two-point gap between model and measurement is real — it's a combination of partial cache-line utilisation by SoA (the column at K=1 still loads 64 B lines, just with 8 useful bytes each, same as AoS) and AoS-side prefetcher behaviour rescuing some of the wasted bandwidth. It does not change the conclusion.
+
+## Bandwidth amplification, properly stated
+
+The temptation is to call this "AoS wastes bandwidth." That framing is right in spirit and wrong in mechanism. Both layouts read whole 64 B cache lines from DRAM. The difference isn't that one wastes lines and the other doesn't; it's _which working sets are DRAM-bound in the first place_.
+
+At K=1, N = 1 048 576:
+
+- AoS touches 128 MB of struct memory. L3 is 16 MB per CCX. The scan is DRAM-bound. LLC misses: **~0.23 per element**.
+- SoA touches 8 MB of one field's array. L3 is 16 MB per CCX. The scan is L3-resident. LLC misses: **~0.0022 per element**.
+
+That's a ~100× ratio in LLC misses against a ~7× ratio in wall time. The two numbers tell a more complete story than either alone:
+
+> SoA's win at K=1 isn't "less wasted bandwidth at the same memory tier." It's _moving the workload up a tier._ AoS at K=1 is a DRAM-bound problem; SoA at K=1 is an L3-bound one. The 7× wall-clock gap is the bandwidth ratio between those two tiers, attenuated by the AoS prefetcher being more effective than nothing.
+
+This is the framing that matters for the engineering decision. If your hot scan touches a small subset of fields and the working set is large enough to push AoS into DRAM, SoA doesn't just save bandwidth on a hot tier — it changes which tier you're on.
+
+## What happens when you actually use the fields
+
+Run the same comparison with `K` walked from 1 to 16, at the headline DRAM-bound N:
+
+<TimeVsN
+  slug="06-aos-vs-soa"
   variants={["aos-scalar", "soa-scalar"]}
-  targetN={1048576}
-  groupBy="k"
-  stat="median"
-  title="AoS/SoA ratio at DRAM-bound N=1M, by K (lower is better for AoS)"
+  kFilter="all"
+  nFilter={1048576}
+  xAxis="k"
+  yAxisLabel="ns per element"
+  title="AoS vs SoA at N=1M across K — the gap closes as you touch more fields"
 />
 
-Observed vs model:
+The K sweep at N = 1 048 576:
 
-| K  | Model `8/K` | Observed ratio | Observed / model |
-|----|-------------|----------------|------------------|
-| 1  | 8.0×        | 6.79×          | 0.85             |
-| 2  | 4.0×        | 3.46×          | 0.86             |
-| 4  | 2.0×        | 1.52×          | 0.76             |
-| 8  | 1.0×        | 1.03×          | 1.03             |
-| 16 | 1.0×        | 1.00×          | 1.00             |
+| K   | AoS ns/elem | SoA ns/elem | AoS / SoA | Bytes-touched model |
+| --- | ----------- | ----------- | --------- | ------------------- |
+| 1   | 5.37        | 0.77        | **6.98×** | 8.00×               |
+| 2   | (cliff)     | (sub-L3)    | 3.37×     | 4.00×               |
+| 4   | (cliff)     | (cliff)     | 1.36×     | 2.00×               |
+| 8   | 6.49        | 6.30        | 1.03×     | 1.00×               |
+| 16  | 12.63       | 12.62       | 1.00×     | 1.00×               |
 
-The model explains the shape: at K = 1, AoS pulls a full 64 B cache line per
-record but uses 8 of those bytes; SoA pulls the same 64 B cache line but it
-covers _eight_ records' worth of field f0. The per-record bandwidth cost ratio
-is therefore `64 / 8 = 8×`. The observed 6.79× is 85% of this — the difference
-is that SoA's cache-line transfer is not truly free (the model assumes SoA pays
-only for the bytes it touches, but DRAM responds with full 64 B transfers
-regardless of access width). The ~20% discount is consistent and stable across
-the K ≤ 4 regime, confirming the model is the right shape with a known offset.
+(The K=2 and K=4 rows: SoA crosses the L3 boundary somewhere between K=2 and K=4 at this N — that's why its column also enters the cliff. AoS is past the cliff from K=1; SoA falls off it as the number of arrays it streams grows.)
 
-As K grows, the AoS penalty falls: at K = 4 it uses 32 of 64 B per cache line
-(half utilisation), so the model predicts 2×. The observed 1.52× is 76% of the
-prediction — the same qualitative pattern. At K = 8 the first cache line per
-record is fully used and the model predicts parity.
+By K=8 the gap is a hairline; by K=16 the two layouts are indistinguishable. Both are streaming every byte of every cache line, both are DRAM-bound, neither benefits from being SoA. The bytes-touched model predicts the trend and slightly overstates the gap — the measured ratios sit a notch below the model column because the AoS prefetcher reduces the effective bandwidth penalty.
 
-## The K = 8 parity point
+The headline finding is **not** "use SoA." The headline finding is _layout matters at K=1 and converges to not-mattering by K=8_. The decision criterion for a real codebase is: how many fields per element does the hot pass actually use?
 
-The demo's most precise observation is at K = 8. The first cache line of a
-128 B record holds fields `f0..f7` — exactly 64 B. When K = 8, the AoS scan
-uses every byte of the first cache line and fetches nothing wasted _in the first
-line_. The model predicts AoS and SoA will tie.
+## SIMD escapes compute, not memory
 
-The reference machine says: AoS 0.816 ns/element, SoA 0.795 ns/element — AoS
-pays a **3% bandwidth tax** even at this "fully utilised" parity point. The
-mechanism: Zen 2's prefetcher, detecting a stride-128 access pattern, prefetches
-ahead — which means it also pulls the _second_ 64 B half of each 128 B record.
-The K = 8 loop never touches fields `f8..f15`, but the prefetcher doesn't know
-that. The second cache line arrives in L3 and is evicted unused. SoA has no
-such second-line cost; its column stride is 8 B and it never touches data from
-outside the K columns.
+The third variant — SoA with autovectorisation enabled — answers a question the K sweep raises. If SoA at K=16 is bandwidth-saturated, what does vectorising the inner loop buy you?
 
-The saturation at K = 8 is not a perfect tie, but it is within measurement
-noise for practical purposes. The model says K = 8 is the right answer to "how
-many fields before AoS stops being penalised"; the data says "K = 8 minus a
-small prefetch-overhead residual."
-
-At K = 16, both layouts use two full cache lines per record (AoS) or two
-records' worth of all 16 columns (SoA), and they converge to within 0.1%
-(0.796 vs 0.795 ns/element). The bandwidth-amplification regime ends at K = 8.
-
-## Stacking SIMD on top
-
-<Benchmark
+<ThroughputBars
   slug="06-aos-vs-soa"
-  chart="throughput-bars"
-  variants={["aos-scalar", "soa-scalar", "soa-autovec"]}
+  variants={["soa-scalar", "soa-autovec"]}
   targetN={1048576}
-  targetK={1}
-  stat="median"
-  title="Layout + SIMD at K=1, N=1M — three variants (higher ops/s is better)"
+  kFilter={[1, 16]}
+  title="SoA scalar vs autovec at N=1M — K=1 (left) and K=16 (right)"
 />
 
-At K = 1 and N = 1 048 576: `aos-scalar` and `soa-scalar` show the 6.79×
-bandwidth advantage already discussed. `soa-autovec` adds the SIMD win on top
-of that: the column loop over contiguous `double` values is exactly what AVX2
-`vaddpd ymm` is for, and the compiler emits it without hints. The verified
-codegen shows `vmovapd ymm` / `vaddpd ymm` in `scan_soa_autovec`.
+At N = 1 048 576:
 
-The SIMD win compounds with the layout win because AoS can never get the same
-benefit: strided 128 B access is incompatible with packed-double SIMD. The
-scatter/gather path would work but adds overhead that eliminates the SIMD
-benefit. SoA's column layout is the prerequisite, not a nice-to-have.
+- **K = 16, DRAM-saturated**: SoA scalar 12.62 ns/element; SoA autovec 5.01 ns. Speedup **2.52×**.
+- **K = 1, L3-resident**: SoA scalar 0.77 ns/element; SoA autovec 0.19 ns. Speedup **3.99×**.
 
-This is the same relationship described in
-[Demo 3](/posts/03-simd-blackscholes): replacing `std::erfc` with a polynomial
-was described there as "the gate." The SoA layout is the gate for SIMD over
-wide structs. The `aos-scalar` / `soa-autovec` ratio is the total achievable
-gain from a full AoS→SoA migration with auto-vectorisation.
+This inverts the intuition that SIMD wins more when the workload is wider. The autovectoriser wins _more_ on the narrower scan.
+
+The mechanism is clean. At K=16 SoA is bandwidth-bound at ~5 ns/element — that's the DRAM-bound floor the L3 cliff established for SoA at this byte budget. SIMD reduces compute, but compute isn't the bottleneck anymore. The vectoriser shaves the loop down to its memory-stall floor and then runs into a wall. At K=1 the workload fits in L3, bandwidth is plentiful, the scalar loop is _compute-bound_, and SIMD wins essentially its full theoretical width-times-FMA factor (~4× here).
+
+The framing line worth pulling out:
+
+> **SIMD escapes compute, not memory.** When the bottleneck is bandwidth, vectorising the inner loop buys you nothing — except, sometimes, the speedup of getting back to the bandwidth floor faster.
+
+There's an obvious next question — what does _hand-tuned_ SSE/AVX2 with FMA do on the same workload? That's the territory of [demo 3](/posts/03-simd-blackscholes), which isolates the compute-bound case on a different kernel and reports a 10× spread between scalar libm and tuned AVX2+FMA. The chain of reasoning between the two posts: demo 3 establishes what SIMD does when compute is the bottleneck; demo 6 establishes when compute is the bottleneck in the first place.
 
 ## What this doesn't show
 
-- **K-of-FIELDS workloads have no layout preference.** At K = 16 (all fields),
-  the layouts converge to within 0.1%. If an inner loop touches every field of
-  every record, there is no bandwidth amplification and no layout preference —
-  the benchmark says so explicitly at K = 16. The bandwidth-amplification model
-  applies only in the K < FIELDS regime.
-- **Random or strided access patterns.** The thesis is for sequential,
-  contiguous-prefix field selection. The DRAM cliff and the missing staircase are
-  both prefetcher-mediated for this access pattern; a random-access workload would
-  have no L3-resident plateau because there is no stride to prefetch against, and
-  the cliff-vs-staircase distinction would not appear. That is a different demo.
-- **Compressed columnar formats, hand-SIMD, or NUMA.** The benchmark stops at
-  what the compiler emits under `-O3 -march=native`. Explicit SIMD intrinsics,
-  AVX-512 (on supported hardware), Arrow/Parquet columnar layouts, dictionary
-  encoding, or cross-socket NUMA effects are each separate stories.
-- **Prefetch-hint advice.** The prefetcher is on throughout and is the mechanism
-  that explains the missing staircase. The demo does not experiment with
-  `__builtin_prefetch` or MSR-based prefetcher controls.
+This is the section worth taking seriously. The post's claims are bounded.
 
-## Reproducing this
-
-```bash
-git clone <repo>
-cd repo
-cmake -B bench/build -S bench -DCMAKE_BUILD_TYPE=Release
-cmake --build bench/build --target bench_06_aos_vs_soa
-
-# Single cell (no shield required for development)
-taskset -c 4 ./bench/build/demos/06-aos-vs-soa/bench_06_aos_vs_soa \
-    aos-scalar --n 1048576 --k 1 --iterations 5
-
-# Full sweep (requires isolcpus, turbo off, headless boot — see bench README)
-CRUCIBLE_TURBO=off ./bench/scripts/run_one.sh 06-aos-vs-soa
-```
-
-**Preconditions for faithful numbers:**
-
-- **Headless boot.** A desktop session running in the background increases
-  memory-bandwidth noise and reduces the sharpness of the L3/DRAM cliff. A
-  desktop-session run will reproduce the qualitative picture but the quantitative
-  cliff ratio will be smaller.
-- **`sudo cset shield --reset`** before the capture session. A stale cpuset
-  shield from a previous session can pin PID 1 to the wrong CPU set and
-  co-schedule benchmark work with kernel threads. The `run_one.sh` script calls
-  this automatically.
-- `isolcpus=0-7 nohz_full=0-7 rcu_nocbs=0-7` in the GRUB kernel line.
-- Turbo off (`CRUCIBLE_TURBO=off`), governor = `performance`, SMT off (BIOS).
-- Reference machine: AMD Ryzen 7 3800X (Zen 2). Different CPUs have different
-  prefetcher policies — the missing staircase is a Zen 2 finding for this
-  specific access pattern.
-
-*[Methodology →](/methodology)*
+- **Random access.** Every measurement above is a sequential scan. Random access on this workload would change every number — the prefetcher would lose, the TLB miss rate would explode, AoS's "wasted" bandwidth would matter less because random AoS and random SoA both read full lines and use what they touch. That's a different demo.
+- **Hand-tuned SIMD with intrinsics.** The `soa-autovec` variant is what GCC 13 chose; it isn't what a careful intrinsic-and-FMA implementation would do. [Demo 3](/posts/03-simd-blackscholes) shows the gap between autovec and hand-tuned on a compute-bound kernel — it's substantial.
+- **Mixed read/write workloads.** The reduction here is read-only. Write-heavy passes (mark-to-market, snapshot serialisation) introduce store-buffer and write-combining behaviour the loads-only timing doesn't capture.
+- **Multi-thread / cross-CCX.** Single thread, pinned to core 4, CCX 1, 16 MB L3 to itself. The cross-CCX picture is in [demo 4](/posts/04-spsc-queue)'s notes and is a different shape — once the L3 is contended, the cliff moves.
+- **L1D miss counters.** This capture's `perf_capture.sh` doesn't subscribe to `l1d.replacement`, so the L1D row in the JSON is null. The cache-tier story above relies on LLC misses (populated everywhere) and on the qualitative L1 → L2 transition being too small to be visible in `ns_per_op`. The L1D counter would have made the smallest of the three transitions checkable. It isn't in this capture.
+- **The 128 B struct.** Wider struct ⇒ steeper bandwidth-amplification curve; narrower struct ⇒ shallower. The qualitative story (cliff at L3, gap closes by K = struct-width / 8) is robust; the specific 7× number is not portable to a 64 B struct.
 
 ## Takeaway
 
-For sequential analytical scans over wide structs, SoA wins at every K tested,
-and the margin follows one analytic formula: `64 / (K × 8)`. At K = 1 it's
-6.79× (model: 8×). At K = 2 it's 3.46× (model: 4×). At K = 8 the layouts
-converge. At K = 16 they are indistinguishable.
+For a trading-shop pipeline scanning a chain of quotes or orders:
 
-The cache hierarchy does not add a staircase on top of this — the stride
-prefetcher hides the L1/L2/L3 transitions completely for a streaming scan,
-leaving one sharp cliff at the L3→DRAM boundary. The cliff is 3.35×.
+1. **AoS is fine when your hot pass touches most of the fields per element.** By K = 8 on a 128 B struct, layout is invisible.
+2. **SoA matters when your hot pass touches one or two fields and the working set is large enough to push AoS past L3.** "Large enough" on this machine is somewhere between 128 KB and 16 MB of struct memory. Below 128 KB even AoS at K=1 fits in L1 and the layout question evaporates.
+3. **The cache hierarchy on Zen 2 is binary in practice, not a staircase.** L1, L2, and L3 plateaus aren't distinguishable in scan timing for this workload; what matters is L3 capacity. Plan for "fits in L3" or "doesn't."
+4. **SIMD is a compute optimisation, not a memory one.** If your hot loop is bandwidth-bound, vectorising won't save you. Find the bandwidth-bound boundary first; vectorise on the right side of it.
 
-Two implications: first, if an inner loop touches fewer than half the fields of
-a record in a hot scan, SoA has a measurable bandwidth advantage proportional to
-the untouched fraction. Second, SoA is the prerequisite for auto-vectorisation
-of the scan, stacking a further SIMD win on top. Both effects compound.
+The right layout in real code is rarely a layout decision in isolation — it's a derivative of which fields your hot path touches. The benchmark above is one way to make "hot path" empirical instead of intuitive.
+
+Where this connects: [demo 1](/posts/01-branch-prediction) established what the cache hierarchy looks like on this CPU; this post fills in the layout response to it. [Demo 3](/posts/03-simd-blackscholes) takes over from §[SIMD](#simd-escapes-compute-not-memory) for the compute-bound side of the SIMD question.
 
 ---
 
-*AMD Ryzen 7 3800X, Zen 2, governor = performance, turbo disabled, SMT off,
-headless boot, benchmark thread pinned to core 4 (CCX1),
-`isolcpus=0-7 nohz_full=0-7 rcu_nocbs=0-7`, GCC 13.x `-O3 -march=native`.*
-*`scan_soa_scalar` compiled with `__attribute__((optimize("no-tree-vectorize")))`.
-Codegen verified with `--verify-codegen` (objdump check).*
+_All numbers from [`site/src/data/perf/06-aos-vs-soa.json`](https://github.com/your-handle/crucible/blob/main/site/src/data/perf/06-aos-vs-soa.json). Capture: AMD Ryzen 7 3800X (Zen 2, SMT off), headless Ubuntu 24.04, `sudo cset shield --reset` before run, governor `performance`, BIOS Core Performance Boost off, ≥5 outer repetitions, median `ns_per_op` reported. Reproduce via `bench/demos/06-aos-vs-soa/README.md`._
