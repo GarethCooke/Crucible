@@ -11,7 +11,7 @@ crossover somewhere in between. There's no crossover. There's a cliff at
 the L3 boundary, and SIMD inverts the usual intuition about where
 vectorisation pays.
 
-## The setup
+## The hot path
 
 A trading shop's hot path is rarely "do something to every field of every quote." It's "scan a million quotes for the one field that matters right now." Filter by symbol. Re-mark by `mid`. Recompute Greeks across the chain. Compress a snapshot for the wire. Each pass touches a small subset of fields, scans a lot of objects, and lives or dies on memory bandwidth.
 
@@ -26,7 +26,7 @@ A reasonable prior on this is a crossover: AoS wins when you touch most fields p
 Two things are happening on a Zen 2 core scanning a 128 B struct:
 
 1. **Bandwidth amplification.** When the inner loop touches one 8 B field per element, AoS pays for the full 64 B cache line and uses 8 B of it. SoA pays for the 8 B and skips the rest. That's an ~8× difference in bytes-from-memory per useful byte. It shows up as ~7× in wall time, and it doesn't move with anything else you do at the layout level.
-2. **A cache cliff, not a staircase.** The "cache hierarchy" on this machine is binary in practice: things either fit in L3 or they don't. Crossing the L3 boundary at AoS K=1 multiplies cost by 4×. Crossing the L2 boundary on the way out costs ~15% (the L2-floor 1.31 → L3-plateau 1.48 step) and is barely visible against the cliff that follows.
+2. **A cache cliff, not a staircase.** The "cache hierarchy" on this machine is binary in practice: things either fit in L3 or they don't. Crossing the L3 boundary at AoS K=1 multiplies cost by 4× (the L2-floor 1.31 → DRAM band 5.37 step). Crossing the L2 boundary on the way out costs ~15% (the L2-floor 1.31 → L3-plateau 1.48 step) and is barely visible against the cliff that follows.
 
 The result is a layout decision that lives at the L3 boundary. Below L3, layout doesn't matter much — the cache absorbs the bandwidth waste. Above L3, layout is the difference between an L3-resident scan and a DRAM-bound one, and you pay the cliff in full.
 
@@ -91,7 +91,7 @@ The shape:
 
 L2-resident floor 1.31 → DRAM band 5.37 = **4.11× cliff**. There is no visible step within L3 — the eight-point plateau from N=8 K to N=65 K is near-flat. The chart looks like a flat low region, a near-vertical cliff at the L3 boundary, and a noisy DRAM band on the right. (The L1→L2 transition isn't measured; the smallest working set in the sweep, N=4 096, already fills L2.)
 
-The DRAM band is non-monotonic — N = 262 144 lands at 4.17 ns, N = 524 288 at 3.99 ns, N = 1 048 576 at 5.37 ns. IQR/median is at most 1.7% at any of the three points — well below the ~25% swings between adjacent points, so the shape is a real signal rather than measurement noise. The most likely cause is a TLB / transparent-huge-page / DRAM bank-parallelism interaction: at certain working-set sizes the page table fits in the L1 TLB, at others it spills; transparent-huge-page promotion is probabilistic at this scale. None of that changes the cliff. The chart should be read as "above L3 capacity, AoS-K=1 costs 4–5.5 ns/element with some microarchitectural variation," not as a clean rising line.
+The DRAM band is non-monotonic — N = 262 144 lands at 4.17 ns, N = 524 288 at 3.99 ns, N = 1 048 576 at 5.37 ns. IQR/median is at most 1.7% at any of the three points — well below the swings of up to 35% between adjacent points, so the shape is a real signal rather than measurement noise. The most likely cause is a TLB / transparent-huge-page / DRAM bank-parallelism interaction: at certain working-set sizes the page table fits in the L1 TLB, at others it spills; transparent-huge-page promotion is probabilistic at this scale. None of that changes the cliff. The chart should be read as "above L3 capacity, AoS-K=1 costs 4–5.5 ns/element with some microarchitectural variation," not as a clean rising line.
 
 Then the same trace for SoA, K=1:
 
@@ -208,7 +208,7 @@ Where this connects: [demo 1](/posts/01-branch-prediction) established what the 
 
 ---
 
-*AMD Ryzen 7 3800X, Zen 2 (SMT off), 3.9 GHz base, governor = performance, turbo disabled (BIOS Core Performance Boost off), cores 0–7 isolated, single thread pinned to core 4 (CCX1), headless Ubuntu 24.04. GCC 13.3, -O3 -march=znver2 -fno-tree-vectorize. 5 outer repetitions per cell, median ns_per_op reported (scan-throughput convention).*
+*AMD Ryzen 7 3800X, Zen 2 (SMT off), 3.9 GHz base, governor = performance, turbo disabled (BIOS Core Performance Boost off), cores 0–7 isolated (core 0 carries unavoidable kernel housekeeping), single thread pinned to core 4 (CCX1), headless Ubuntu 24.04. GCC 13.3, -O3 -march=znver2 -fno-tree-vectorize. 5 outer repetitions per cell, median ns_per_op reported (scan-throughput convention).*
 
 *Source: [`bench/demos/06-aos-vs-soa/`](https://github.com/GarethCooke/Crucible/tree/master/bench/demos/06-aos-vs-soa) · [JSON](https://github.com/GarethCooke/Crucible/blob/master/site/src/data/perf/06-aos-vs-soa.json).*
 
