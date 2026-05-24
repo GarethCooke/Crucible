@@ -4,6 +4,8 @@ import path from 'path'
 import matter from 'gray-matter'
 import { MDXRemote } from 'next-mdx-remote/rsc'
 import rehypePrettyCode from 'rehype-pretty-code'
+import rehypeSlug from 'rehype-slug'
+import rehypeAutolinkHeadings from 'rehype-autolink-headings'
 import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
@@ -12,10 +14,12 @@ import { CodeCompare } from '@/components/CodeCompare'
 import { Benchmark } from '@/components/Benchmark'
 import { InProgressNotice } from '@/components/InProgressNotice'
 import { PressureSweep } from '@/components/charts/PressureSweep'
+import { TimeVsN } from '@/components/charts/TimeVsN'
+import { ThroughputBars } from '@/components/charts/ThroughputBars'
 import { getAllPosts } from '@/lib/posts'
 import { SYNTAX_THEME } from '@/lib/syntax'
 
-const components = { CodeCompare, Benchmark, InProgressNotice, PressureSweep }
+const components = { CodeCompare, Benchmark, InProgressNotice, PressureSweep, TimeVsN, ThroughputBars }
 
 const POSTS_DIR = path.join(process.cwd(), 'src/posts')
 
@@ -93,7 +97,7 @@ export default async function PostPage({ params }: { params: { slug: string } })
         </div>
       </div>
 
-      <header className="mb-12 fu">
+      <header className="mb-12">
         <p className="font-mono text-xs uppercase tracking-widest mb-3" style={{ color: 'var(--cyan)' }}>
           {data.date ?? ''}
         </p>
@@ -110,7 +114,7 @@ export default async function PostPage({ params }: { params: { slug: string } })
         )}
       </header>
 
-      <div className="prose fu1">
+      <div className="prose">
         <MDXRemote
           source={content}
           components={components}
@@ -118,6 +122,19 @@ export default async function PostPage({ params }: { params: { slug: string } })
             mdxOptions: {
               remarkPlugins: [remarkGfm, remarkMath],
               rehypePlugins: [
+                rehypeSlug,
+                [
+                  rehypeAutolinkHeadings,
+                  {
+                    behavior: 'append',
+                    properties: {
+                      className: 'heading-anchor',
+                      ariaHidden: true,
+                      tabIndex: -1,
+                    },
+                    content: { type: 'text', value: '#' },
+                  },
+                ],
                 rehypeKatex,
                 [
                   rehypePrettyCode,

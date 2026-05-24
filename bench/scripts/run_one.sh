@@ -309,6 +309,78 @@ if [[ "${SLUG}" == "02-false-sharing" ]]; then
 fi
 # ─────────────────────────────────────────────────────────────────────────────
 
+# ─── Demo 06: AoS vs SoA — (variant, N, K) grid sweep ───────────────────────
+# 3 variants × 9 N values × 5 K values = 135 cells, 5 iterations each.
+# Ordering: outer=variant, middle=N descending, inner=K.
+# Descending N: each warmup walks into a smaller resident set than the previous
+# cell's measurement, avoiding stale-data shortcuts in the warmup phase.
+# cset shield --reset called first to clear any stale shield from a prior run
+# (demo 5 surfaced a PID-1 affinity bug when shield is not reset between sessions).
+if [[ "${SLUG}" == "06-aos-vs-soa" ]]; then
+    AOS_BINARY="${BENCH_ROOT}/build/demos/06-aos-vs-soa/bench_06_aos_vs_soa"
+    VERIFY_BIN="${BENCH_ROOT}/build/demos/06-aos-vs-soa/verify_06_aos_vs_soa"
+
+    if [[ ! -x "${AOS_BINARY}" ]]; then
+        echo "ERROR: binary not found: ${AOS_BINARY}" >&2; exit 1
+    fi
+
+    echo "==> Resetting cset shield (clears stale state from prior session)..."
+    sudo cset shield --reset > /dev/null 2>&1 || true
+
+    echo "==> Running codegen verification..."
+    sudo -E cset shield --cpu=4-7 --kthread=on > /dev/null
+    SHIELD_ACTIVE=1
+    sudo -E cset shield --exec -- "${AOS_BINARY}" aos-scalar --verify-codegen \
+        | grep -v '^cset:'
+    sudo -E cset shield --reset > /dev/null
+    SHIELD_ACTIVE=0
+
+    echo "==> Collecting machine info..."
+    sudo -E cset shield --cpu=4-7 --kthread=on > /dev/null
+    SHIELD_ACTIVE=1
+    MACHINE_JSON=$(sudo -E cset shield --exec -- "${AOS_BINARY}" --machine-info \
+        | grep -v '^cset:' | tr -d '\000-\010\013-\037\177')
+    sudo -E cset shield --reset > /dev/null
+    SHIELD_ACTIVE=0
+
+    WDIR=$(mktemp -d /tmp/crucible_aos_soa_XXXXXX)
+
+    # Working-set points in descending order.
+    NS_DESC=(1048576 524288 262144 131072 65536 32768 16384 8192 4096)
+    KS=(1 2 4 8 16)
+    VARIANTS_06=(aos-scalar soa-scalar soa-autovec)
+
+    TOTAL_CELLS=$(( ${#VARIANTS_06[@]} * ${#NS_DESC[@]} * ${#KS[@]} ))
+    CELL=0
+
+    for VARIANT in "${VARIANTS_06[@]}"; do
+        for N in "${NS_DESC[@]}"; do
+            for K in "${KS[@]}"; do
+                CELL=$(( CELL + 1 ))
+                OUTFILE="${WDIR}/${VARIANT}-n${N}-k${K}.json"
+                echo "==> Cell ${CELL}/${TOTAL_CELLS}: ${VARIANT} N=${N} K=${K}..."
+
+                sudo -E cset shield --cpu=4-7 --kthread=on > /dev/null
+                SHIELD_ACTIVE=1
+                sudo -E cset shield --exec -- taskset -c 4 "${AOS_BINARY}" \
+                    "${VARIANT}" --n "${N}" --k "${K}" --iterations 5 \
+                    | grep -v '^cset:' > "${OUTFILE}"
+                sudo -E cset shield --reset > /dev/null
+                SHIELD_ACTIVE=0
+            done
+        done
+    done
+
+    echo "==> Assembling output JSON..."
+    CAPTURED_AT=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    python3 "${BENCH_ROOT}/scripts/assemble_results_06.py" \
+        "${WDIR}" "${CAPTURED_AT}" "${MACHINE_JSON}" "${OUT_JSON}"
+
+    echo "==> Done: ${OUT_JSON}"
+    exit 0
+fi
+# ─────────────────────────────────────────────────────────────────────────────
+
 if [[ ! -x "${BINARY}" ]]; then
     echo "ERROR: binary not found at ${BINARY}" >&2
     exit 1

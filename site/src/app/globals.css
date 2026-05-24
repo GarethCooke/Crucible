@@ -418,6 +418,27 @@ html.light .prose tbody tr:hover {
   background: oklch(48% 0.15 222 / 0.08);
 }
 
+/* ── Heading permalink anchors ───────────────────────────────────────────── */
+.heading-anchor {
+  margin-left: 0.4em;
+  opacity: 0;
+  text-decoration: none;
+  color: var(--text-muted);
+  font-weight: 400;
+  transition: opacity 150ms ease-out;
+}
+
+h2:hover > .heading-anchor,
+h3:hover > .heading-anchor,
+h4:hover > .heading-anchor,
+.heading-anchor:focus-visible {
+  opacity: 1;
+}
+
+.heading-anchor:hover {
+  color: var(--cyan);
+}
+
 /* ── Animation ────────────────────────────────────────────────────────────── */
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(16px); }

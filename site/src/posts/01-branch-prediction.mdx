@@ -144,13 +144,19 @@ as the pipeline repeatedly flushes and restarts.
 ## The gap across the cache hierarchy
 
 The 6.7× headline is measured at N = 32 M (128 MiB), where both variants are
-DRAM-bound. Looking across all six sizes reveals a more interesting story:
+DRAM-bound. Looking across all six sizes reveals a more interesting story. The
+same L3→DRAM cliff visible here — where memory bandwidth becomes the binding
+constraint — is also the headline picture in [Demo 6](/posts/06-aos-vs-soa),
+which asks the layout question that runs on top of this one: when the inner
+loop only touches a few fields of a wide struct, does the struct layout amplify
+or hide the bandwidth cliff?
 
 <Benchmark
   slug="01-branch-prediction"
   chart="time-vs-n"
   variants={["sorted", "unsorted", "branchless"]}
   stat="median"
+  annotateMaxGap={true}
 />
 
 - **N = 1024 (harness floor)**: both variants land at ~20 ns/element here
@@ -250,11 +256,8 @@ bottleneck, consider removing it rather than feeding it predictable inputs.
 
 ---
 
-_All numbers: median ns/iteration, AMD Ryzen 7 3800X at 3.9 GHz base,
-governor = performance, Turbo Boost off, cores 0–7 isolated, pinned to 4–7,
-GCC 13.3 `-O3 -march=native`._
-_`sum_threshold` compiled with `no-tree-vectorize`, `no-if-conversion`, `no-if-conversion2`
-to preserve the conditional jump. `sum_threshold_branchless` compiled with `no-tree-vectorize`
-to prevent auto-vectorisation (cmov path); both variants do identical scalar arithmetic._
-_Sort cost measured with `PauseTiming()` to exclude the per-iteration copy._
+*AMD Ryzen 7 3800X, Zen 2 (SMT off), 3.9 GHz base, governor = performance, turbo disabled (BIOS Core Performance Boost off), cores 0–7 isolated, pinned to 4–7. Headless Ubuntu 24.04. GCC 13.3, -O3 -march=native. 20 outer repetitions, median reported (throughput convention).*
+
+*`sum_threshold` compiled with `no-tree-vectorize`, `no-if-conversion`, `no-if-conversion2` to preserve the conditional jump. `sum_threshold_branchless` compiled with `no-tree-vectorize` to prevent auto-vectorisation (cmov path); both variants do identical scalar arithmetic. Sort cost measured with `PauseTiming()` to exclude the per-iteration copy.*
+
 *[Methodology →](/methodology)*
