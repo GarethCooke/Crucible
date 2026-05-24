@@ -58,7 +58,7 @@ The variants:
 
 Each call computes a real reduction (an accumulating XOR of bit-cast fields) so the optimiser can't drop the load. The reduction is cheap enough not to dominate the timing at any working-set size; it's there to keep the loop honest. Each cell is ≥5 outer repetitions, median of `ns_per_op` reported. `iterations` and `items_measured` are recorded in the JSON.
 
-Working-set sweep N ∈ {1k, 4k, 8k, 16k, 32k, 65k, 131k, 262k, 524k, 1 048 576} elements (so 128 B × N covers 128 KB through 128 MB — L1 through deep DRAM). `K` ∈ {1, 2, 4, 8, 16}. Three variants. 150 cells; 135 of them retained after dropping the warm-up cells the harness emits but doesn't keep.
+Working-set sweep N ∈ \{1k, 4k, 8k, 16k, 32k, 65k, 131k, 262k, 524k, 1 048 576\} elements (so 128 B × N covers 128 KB through 128 MB — L1 through deep DRAM). `K` ∈ \{1, 2, 4, 8, 16\}. Three variants. 150 cells; 135 of them retained after dropping the warm-up cells the harness emits but doesn't keep.
 
 The reference machine, the headless capture rules, and the methodology details (shielded core, governor `performance`, turbo off, `cset` reset, ≥5 reps median) are unchanged from [demos 1–5](/methodology). One known gap: `l1d_misses_per_op` is null in this capture — `perf_capture.sh` doesn't subscribe to `l1d.replacement` on this kernel. The L1D story below leans on the LLC and instructions-per-cycle counters, which are populated everywhere.
 
@@ -71,7 +71,7 @@ The cleanest view of the headline is AoS at K=1 across N. One field per element,
   variants={["aos-scalar"]}
   kFilter={1}
   yAxisLabel="ns per element"
-  thresholdMarkers={["L2", "L3"]}
+  thresholdMarkers={[{ label: "L2", n: 4096 }, { label: "L3", n: 131072 }]}
   title="AoS scalar, K=1 — one field per element, across the working set"
 />
 
@@ -95,7 +95,7 @@ Then the same trace for SoA, K=1:
   variants={["soa-scalar"]}
   kFilter={1}
   yAxisLabel="ns per element"
-  thresholdMarkers={["L2", "L3"]}
+  thresholdMarkers={[{ label: "L2", n: 65536 }, { label: "L3", n: 2097152 }]}
   title="SoA scalar, K=1 — same one field, contiguous"
 />
 

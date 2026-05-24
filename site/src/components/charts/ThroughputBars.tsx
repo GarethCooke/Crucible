@@ -10,18 +10,23 @@ interface Props {
   runs?: Run[]
   /** Filter runs to those with this placement value. */
   placement?: string
+  /** Filter runs to these variant names. */
+  variants?: string[]
   stat?: 'median' | 'min' | 'p99'
   targetN?: number
   title?: string
+  kFilter?: number | number[]
 }
 
 export async function ThroughputBars({
   slug,
   runs: runsIn,
   placement,
+  variants,
   stat = 'median',
   targetN,
   title,
+  kFilter,
 }: Props) {
   let runs: Run[] = runsIn ?? []
 
@@ -48,12 +53,17 @@ export async function ThroughputBars({
     )
   }
 
+  if (variants) {
+    runs = runs.filter((r) => variants.includes(r.variant))
+  }
+
   return (
     <ThroughputBarsChart
       runs={runs}
       stat={stat as 'median' | 'min' | 'p99'}
       targetN={targetN}
       title={title}
+      kFilter={kFilter}
     />
   )
 }

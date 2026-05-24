@@ -29,6 +29,7 @@ interface NsPerOp {
 export interface LegacyRun {
   variant: string
   n: number
+  k?: number
   ns_per_op: NsPerOp
   ops_per_sec: number
   branch_misses_per_op?: number
@@ -67,17 +68,20 @@ interface Props {
   targetN?: number
   title?: string
   metric?: 'ops_per_sec'
+  kFilter?: number | number[]
 }
 
-export function ThroughputBarsChart({ runs, stat = 'median', targetN, title, metric }: Props) {
+export function ThroughputBarsChart({ runs, stat = 'median', targetN, title, metric, kFilter }: Props) {
   const ref = useChartEffect((el) => {
     if (runs.length === 0) return
     if (isThreadRun(runs[0])) {
       renderGrouped(el, runs as ThreadRun[], stat, title)
+    } else if (Array.isArray(kFilter)) {
+      renderKGrouped(el, runs as LegacyRun[], stat, kFilter, targetN, title)
     } else {
-      renderLegacy(el, runs as LegacyRun[], stat, targetN, title, metric)
+      renderLegacy(el, runs as LegacyRun[], stat, targetN, title, metric, kFilter)
     }
-  }, [runs, stat, targetN, title, metric])
+  }, [runs, stat, targetN, title, metric, kFilter])
 
   return (
     <ChartZoom>
@@ -90,6 +94,7 @@ export function ThroughputBarsChart({ runs, stat = 'median', targetN, title, met
 
 const DEFAULT_TITLE_LEGACY   = 'Throughput comparison bar chart'
 const DEFAULT_TITLE_GROUPED  = 'Throughput by thread count (padded vs unpadded)'
+const DEFAULT_TITLE_K        = 'Throughput comparison by K value'
 
 function fmtOps(v: number): string {
   if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)} M/s`
@@ -111,10 +116,14 @@ function renderLegacy(
   targetN?: number,
   title?: string,
   metric?: 'ops_per_sec',
+  kFilter?: number,
 ) {
   const ns = Array.from(new Set(runs.map((r) => r.n))).sort((a, b) => a - b)
   const n = targetN ?? ns[ns.length - 1]
-  const data = runs.filter((r) => r.n === n)
+  let data = runs.filter((r) => r.n === n)
+  if (typeof kFilter === 'number') {
+    data = data.filter((r) => r.k === kFilter)
+  }
   if (data.length === 0) return
 
   const H = 260
@@ -177,6 +186,93 @@ function renderLegacy(
     .text((d) => `${((d.branch_misses_per_op ?? 0) * 100).toFixed(1)}% miss`)
 
   appendAxesLegacy(g, svg, x, y, inner, H, margin, stat, n, colors, isNarrow, useOps)
+}
+
+// ─── K-grouped renderer (demo 6: bar groups per K value) ──────────────────────
+
+function renderKGrouped(
+  el: SVGSVGElement,
+  runs: LegacyRun[],
+  stat: 'median' | 'min' | 'p99',
+  kFilter: number[],
+  targetN?: number,
+  title?: string,
+) {
+  const ns = Array.from(new Set(runs.map((r) => r.n))).sort((a, b) => a - b)
+  const n = targetN ?? ns[ns.length - 1]
+  const kValues = [...kFilter].sort((a, b) => a - b)
+  const data = runs.filter((r) => r.n === n && kValues.includes(r.k ?? -1))
+  if (data.length === 0) return
+
+  const variants = Array.from(new Set(data.map((r) => r.variant)))
+
+  const H = 280
+  const W = el.clientWidth || 600
+  const margin = { top: 32, right: 96, bottom: 64, left: 72 }
+  const { svg, g, inner, colors } = setupSVG(el, W, H, margin, title ?? DEFAULT_TITLE_K)
+
+  const x0 = scaleBand()
+    .domain(kValues.map((k) => `K=${k}`))
+    .range([0, inner.w])
+    .paddingInner(0.3)
+    .paddingOuter(0.1)
+
+  const x1 = scaleBand()
+    .domain(variants)
+    .range([0, x0.bandwidth()])
+    .padding(0.06)
+
+  const vals = data.map((d) => d.ns_per_op[stat] ?? d.ns_per_op.median)
+  const y = scaleLinear().domain([0, max(vals)! * 1.3]).range([inner.h, 0]).nice()
+
+  appendGrid(g, y, inner, { gridline: colors.border })
+
+  const grouped = group(data, (d) => d.k ?? 0)
+  grouped.forEach((kRuns, k) => {
+    const gx = x0(`K=${k}`)!
+    kRuns.forEach((run) => {
+      const bx = gx + x1(run.variant)!
+      const bw = x1.bandwidth()
+      const nsVal = run.ns_per_op[stat] ?? run.ns_per_op.median
+      const by = y(nsVal)
+      const bh = inner.h - by
+
+      g.append('rect')
+        .attr('x', bx)
+        .attr('y', by)
+        .attr('width', bw)
+        .attr('height', bh)
+        .attr('fill', variantColor(run.variant))
+        .attr('rx', 4)
+        .attr('opacity', 0.9)
+
+      g.append('text')
+        .attr('x', bx + bw / 2)
+        .attr('y', by - 6)
+        .attr('text-anchor', 'middle')
+        .attr('font-size', typography.annotationSize)
+        .attr('fill', colors.textPrimary)
+        .text(`${nsVal.toFixed(2)}`)
+    })
+  })
+
+  appendXAxis(g, inner, colors, axisBottom(x0).tickSize(0), true)
+
+  svg.append('text')
+    .attr('x', margin.left + inner.w / 2)
+    .attr('y', H - 8)
+    .attr('text-anchor', 'middle')
+    .attr('font-size', typography.annotationSize)
+    .attr('fill', colors.textMuted)
+    .attr('font-family', typography.fontMono)
+    .text(`K value  ·  ${stat} ns/element  ·  N = ${n.toLocaleString()}`)
+
+  appendYAxis(g, colors, axisLeft(y).ticks(5).tickFormat((v) => `${v} ns`))
+
+  appendLegendRects(svg, variants.map((v) => ({
+    label: v.charAt(0).toUpperCase() + v.slice(1),
+    color: variantColor(v),
+  })), { x: margin.left + inner.w + 8, y: margin.top }, { textSecondary: colors.textSecondary })
 }
 
 // ─── Grouped renderer (false sharing) ────────────────────────────────────────
