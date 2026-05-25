@@ -23,4 +23,7 @@ if [[ "$smt" != "0" ]]; then
     exit 1
 fi
 
+echo "==> Migrating all running tasks back to the default root cpuset..."
+sudo cset shield --reset > /dev/null 2>&1 || true
+
 echo "==> Environment OK."
