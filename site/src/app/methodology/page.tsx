@@ -119,6 +119,13 @@ export default function MethodologyPage() {
           <span className="ml-4">Ubuntu Server LTS (dual-boot)</span>
         </div>
         <div>
+          <span style={{ color: "var(--text-muted)" }}>Mode</span>{" "}
+          <span className="ml-4">
+            Headless boot — no display server, no graphical desktop. Eliminates
+            compositor and display-server noise from measurements.
+          </span>
+        </div>
+        <div>
           <span style={{ color: "var(--text-muted)" }}>Boot</span>{" "}
           <span className="ml-4">
             isolcpus=0-7 nohz_full=0-7 rcu_nocbs=0-7; benchmarks pin to cores
@@ -200,13 +207,28 @@ export default function MethodologyPage() {
           labelled accordingly in every post.
         </Commitment>
         <Commitment n={4} title="Statistical reporting">
-          Each benchmark runs ≥20 outer repetitions (Google Benchmark{" "}
-          <code>--benchmark_repetitions</code>); aggregates are computed across
-          those repetitions. The SPSC-queue demo (#04) instead captures 5 runs ×
-          1 M timed enqueue→dequeue pairs through a custom latency pipeline,
-          since the tail-latency distribution it reports requires per-sample
-          timing rather than per-repetition aggregates. Every chart states which
-          statistic it shows:
+          Each benchmark uses one of three rep-count conventions, depending on
+          what kind of statistic it reports. Every post&rsquo;s footer states which
+          convention it used.
+          <ul className="mt-2 mb-3 space-y-1 list-disc list-inside">
+            <li>
+              <strong>Throughput / steady-state median</strong> (demos 1, 2, 3):
+              ≥20 outer repetitions (Google Benchmark{" "}
+              <code>--benchmark_repetitions</code>); aggregates computed across
+              those repetitions.
+            </li>
+            <li>
+              <strong>Tail-latency distribution</strong> (demos 4, 5): 5 outer
+              runs × 1 M timed samples per run through a custom latency pipeline;
+              percentiles computed from histograms merged across runs.
+            </li>
+            <li>
+              <strong>Scan-throughput across a working-set sweep</strong> (demo 6):
+              5 outer repetitions per cell; median <code>ns_per_op</code> reported.
+              Sweep coverage (135 cells) substitutes for higher per-cell rep count.
+            </li>
+          </ul>
+          Every chart states which statistic it shows:
           <ul className="mt-2 space-y-1 list-disc list-inside">
             <li>
               <strong>Median</strong> — typical-case latency
@@ -253,6 +275,42 @@ export default function MethodologyPage() {
           </li>
         ))}
       </ul>
+
+      {/* ── Building and reproducing ──────────────────────────────────────── */}
+      <h2
+        id="building-and-reproducing"
+        className="font-sans font-semibold text-sm uppercase tracking-widest mb-4"
+        style={{ color: "var(--text-muted)" }}
+      >
+        Building and reproducing
+      </h2>
+      <p className="text-sm mb-4" style={{ color: "var(--text-secondary)" }}>
+        Each demo lives under <code>bench/demos/&lt;NN-slug&gt;/</code> with its
+        own <code>README.md</code> documenting the harness, inputs, and any
+        demo-specific build flags. Headline captures use the per-demo orchestration
+        script under <code>bench/scripts/</code>.
+      </p>
+      <pre
+        className="rounded-lg p-4 text-sm overflow-x-auto mb-3 font-mono"
+        style={{ background: "var(--bg-card)", color: "var(--text-secondary)" }}
+      >{`git clone https://github.com/GarethCooke/Crucible
+cd Crucible/bench
+cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
+cmake --build build --target bench_<NN>_<slug>
+./bench/scripts/run_one.sh <NN-slug>`}</pre>
+      <p className="text-sm mb-12" style={{ color: "var(--text-secondary)" }}>
+        Source on GitHub:{" "}
+        <a
+          href="https://github.com/GarethCooke/Crucible"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: "var(--cyan)" }}
+        >
+          GarethCooke/Crucible ↗
+        </a>
+        . Each demo&rsquo;s directory has its own README with demo-specific notes;
+        this page covers the conventions that apply across all of them.
+      </p>
 
       {/* ── References ────────────────────────────────────────────────────── */}
       <h2

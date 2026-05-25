@@ -27,3 +27,8 @@ __pycache__/
 *.json.tmp
 perf.data
 perf.data.old
+
+# Calibration pilot build artifacts
+bench/calibration-notes/06-aos-vs-soa-pilot/pilot
+
+shielding

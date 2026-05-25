@@ -32,6 +32,8 @@ interface BenchmarkProps {
   background_pressure_hz?: number
   view?: 'ccdf' | 'pdf'
   markers?: Array<'p50' | 'p99' | 'p99_9'>
+  /** Annotate the largest sorted/unsorted gap on time-vs-n charts (demo 1 only). */
+  annotateMaxGap?: boolean
 }
 
 interface RunRecord {
@@ -107,13 +109,14 @@ export async function Benchmark({
   background_pressure_hz,
   view = 'ccdf',
   markers = ['p50', 'p99', 'p99_9'],
+  annotateMaxGap = false,
 }: BenchmarkProps) {
   // Delegate chart types that have dedicated server components with their own data schemas.
   if (chart === 'counter-overlay') {
     return <CounterOverlay slug={slug} metric={metric as CounterMetric} placement={placement} variants={variants} />
   }
   if (chart === 'time-vs-n') {
-    return <TimeVsN slug={slug} variants={variants} stat={stat} />
+    return <TimeVsN slug={slug} variants={variants} stat={stat} annotateMaxGap={annotateMaxGap} />
   }
 
   const resolvedN = targetN ?? n

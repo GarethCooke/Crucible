@@ -1,5 +1,4 @@
-import { readFile } from 'fs/promises'
-import path from 'path'
+import { loadPerfData } from '@/lib/perf-data'
 import { ThroughputBarsChart, type Run } from './ThroughputBarsChart'
 import { NoData } from './NoData'
 
@@ -10,33 +9,36 @@ interface Props {
   runs?: Run[]
   /** Filter runs to those with this placement value. */
   placement?: string
+  /** Filter runs to these variant names. */
+  variants?: string[]
   stat?: 'median' | 'min' | 'p99'
   targetN?: number
   title?: string
+  kFilter?: number | number[]
 }
 
 export async function ThroughputBars({
   slug,
   runs: runsIn,
   placement,
+  variants,
   stat = 'median',
   targetN,
   title,
+  kFilter,
 }: Props) {
   let runs: Run[] = runsIn ?? []
 
   if (slug) {
-    const filePath = path.join(process.cwd(), 'src/data/perf', `${slug}.json`)
     try {
-      const raw = await readFile(filePath, 'utf-8')
-      const data = JSON.parse(raw) as { title?: string; runs: Run[] }
+      const data = await loadPerfData<{ title?: string; runs: Run[] }>(slug)
       runs = data.runs
       if (!title) title = data.title
     } catch {
       return (
         <NoData>
           No data found for <span>{slug}</span>.
-          Run <code>tools/perf_capture.sh</code> on the reference machine.
+          Run <code>./bench/scripts/run_one.sh {slug}</code> on the reference machine.
         </NoData>
       )
     }
@@ -48,12 +50,17 @@ export async function ThroughputBars({
     )
   }
 
+  if (variants) {
+    runs = runs.filter((r) => variants.includes(r.variant))
+  }
+
   return (
     <ThroughputBarsChart
       runs={runs}
       stat={stat as 'median' | 'min' | 'p99'}
       targetN={targetN}
       title={title}
+      kFilter={kFilter}
     />
   )
 }
