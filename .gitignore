@@ -32,3 +32,5 @@ perf.data.old
 bench/calibration-notes/06-aos-vs-soa-pilot/pilot
 
 shielding
+
+/**/build/
