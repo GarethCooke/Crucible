@@ -1,0 +1,33 @@
+---
+title: "std::flat_map vs hash map: where the crossover actually sits"
+date: "2026-05-25"
+status: "in-progress"
+expectedAt: "July 2026"
+summary: "Five map implementations swept from N=16 to N≈10⁶ on the same machine. Where does the sorted-vector primitive stop beating the hash map? And does the answer depend on the workload mix more than the size?"
+---
+
+<InProgressNotice expectedAt="July 2026" />
+
+## The thesis
+
+Most C++ code reaches for `std::unordered_map` (or, if it's paying attention, `absl::flat_hash_map`) regardless of how many entries the map will hold. For the maps that show up most often in real code — small ones, holding tens to a few hundred entries — that's the wrong default.
+
+When the working set fits in L1, a sorted vector with `std::lower_bound` beats a hash table on cache locality alone. The hash function, the bucket arithmetic, the probe sequence — they're all overhead the sorted vector skips. The interesting question isn't _whether_ the crossover exists; it's _where it sits_ on a real machine, and _how the workload mix moves it_.
+
+## What the post will cover
+
+Five implementations swept from N = 16 to N ≈ 10⁶ on the reference machine, with cache-hierarchy bands (L1, L2, L3, DRAM) drawn on the chart so you can see why the curves bend where they do:
+
+1. `std::map` — red-black tree, included as the worst-case baseline.
+2. `std::vector<std::pair<K, V>> + std::lower_bound` — the sorted-vector primitive.
+3. `std::flat_map` — C++23's sorted-container adaptor.
+4. `std::unordered_map` — the standard hash map most code reaches for.
+5. `absl::flat_hash_map` — open-addressing, the current best-in-class for general use.
+
+The headline chart is the time-per-lookup curve across the N sweep, with the crossover where the hash maps start winning. Supporting views: throughput bars at three discrete N (small / medium / large) that show the ranking inverting across scales, and an insert-mix sweep that shows how the picture shifts as the workload moves from pure-lookup toward insert-heavy.
+
+## What makes the post interesting
+
+The "flat structure beats hash map at small N" result is folklore in C++ perf circles but rarely measured precisely. This post puts a number on it for a specific machine, draws the cache-hierarchy bands so you can see _why_ the crossover is where it is, and shows how far the answer moves when the workload mix changes. The actionable takeaway: if your map has fewer than ~X entries (where X depends on key type, workload mix, and machine), the contiguous primitive is the right default — and we'll publish the X.
+
+Expected to ship in July 2026.
