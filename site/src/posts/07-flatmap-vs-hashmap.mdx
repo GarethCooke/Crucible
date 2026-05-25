@@ -2,11 +2,11 @@
 title: "std::flat_map vs hash map: where the crossover actually sits"
 date: "2026-05-25"
 status: "in-progress"
-expectedAt: "July 2026"
+expectedAt: "June 2026"
 summary: "Five map implementations swept from N=16 to N≈10⁶ on the same machine. Where does the sorted-vector primitive stop beating the hash map? And does the answer depend on the workload mix more than the size?"
 ---
 
-<InProgressNotice expectedAt="July 2026" />
+<InProgressNotice expectedAt="June 2026" />
 
 ## The thesis
 
@@ -30,4 +30,4 @@ The headline chart is the time-per-lookup curve across the N sweep, with the cro
 
 The "flat structure beats hash map at small N" result is folklore in C++ perf circles but rarely measured precisely. This post puts a number on it for a specific machine, draws the cache-hierarchy bands so you can see _why_ the crossover is where it is, and shows how far the answer moves when the workload mix changes. The actionable takeaway: if your map has fewer than ~X entries (where X depends on key type, workload mix, and machine), the contiguous primitive is the right default — and we'll publish the X.
 
-Expected to ship in July 2026.
+Expected to ship in June 2026.
