@@ -381,6 +381,106 @@ if [[ "${SLUG}" == "06-aos-vs-soa" ]]; then
 fi
 # ─────────────────────────────────────────────────────────────────────────────
 
+# ─── Demo 07: No Crossover — (variant, workload, N, modify_pct) grid ─────────
+# Workload A: 5 variants × 14 N values = 70 lookup cells.
+# Workload B: 5 variants × 3 N values × 6 modify_pct values = 90 modify_mix cells.
+# Per-cell: cset shield setup → run 5 reps → cset reset → save JSON to WDIR.
+# Assembles via assemble_results_07.py.
+# Precondition: `sudo cset shield --reset` run by caller before invoking this script.
+if [[ "${SLUG}" == "07-no-crossover" ]]; then
+    NOC_BINARY="${BENCH_ROOT}/build/demos/07-no-crossover/bench_07_no_crossover"
+
+    if [[ ! -x "${NOC_BINARY}" ]]; then
+        echo "ERROR: binary not found: ${NOC_BINARY}" >&2; exit 1
+    fi
+
+    # Optional: --calibrate flag runs calibrate.sh instead of full sweep.
+    if [[ "${2:-}" == "--calibrate" ]]; then
+        exec "${BENCH_ROOT}/demos/07-no-crossover/calibrate.sh"
+    fi
+
+    echo "==> Resetting cset shield (clears stale state from prior session)..."
+    sudo cset shield --reset > /dev/null 2>&1 || true
+
+    echo "==> Collecting machine info..."
+    sudo -E cset shield --cpu=4-7 --kthread=on > /dev/null
+    SHIELD_ACTIVE=1
+    MACHINE_JSON=$(sudo -E cset shield --exec -- "${NOC_BINARY}" --machine-info \
+        | grep -v '^cset:' | tr -d '\000-\010\013-\037\177')
+    sudo -E cset shield --reset > /dev/null
+    SHIELD_ACTIVE=0
+
+    WDIR=$(mktemp -d /tmp/crucible_noc_XXXXXX)
+
+    VARIANTS_07=(std_map sorted_vec boost_flat std_unord absl_flat)
+    LOOKUP_NS=(8 16 32 64 128 256 512 1024 4096 16384 65536 262144 1048576 4194304)
+    MODIFYMIX_NS=(256 4096 65536)
+    MODIFY_PCTS=(0 10 25 50 75 90)
+
+    REPS="${CRUCIBLE_REPS:-5}"
+
+    # ── Workload A: lookup-only ────────────────────────────────────────────────
+    TOTAL_A=$(( ${#VARIANTS_07[@]} * ${#LOOKUP_NS[@]} ))
+    CELL=0
+    echo "==> Workload A: lookup-only (${TOTAL_A} cells, ${REPS} reps each)..."
+    for VARIANT in "${VARIANTS_07[@]}"; do
+        for N in "${LOOKUP_NS[@]}"; do
+            CELL=$(( CELL + 1 ))
+            OUTFILE="${WDIR}/${VARIANT}-lookup-n${N}-pct0.json"
+            echo "    [${CELL}/${TOTAL_A}] ${VARIANT}  N=${N}"
+
+            sudo -E cset shield --cpu=4-7 --kthread=on > /dev/null
+            SHIELD_ACTIVE=1
+            # Exit code 2 = budget skip — not an error; missing file is handled by assembler.
+            sudo -E cset shield --exec -- "${NOC_BINARY}" \
+                "${VARIANT}" lookup --n "${N}" --reps "${REPS}" \
+                | grep -v '^cset:' > "${OUTFILE}" || true
+            sudo -E cset shield --reset > /dev/null
+            SHIELD_ACTIVE=0
+
+            # Remove empty or error files (skip signal exits 2 → stdout is empty).
+            if [[ ! -s "${OUTFILE}" ]]; then
+                rm -f "${OUTFILE}"
+            fi
+        done
+    done
+
+    # ── Workload B: modify-mix ─────────────────────────────────────────────────
+    TOTAL_B=$(( ${#VARIANTS_07[@]} * ${#MODIFYMIX_NS[@]} * ${#MODIFY_PCTS[@]} ))
+    CELL=0
+    echo "==> Workload B: modify-mix (${TOTAL_B} cells, ${REPS} reps each)..."
+    for VARIANT in "${VARIANTS_07[@]}"; do
+        for N in "${MODIFYMIX_NS[@]}"; do
+            for PCT in "${MODIFY_PCTS[@]}"; do
+                CELL=$(( CELL + 1 ))
+                OUTFILE="${WDIR}/${VARIANT}-modify_mix-n${N}-pct${PCT}.json"
+                echo "    [${CELL}/${TOTAL_B}] ${VARIANT}  N=${N}  modify_pct=${PCT}"
+
+                sudo -E cset shield --cpu=4-7 --kthread=on > /dev/null
+                SHIELD_ACTIVE=1
+                sudo -E cset shield --exec -- "${NOC_BINARY}" \
+                    "${VARIANT}" modify_mix --n "${N}" --modify-pct "${PCT}" --reps "${REPS}" \
+                    | grep -v '^cset:' > "${OUTFILE}" || true
+                sudo -E cset shield --reset > /dev/null
+                SHIELD_ACTIVE=0
+
+                if [[ ! -s "${OUTFILE}" ]]; then
+                    rm -f "${OUTFILE}"
+                fi
+            done
+        done
+    done
+
+    echo "==> Assembling output JSON..."
+    CAPTURED_AT=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    python3 "${BENCH_ROOT}/scripts/assemble_results_07.py" \
+        "${WDIR}" "${CAPTURED_AT}" "${MACHINE_JSON}" "${OUT_JSON}"
+
+    echo "==> Done: ${OUT_JSON}"
+    exit 0
+fi
+# ─────────────────────────────────────────────────────────────────────────────
+
 if [[ ! -x "${BINARY}" ]]; then
     echo "ERROR: binary not found at ${BINARY}" >&2
     exit 1

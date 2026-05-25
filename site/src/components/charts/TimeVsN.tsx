@@ -10,9 +10,10 @@ interface Props {
   yAxisLabel?: string
   kFilter?: number | 'all'
   nFilter?: number
-  xAxis?: 'n' | 'k'
+  xAxis?: 'n' | 'k' | 'modify_pct'
   thresholdMarkers?: ThresholdMarker[]
   annotateMaxGap?: boolean
+  workloadFilter?: 'lookup' | 'modify_mix'
 }
 
 export async function TimeVsN({
@@ -26,6 +27,7 @@ export async function TimeVsN({
   xAxis = 'n',
   thresholdMarkers,
   annotateMaxGap = false,
+  workloadFilter,
 }: Props) {
   if (xAxis === 'k' && nFilter == null) {
     console.warn(`TimeVsN: xAxis="k" requires nFilter for slug="${slug}". Rendering NoData.`)
@@ -42,6 +44,10 @@ export async function TimeVsN({
     let runs = variants
       ? data.runs.filter((r) => variants.includes(r.variant))
       : data.runs
+
+    if (workloadFilter) {
+      runs = runs.filter((r) => (r as { workload?: string }).workload === workloadFilter)
+    }
 
     if (typeof kFilter === 'number') {
       runs = runs.filter((r) => r.k === kFilter)
@@ -60,6 +66,7 @@ export async function TimeVsN({
         title={resolvedTitle}
         yAxisLabel={yAxisLabel}
         kFilter={kFilter}
+        nFilter={nFilter}
         xAxis={xAxis}
         thresholdMarkers={thresholdMarkers}
         annotateMaxGap={annotateMaxGap}
