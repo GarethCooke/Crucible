@@ -14,6 +14,8 @@ interface Props {
   thresholdMarkers?: ThresholdMarker[]
   annotateMaxGap?: boolean
   workloadFilter?: 'lookup' | 'modify_mix'
+  variantLabels?: Record<string, string>
+  yAxisLog?: boolean
 }
 
 export async function TimeVsN({
@@ -28,6 +30,8 @@ export async function TimeVsN({
   thresholdMarkers,
   annotateMaxGap = false,
   workloadFilter,
+  variantLabels,
+  yAxisLog = false,
 }: Props) {
   if (xAxis === 'k' && nFilter == null) {
     console.warn(`TimeVsN: xAxis="k" requires nFilter for slug="${slug}". Rendering NoData.`)
@@ -70,6 +74,8 @@ export async function TimeVsN({
         xAxis={xAxis}
         thresholdMarkers={thresholdMarkers}
         annotateMaxGap={annotateMaxGap}
+        variantLabels={variantLabels}
+        yAxisLog={yAxisLog}
       />
     )
   } catch {

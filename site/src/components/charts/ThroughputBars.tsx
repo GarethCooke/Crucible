@@ -9,12 +9,16 @@ interface Props {
   runs?: Run[]
   /** Filter runs to those with this placement value. */
   placement?: string
-  /** Filter runs to these variant names. */
+  /** Filter runs to these variant names (also controls left-to-right ordering). */
   variants?: string[]
   stat?: 'median' | 'min' | 'p99'
   targetN?: number
   title?: string
   kFilter?: number | number[]
+  /** Filter to a specific workload (e.g. "lookup" or "modify_mix"). */
+  workloadFilter?: string
+  /** Display-name overrides: maps JSON variant name → X-axis label. */
+  variantLabels?: Record<string, string>
 }
 
 export async function ThroughputBars({
@@ -26,6 +30,8 @@ export async function ThroughputBars({
   targetN,
   title,
   kFilter,
+  workloadFilter,
+  variantLabels,
 }: Props) {
   let runs: Run[] = runsIn ?? []
 
@@ -44,6 +50,12 @@ export async function ThroughputBars({
     }
   }
 
+  if (workloadFilter) {
+    runs = runs.filter(
+      (r) => (r as { workload?: string }).workload === workloadFilter,
+    )
+  }
+
   if (placement) {
     runs = runs.filter(
       (r) => (r as { placement?: string }).placement === placement,
@@ -52,6 +64,10 @@ export async function ThroughputBars({
 
   if (variants) {
     runs = runs.filter((r) => variants.includes(r.variant))
+    // honour the caller's preferred left-to-right order
+    runs = [...runs].sort(
+      (a, b) => variants.indexOf(a.variant) - variants.indexOf(b.variant),
+    )
   }
 
   return (
@@ -61,6 +77,7 @@ export async function ThroughputBars({
       targetN={targetN}
       title={title}
       kFilter={kFilter}
+      variantLabels={variantLabels}
     />
   )
 }

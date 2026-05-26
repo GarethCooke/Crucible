@@ -223,9 +223,9 @@ export default function MethodologyPage() {
               percentiles computed from histograms merged across runs.
             </li>
             <li>
-              <strong>Scan-throughput across a working-set sweep</strong> (demo 6):
+              <strong>Scan-throughput across a working-set sweep</strong> (demos 6, 7):
               5 outer repetitions per cell; median <code>ns_per_op</code> reported.
-              Sweep coverage (135 cells) substitutes for higher per-cell rep count.
+              Sweep coverage substitutes for higher per-cell rep count.
             </li>
           </ul>
           Every chart states which statistic it shows:

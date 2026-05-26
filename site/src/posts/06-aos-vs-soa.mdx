@@ -77,6 +77,7 @@ The cleanest view of the headline is AoS at K=1 across N. One field per element,
   kFilter={1}
   yAxisLabel="ns per element"
   thresholdMarkers={[{ label: "L2", n: 4096 }, { label: "L3", n: 131072 }]}
+  variantLabels={{ "aos-scalar": "Aos-scalar", "soa-scalar": "Soa-scalar", "soa-autovec": "Soa-autovec" }}
   title="AoS scalar, K=1 — one field per element, across the working set"
 />
 
@@ -101,6 +102,7 @@ Then the same trace for SoA, K=1:
   kFilter={1}
   yAxisLabel="ns per element"
   thresholdMarkers={[{ label: "L2", n: 65536 }, { label: "L3", n: 2097152 }]}
+  variantLabels={{ "aos-scalar": "Aos-scalar", "soa-scalar": "Soa-scalar", "soa-autovec": "Soa-autovec" }}
   title="SoA scalar, K=1 — same one field, contiguous"
 />
 
@@ -136,6 +138,7 @@ Run the same comparison with `K` walked from 1 to 16, at the headline DRAM-bound
   nFilter={1048576}
   xAxis="k"
   yAxisLabel="ns per element"
+  variantLabels={{ "aos-scalar": "Aos-scalar", "soa-scalar": "Soa-scalar", "soa-autovec": "Soa-autovec" }}
   title="AoS vs SoA at N=1M across K — the gap closes as you touch more fields"
 />
 
@@ -204,7 +207,7 @@ For a trading-shop pipeline scanning a chain of quotes or orders:
 
 The right layout in real code is rarely a layout decision in isolation — it's a derivative of which fields your hot path touches. The benchmark above is one way to make "hot path" empirical instead of intuitive.
 
-Where this connects: [demo 1](/posts/01-branch-prediction) established what the cache hierarchy looks like on this CPU; this post fills in the layout response to it. [Demo 3](/posts/03-simd-blackscholes) takes over from §[SIMD](#simd-escapes-compute-not-memory) for the compute-bound side of the SIMD question.
+Where this connects: [demo 1](/posts/01-branch-prediction) established what the cache hierarchy looks like on this CPU; this post fills in the layout response to it. [Demo 3](/posts/03-simd-blackscholes) takes over from §[SIMD](#simd-escapes-compute-not-memory) for the compute-bound side of the SIMD question. The cache-staircase pattern — and the question of whether it creates a "small-N crossover" — repeats with map data structures in [demo 7](/posts/07-flatmap-vs-hashmap).
 
 ---
 

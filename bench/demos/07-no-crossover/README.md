@@ -19,6 +19,22 @@ pilot run-to-run noise on the reference machine.
 | `std_unord` | `std::unordered_map<uint64_t, uint64_t, absl::Hash<…>>` |
 | `absl_flat` | `absl::flat_hash_map<uint64_t, uint64_t>`               |
 
+### `boost::flat_map` substitution for `std::flat_map`
+
+The original design called for `std::flat_map` (added in C++23). The toolchain
+used for this capture — GCC 13.3.0 (Ubuntu 13.3.0-6ubuntu2~24.04.1), libstdc++
+as shipped with GCC 13 on Ubuntu 24.04 — does not provide a usable
+`std::flat_map` implementation; `<flat_map>` is absent from this version of
+libstdc++. `std::flat_map` was not fully implemented in libstdc++ until GCC 14.
+
+`boost::container::flat_map` is a faithful substitute: it uses sorted contiguous
+storage with `lower_bound` for lookup and O(N) insert/erase, the same underlying
+primitive as `std::flat_map`. The lookup curves for `boost_flat` and `sorted_vec`
+track each other to within measurement noise on the headline chart, confirming
+empirically that the substitution does not change the story. If a future
+libstdc++ ships a measurably different `std::flat_map`, a re-run against it would
+be a separate benchmark.
+
 ## Workloads
 
 **Workload A — lookup-only** (chart 1): pre-populate with N random keys; time
