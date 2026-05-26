@@ -1,0 +1,45 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug 07-no-crossover-small",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/bench/build/demos/07-no-crossover/bench_07_no_crossover",
+            "args": ["std_map", "lookup", "--n", "64", "--reps", "1"],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "Debug 07-no-crossover",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/bench/build/demos/07-no-crossover/bench_07_no_crossover",
+            "args": ["boost_flat", "lookup", "--n", "4194304", "--reps", "5"],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+    ]
+}
