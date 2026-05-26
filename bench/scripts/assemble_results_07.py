@@ -131,10 +131,14 @@ def main() -> None:
         print("ERROR: no run data found in cell_dir", file=sys.stderr)
         sys.exit(1)
 
+    miss_problems = [p for p in all_problems if p.startswith("MISS")]
     for p in all_problems:
         print(p, file=sys.stderr)
     if all_problems:
         print(f"\n{len(all_problems)} validation issue(s) above.", file=sys.stderr)
+    if miss_problems:
+        print(f"ERROR: {len(miss_problems)} MISS error(s) — refusing to write output.", file=sys.stderr)
+        sys.exit(1)
 
     expected_lookup   = len(VARIANTS) * len(LOOKUP_NS)
     expected_modify   = len(VARIANTS) * len(MODIFYMIX_NS) * len(MODIFY_PCTS)
@@ -173,7 +177,8 @@ def main() -> None:
 
     print(
         f"Written: {out_path}  ({len(runs)}/{expected_total} cells, "
-        f"{len(all_problems)} validation issue(s), {skipped} skipped)"
+        f"{len(all_problems)} validation issue(s), {skipped} skipped)",
+        file=sys.stderr,
     )
 
 

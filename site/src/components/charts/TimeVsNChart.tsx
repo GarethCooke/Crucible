@@ -291,10 +291,10 @@ function renderModifyPctAxis(
     .x((d) => x(d.modify_pct ?? 0)!)
     .y((d) => y(nsPerElem(d)))
 
+  const nValues = Array.from(new Set(seriesList.map((s) => s.n))).sort((a, b) => a - b)
+
   seriesList.forEach(({ variant, n, runs: sRuns }) => {
     const col = variantColor(variant)
-    // Dash by N when multiple Ns are present; solid when nFilter pins to one N.
-    const nValues = Array.from(new Set(seriesList.map((s) => s.n))).sort((a, b) => a - b)
     const nIdx = nValues.indexOf(n)
     const dash = nValues.length > 1 ? (K_DASH[nIdx + 1] ?? 'none') : 'none'
     const safeKey = `${variant}-${n}`
@@ -329,7 +329,6 @@ function renderModifyPctAxis(
   appendYLabel(svg, yAxisLabel ?? `${stat} ns / op`, -(margin.top + inner.h / 2), 14, colors, typography.captionSize)
 
   const legendItems = seriesList.map(({ variant, n }) => {
-    const nValues = Array.from(new Set(seriesList.map((s) => s.n))).sort((a, b) => a - b)
     const nIdx = nValues.indexOf(n)
     return {
       label: nValues.length > 1

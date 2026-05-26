@@ -14,6 +14,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cassert>
 #include <chrono>
 #include <cstdint>
 #include <cstdio>
@@ -86,6 +87,7 @@ static Val find_one(const M_AbslFlat& m, Key k)  { return m.find(k)->second; }
 static Val find_one(const M_SortedVec& m, Key k) {
     auto it = std::lower_bound(m.begin(), m.end(), k,
         [](const std::pair<Key,Val>& p, Key v){ return p.first < v; });
+    assert(it != m.end() && it->first == k);
     return it->second;
 }
 
@@ -99,6 +101,7 @@ static void erase_one(M_AbslFlat& m, Key k)  { m.erase(k); }
 static void erase_one(M_SortedVec& v, Key k) {
     auto it = std::lower_bound(v.begin(), v.end(), k,
         [](const std::pair<Key,Val>& p, Key x){ return p.first < x; });
+    assert(it != v.end() && it->first == k);
     v.erase(it);
 }
 
@@ -313,12 +316,13 @@ struct NsStats {
 static NsStats compute_stats(std::vector<double> v) {
     NsStats s{};
     s.n_reps = static_cast<int>(v.size());
-    s.median = crucible::median(std::vector<double>(v));
-    s.min    = crucible::minimum(std::vector<double>(v));
-    s.max    = *std::max_element(v.begin(), v.end());
-    s.p99    = crucible::percentile(std::vector<double>(v), 99.0);
-    s.iqr_lo = crucible::percentile(std::vector<double>(v), 25.0);
-    s.iqr_hi = crucible::percentile(std::vector<double>(v), 75.0);
+    std::sort(v.begin(), v.end());
+    s.min    = v.front();
+    s.max    = v.back();
+    s.median = crucible::detail::pct_impl(v, 50.0);
+    s.p99    = crucible::detail::pct_impl(v, 99.0);
+    s.iqr_lo = crucible::detail::pct_impl(v, 25.0);
+    s.iqr_hi = crucible::detail::pct_impl(v, 75.0);
     s.iqr    = s.iqr_hi - s.iqr_lo;
     return s;
 }
@@ -431,11 +435,6 @@ int main(int argc, char* argv[]) {
     }
 
     if (std::string_view(argv[1]) == "--machine-info") {
-        char ts[32] = {};
-        {
-            time_t t = time(nullptr);
-            strftime(ts, sizeof(ts), "%Y-%m-%dT%H:%M:%SZ", gmtime(&t));
-        }
         std::printf("{%s}\n", crucible::machine_info_json().c_str());
         return 0;
     }
@@ -492,9 +491,6 @@ int main(int argc, char* argv[]) {
     }
     if (modify_pct < 0 || modify_pct > 90) {
         std::fprintf(stderr, "ERROR: --modify-pct must be in [0, 90]\n"); return 1;
-    }
-    if (workload == "modify_mix" && modify_pct == 0 && argc > 5) {
-        // modify_pct=0 is valid (lookup-only steady-state); warn if not explicit.
     }
 
     char captured_at[32] = {};
