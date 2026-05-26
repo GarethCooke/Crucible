@@ -47,6 +47,5 @@ add_subdirectory(demos/07-no-crossover)
 
 option(CRUCIBLE_BUILD_PILOTS "Build throwaway pilot benches under bench/pilots/" OFF)
 if(CRUCIBLE_BUILD_PILOTS)
-  add_subdirectory(pilots/07-flatmap-vs-hashmap-stage1)
-  add_subdirectory(pilots/07-flatmap-vs-hashmap-stage2)
+
 endif()
