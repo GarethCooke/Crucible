@@ -11,7 +11,17 @@
 
 set -euo pipefail
 
-SLUG="${1:?Usage: run_one.sh <demo-slug>}"
+SKIP_ENV_CHECKS=0
+PASSTHROUGH_ARGS=()
+for arg in "$@"; do
+    case "$arg" in
+        --skipchecks|---skipchecks) SKIP_ENV_CHECKS=1 ;;
+        *) PASSTHROUGH_ARGS+=("$arg") ;;
+    esac
+done
+set -- "${PASSTHROUGH_ARGS[@]+"${PASSTHROUGH_ARGS[@]}"}"
+
+SLUG="${1:?Usage: run_one.sh <demo-slug> [--skipchecks]}"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 BENCH_ROOT="${REPO_ROOT}/bench"
 OUT_JSON="${REPO_ROOT}/site/src/data/perf/${SLUG}.json"
@@ -56,9 +66,13 @@ if [ -z "${CRUCIBLE_TURBO:-}" ]; then
 fi
 echo "CRUCIBLE_TURBO=$CRUCIBLE_TURBO (verified)" >&2
 
-assert_smt_off
-assert_isolated_cores
-set_governor_performance
+if [[ "${SKIP_ENV_CHECKS}" == "1" ]]; then
+    echo "WARNING: env checks skipped (--skipchecks) — results may be noisy" >&2
+else
+    assert_smt_off
+    assert_isolated_cores
+    set_governor_performance
+fi
 
 echo "==> Building ${SLUG}..."
 cmake -B "${BENCH_ROOT}/build" -S "${BENCH_ROOT}" -DCMAKE_BUILD_TYPE=Release -Wno-dev --log-level=ERROR
