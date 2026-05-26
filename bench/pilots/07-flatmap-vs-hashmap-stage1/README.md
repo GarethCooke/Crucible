@@ -1,1 +1,0 @@
-Throwaway pilot bench — expected lifetime ~1 week. Implements Stage 1 (lookup-only crossover sweep) of the Demo 07 calibration pilot described in `docs/plans/demo-07-plan_1.md` §1 and `docs/briefs/demo-07-stage1-pilot-brief.md`. Delete this directory after `07-flatmap-vs-hashmap-brief.md` is locked in.

@@ -1,3 +1,0 @@
-**Throwaway pilot — delete once `demo-07-plan_1.md` §2 brief lands.**
-
-Stage 2 of the demo-07 insert-mix sensitivity investigation. Sweeps five map implementations (`std::map`, `std::vector<pair>+lower_bound`, `boost::container::flat_map`, `std::unordered_map`, `absl::flat_hash_map`) across three map sizes (N = 256 / 4096 / 65536) and six modify-fraction points (0 / 10 / 25 / 50 / 75 / 90 %), using a steady-state erase+insert workload that holds map size constant. Scope and rationale in `docs/briefs/demo-07-stage2-pilot-brief.md` and `demo-07-plan_1.md` §1. Sibling pilot lives in `bench/pilots/07-flatmap-vs-hashmap-stage1/`.
