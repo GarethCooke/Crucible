@@ -23,6 +23,7 @@
 #include <ctime>
 #include <limits>
 #include <map>
+#include <type_traits>
 #include <random>
 #include <string>
 #include <string_view>
@@ -48,7 +49,10 @@ using M_AbslFlat  = absl::flat_hash_map<Key, Val>;
 
 // ─── Populate ─────────────────────────────────────────────────────────────────
 
-static void populate(M_StdMap& m, const std::vector<Key>& keys, std::size_t n) {
+template<typename M>
+static void populate(M& m, const std::vector<Key>& keys, std::size_t n) {
+    if constexpr (requires { m.reserve(n); })
+        m.reserve(n);
     for (std::size_t i = 0; i < n; ++i)
         m.emplace(keys[i], keys[i] ^ 0xDEADBEEFULL);
 }
@@ -60,29 +64,10 @@ static void populate(M_SortedVec& m, const std::vector<Key>& keys, std::size_t n
     std::sort(m.begin(), m.end(), [](const auto& a, const auto& b){ return a.first < b.first; });
 }
 
-static void populate(M_BoostFlat& m, const std::vector<Key>& keys, std::size_t n) {
-    for (std::size_t i = 0; i < n; ++i)
-        m.emplace(keys[i], keys[i] ^ 0xDEADBEEFULL);
-}
-
-static void populate(M_StdUnord& m, const std::vector<Key>& keys, std::size_t n) {
-    m.reserve(n);
-    for (std::size_t i = 0; i < n; ++i)
-        m.emplace(keys[i], keys[i] ^ 0xDEADBEEFULL);
-}
-
-static void populate(M_AbslFlat& m, const std::vector<Key>& keys, std::size_t n) {
-    m.reserve(n);
-    for (std::size_t i = 0; i < n; ++i)
-        m.emplace(keys[i], keys[i] ^ 0xDEADBEEFULL);
-}
-
 // ─── Find ─────────────────────────────────────────────────────────────────────
 
-static Val find_one(const M_StdMap& m, Key k)    { return m.find(k)->second; }
-static Val find_one(const M_BoostFlat& m, Key k) { return m.find(k)->second; }
-static Val find_one(const M_StdUnord& m, Key k)  { return m.find(k)->second; }
-static Val find_one(const M_AbslFlat& m, Key k)  { return m.find(k)->second; }
+template<typename M>
+static Val find_one(const M& m, Key k) { return m.find(k)->second; }
 
 static Val find_one(const M_SortedVec& m, Key k) {
     auto it = std::lower_bound(m.begin(), m.end(), k,
@@ -93,10 +78,8 @@ static Val find_one(const M_SortedVec& m, Key k) {
 
 // ─── Erase / Insert ───────────────────────────────────────────────────────────
 
-static void erase_one(M_StdMap& m, Key k)    { m.erase(k); }
-static void erase_one(M_BoostFlat& m, Key k) { m.erase(k); }
-static void erase_one(M_StdUnord& m, Key k)  { m.erase(k); }
-static void erase_one(M_AbslFlat& m, Key k)  { m.erase(k); }
+template<typename M>
+static void erase_one(M& m, Key k) { m.erase(k); }
 
 static void erase_one(M_SortedVec& v, Key k) {
     auto it = std::lower_bound(v.begin(), v.end(), k,
@@ -105,10 +88,8 @@ static void erase_one(M_SortedVec& v, Key k) {
     v.erase(it);
 }
 
-static void insert_one(M_StdMap& m, Key k, Val v)    { m.emplace(k, v); }
-static void insert_one(M_BoostFlat& m, Key k, Val v) { m.emplace(k, v); }
-static void insert_one(M_StdUnord& m, Key k, Val v)  { m.emplace(k, v); }
-static void insert_one(M_AbslFlat& m, Key k, Val v)  { m.emplace(k, v); }
+template<typename M>
+static void insert_one(M& m, Key k, Val v) { m.emplace(k, v); }
 
 static void insert_one(M_SortedVec& v, Key k, Val val) {
     auto it = std::lower_bound(v.begin(), v.end(), k,
@@ -393,6 +374,17 @@ static void emit_cell_json(
 
 // ─── Dispatch by variant string ───────────────────────────────────────────────
 
+template <typename Fn>
+static std::vector<double> with_variant(std::string_view variant, Fn&& fn)
+{
+    if (variant == "std_map")    return fn(std::type_identity<M_StdMap>{});
+    if (variant == "sorted_vec") return fn(std::type_identity<M_SortedVec>{});
+    if (variant == "boost_flat") return fn(std::type_identity<M_BoostFlat>{});
+    if (variant == "std_unord")  return fn(std::type_identity<M_StdUnord>{});
+    if (variant == "absl_flat")  return fn(std::type_identity<M_AbslFlat>{});
+    return {};
+}
+
 // Returns per-rep ns/op samples, empty if cell is skipped.
 static std::vector<double> dispatch_lookup(
     std::string_view variant,
@@ -400,12 +392,9 @@ static std::vector<double> dispatch_lookup(
     const std::array<int, 4096>& lookup_idx,
     std::size_t N, int reps)
 {
-    if (variant == "std_map")    return measure_lookup<M_StdMap>   (keys, lookup_idx, N, reps);
-    if (variant == "sorted_vec") return measure_lookup<M_SortedVec>(keys, lookup_idx, N, reps);
-    if (variant == "boost_flat") return measure_lookup<M_BoostFlat>(keys, lookup_idx, N, reps);
-    if (variant == "std_unord")  return measure_lookup<M_StdUnord> (keys, lookup_idx, N, reps);
-    if (variant == "absl_flat")  return measure_lookup<M_AbslFlat> (keys, lookup_idx, N, reps);
-    return {};
+    return with_variant(variant, [&]<typename M>(std::type_identity<M>) {
+        return measure_lookup<M>(keys, lookup_idx, N, reps);
+    });
 }
 
 static std::vector<double> dispatch_modifymix(
@@ -413,12 +402,9 @@ static std::vector<double> dispatch_modifymix(
     const std::vector<Key>& all_keys,
     std::size_t N, int modify_pct, int reps)
 {
-    if (variant == "std_map")    return measure_modifymix<M_StdMap>   (all_keys, N, modify_pct, reps);
-    if (variant == "sorted_vec") return measure_modifymix<M_SortedVec>(all_keys, N, modify_pct, reps);
-    if (variant == "boost_flat") return measure_modifymix<M_BoostFlat>(all_keys, N, modify_pct, reps);
-    if (variant == "std_unord")  return measure_modifymix<M_StdUnord> (all_keys, N, modify_pct, reps);
-    if (variant == "absl_flat")  return measure_modifymix<M_AbslFlat> (all_keys, N, modify_pct, reps);
-    return {};
+    return with_variant(variant, [&]<typename M>(std::type_identity<M>) {
+        return measure_modifymix<M>(all_keys, N, modify_pct, reps);
+    });
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
