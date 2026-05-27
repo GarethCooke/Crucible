@@ -128,7 +128,7 @@ export default function MethodologyPage() {
         <div>
           <span style={{ color: "var(--text-muted)" }}>Boot</span>{" "}
           <span className="ml-4">
-            isolcpus=0-7 nohz_full=0-7 rcu_nocbs=0-7; benchmarks pin to cores
+            isolcpus=1-7 nohz_full=1-7 rcu_nocbs=1-7; benchmarks pin to cores
             4–7 via taskset
           </span>
         </div>
@@ -183,7 +183,7 @@ export default function MethodologyPage() {
         </Commitment>
         <Commitment n={3} title="Core isolation">
           Cores 0–7 are isolated at the kernel level via{" "}
-          <code>isolcpus=0-7 nohz_full=0-7 rcu_nocbs=0-7</code> boot parameters
+          <code>isolcpus=1-7 nohz_full=1-7 rcu_nocbs=1-7</code> boot parameters
           — scoped to a dedicated GRUB entry (&ldquo;Ubuntu (benchmark &mdash;
           cores 0-7 isolated)&rdquo;) distinct from the standard development
           entry. Within that isolated set, benchmarks are additionally pinned to
