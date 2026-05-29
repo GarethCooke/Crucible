@@ -1,0 +1,35 @@
+---
+title: "The sorting shootout: going around the comparison wall"
+date: "2026-05-29"
+status: "in-progress"
+expectedAt: "June 2026"
+excerpt: "std::sort vs pdqsort vs a hand-rolled LSD radix on integer keys, swept across N and input distribution. Why a non-comparison sort wins at scale, why input shape decides the comparison-sort race, and where radix's data-independent runtime turns into a tail-latency win."
+---
+
+<InProgressNotice expectedAt="June 2026" />
+
+## The thesis
+
+`std::sort` is the default everyone reaches for, and it is rarely the actual winner. It's introsort under the hood, so it inherits the comparison lower bound — Ω(n log n) is a wall it can't climb. When your keys are fixed-width integers, you don't have to climb it. You go around it.
+
+That's the whole post in one line. Radix sort is O(n · w/r) for w-bit keys at r bits per pass — not magic, just a different cost model that exploits a fact comparison sorts ignore. The interesting part is what that buys you, and where it costs you.
+
+There's a second story riding alongside the first. Comparison sorts are sensitive to the *shape* of their input; radix is nearly blind to it. `pdqsort` detects sorted runs and few-unique-key inputs and sidesteps quicksort's worst case; `std::sort` is more uniform; radix doesn't care what order the data arrived in. On random input the comparison sorts cluster together. On structured input they fan out — and radix sits flat through all of it.
+
+## What the post will cover
+
+Three sort implementations on `u32` keys, measured the same way every Crucible post measures: single isolated core, headless boot, turbo disabled, multiple outer repetitions.
+
+1. **`std::sort`** — libstdc++ introsort. The baseline, and a perfectly good default.
+2. **`pdqsort`** — pattern-defeating quicksort. The comparison sort that reads its input before it commits to a strategy.
+3. **Hand-rolled LSD radix** — four 8-bit passes over the `u32` keys. Rolled by hand so the simplifying assumptions are visible rather than buried in a library.
+
+Two charts carry it. The first is a time-vs-N staircase across all three variants on random input, with the cache-tier band markers from the earlier demos — you can watch where the comparison sorts start paying for memory traffic and where radix's flat cost model pulls ahead. The second fixes a large N and sweeps the *input distribution* — random, sorted, reverse-sorted, few-unique, sawtooth — to show the comparison sorts spreading apart while radix holds a near-constant line.
+
+## What makes the post interesting
+
+The headline isn't "radix is faster." It loses at small N, and its advantage shrinks as key width grows (a `u64` headline would be eight passes, not four). It's also the wrong tool the moment your keys aren't fixed-width integers — comparison sorts are the only general option there, which is exactly why `std::sort` deserves its place as the default.
+
+The genuinely useful result is about the *tail*. Radix's runtime is essentially data-independent: it does the same work regardless of what the input looks like. So even where its median isn't the best, it can be the p99 win on a hot-path sort — the same median-vs-tail tension that ran through the SPSC and allocator posts, now showing up in a place most people never profile. If you sort on a latency-critical path and you've only ever looked at the average, this is the post that argues you're measuring the wrong number.
+
+Expected to ship in June 2026.
