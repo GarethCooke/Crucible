@@ -182,7 +182,7 @@ export default function MethodologyPage() {
           and cache hierarchy deliver at nominal frequency.
         </Commitment>
         <Commitment n={3} title="Core isolation">
-          Cores 0–7 are isolated at the kernel level via{" "}
+          Cores 1–7 are isolated at the kernel level via{" "}
           <code>isolcpus=1-7 nohz_full=1-7 rcu_nocbs=1-7</code> boot parameters
           — scoped to a dedicated GRUB entry (&ldquo;Ubuntu (benchmark &mdash;
           cores 0-7 isolated)&rdquo;) distinct from the standard development
@@ -223,7 +223,7 @@ export default function MethodologyPage() {
               percentiles computed from histograms merged across runs.
             </li>
             <li>
-              <strong>Scan-throughput across a working-set sweep</strong> (demos 6, 7):
+              <strong>Working-set sweep</strong> (demos 6, 7):
               5 outer repetitions per cell; median <code>ns_per_op</code> reported.
               Sweep coverage substitutes for higher per-cell rep count.
             </li>
@@ -298,6 +298,12 @@ cd Crucible/bench
 cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
 cmake --build build --target bench_<NN>_<slug>
 ./bench/scripts/run_one.sh <NN-slug>`}</pre>
+      <p className="text-sm mb-4" style={{ color: "var(--text-secondary)" }}>
+        <code>run_one.sh</code> requires <code>sudo</code> and the{" "}
+        <code>cpuset</code> package (<code>sudo apt install cpuset</code> on
+        Ubuntu); it runs the benchmark binary inside a <code>cset shield</code>{" "}
+        on cores 4–7 and tears the shield down automatically.
+      </p>
       <p className="text-sm mb-12" style={{ color: "var(--text-secondary)" }}>
         Source on GitHub:{" "}
         <a

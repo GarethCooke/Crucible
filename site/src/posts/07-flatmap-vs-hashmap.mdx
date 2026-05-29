@@ -80,6 +80,10 @@ Log-log axes, all five variants, lookup workload only. Cache-tier boundaries
 drawn at N = 2 K (L1d capacity), N = 32 K (L2), N = 1 M (L3 per CCX) for
 `pair<uint64_t, uint64_t>` data on the reference machine (32 KiB L1d,
 512 KiB L2, 16 MiB L3 per CCX).
+These boundaries are the contiguous (sorted-vector) footprint; the hash-map
+variants carry slot and metadata overhead, so they cross each tier somewhat
+earlier than the markers suggest — visible in `absl::flat_hash_map` departing
+its flat region before the L1 marker.
 
 <TimeVsN
   slug="07-no-crossover"
@@ -101,9 +105,10 @@ What to read off the chart:
   N = 64), narrowing to ~1.6× at N = 4 M (29.3 ns vs. 18.5 ns) as both hit
   DRAM. The probing/metadata advantage of `absl::flat_hash_map` is worth more
   in cache than it is in DRAM.
-- **`vector + lower_bound`** and **`boost::flat_map`** track each other to
-  within noise across the entire range — they are the same sorted-contiguous
-  primitive. Against `absl::flat_hash_map` the gap widens monotonically: ~3× at
+- **`vector + lower_bound`** and **`boost::flat_map`** track each other
+  within ~11% across the entire range (under 5% for N ≥ 16) — they are the same
+  sorted-contiguous primitive; the residual is Boost's container bookkeeping over
+  a raw vector. Against `absl::flat_hash_map` the gap widens monotonically: ~3× at
   N = 8 (11.4 ns vs. 3.5 ns), ~13× at N = 1 024 (48.3 ns vs. 3.8 ns), ~24× at
   N = 4 M (437.5 ns vs. 18.5 ns). Binary search's O(log N) pointer walk
   traverses more cache lines as N grows; the hash map's random-access probing
@@ -113,7 +118,10 @@ What to read off the chart:
   whose nodes fit in L1 lets the branch predictor handle the walk, and the fixed
   tree depth at tiny N means fewer comparisons than `lower_bound`'s full log
   scan. At N ≥ 1 024 the node-based layout loses to the contiguous primitives,
-  and at large N it is the slowest variant by a wide margin (455 ns/op at N = 4 M).
+  and by N = 4 M `std::map`, `vector + lower_bound`, and `boost::flat_map` have
+  converged into a ~440–460 ns/op cluster — all roughly 24× slower than
+  `absl::flat_hash_map`. The wide margin at large N is between the hash maps and
+  this cluster, not within it.
 
 ## The ranking at three cache tiers
 
@@ -238,7 +246,7 @@ The post's variant set substitutes `boost::container::flat_map` for
 24.04 — does not provide `std::flat_map`; libstdc++ did not implement
 `<flat_map>` until GCC 14. `boost::flat_map` uses the same underlying primitive
 (sorted contiguous storage, `lower_bound` lookup, O(N) insert/erase) and its
-lookup curve tracks `sorted_vec` to within noise across the entire sweep —
+lookup curve tracks `sorted_vec` to within ~11% at small N (under 5% for N ≥ 16) across the entire sweep —
 empirical confirmation that the substitution does not change the story. The
 substitution and its rationale are documented in the [bench README](https://github.com/GarethCooke/Crucible/tree/master/bench/demos/07-no-crossover/README.md).
 
@@ -303,7 +311,7 @@ lens for reading the bends in the lookup curves.
 turbo disabled (BIOS Core Performance Boost off), cores 0–7 isolated (core 0
 carries unavoidable kernel housekeeping), single thread pinned to CCX1 (cores
 4–7), headless Ubuntu 24.04. GCC 13.3, -O3 -march=native -DNDEBUG.
-5 outer repetitions per cell, median ns_per_op reported.*
+5 outer repetitions per cell, median ns_per_op reported (working-set-sweep convention).*
 
 *Source: [`bench/demos/07-no-crossover/`](https://github.com/GarethCooke/Crucible/tree/master/bench/demos/07-no-crossover) · [JSON](https://github.com/GarethCooke/Crucible/blob/master/site/src/data/perf/07-no-crossover.json).*
 

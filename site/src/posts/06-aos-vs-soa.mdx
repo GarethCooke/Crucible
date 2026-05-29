@@ -211,7 +211,7 @@ Where this connects: [demo 1](/posts/01-branch-prediction) established what the 
 
 ---
 
-*AMD Ryzen 7 3800X, Zen 2 (SMT off), 3.9 GHz base, governor = performance, turbo disabled (BIOS Core Performance Boost off), cores 0–7 isolated (core 0 carries unavoidable kernel housekeeping), single thread pinned to core 4 (CCX1), headless Ubuntu 24.04. GCC 13.3, -O3 -march=znver2 -fno-tree-vectorize. 5 outer repetitions per cell, median ns_per_op reported (scan-throughput convention).*
+*AMD Ryzen 7 3800X, Zen 2 (SMT off), 3.9 GHz base, governor = performance, turbo disabled (BIOS Core Performance Boost off), cores 0–7 isolated (core 0 carries unavoidable kernel housekeeping), single thread pinned to core 4 (CCX1), headless Ubuntu 24.04. GCC 13.3, -O3 -march=znver2 -fno-tree-vectorize. 5 outer repetitions per cell, median ns_per_op reported (working-set-sweep convention).*
 
 *Source: [`bench/demos/06-aos-vs-soa/`](https://github.com/GarethCooke/Crucible/tree/master/bench/demos/06-aos-vs-soa) · [JSON](https://github.com/GarethCooke/Crucible/blob/master/site/src/data/perf/06-aos-vs-soa.json).*
 
