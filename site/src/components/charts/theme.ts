@@ -6,7 +6,7 @@ import { tokens } from '@/lib/design-tokens'
 export const palette = {
   sorted:     tokens.color.chart.sorted,
   unsorted:   tokens.color.chart.unsorted,
-  branchless: tokens.color.chart.series[3],   // amber — distinct from cyan/emerald
+  branchless: tokens.color.chart.series[2],   // yellow-green — consistent with 3-variant index scheme
   // false-sharing demo: padded = good (cyan), unpadded = bad (rose)
   padded:   tokens.color.chart.series[0],
   unpadded: tokens.color.chart.series[2],
@@ -14,6 +14,12 @@ export const palette = {
   'soa-scalar':  tokens.color.chart.series[0],
   'aos-scalar':  tokens.color.chart.series[1],
   'soa-autovec': tokens.color.chart.series[2],
+  // map comparison demo (07): index-ordered so variantColor() assigns distinct colours
+  'absl_flat':  tokens.color.chart.series[0],
+  'std_unord':  tokens.color.chart.series[1],
+  'std_map':    tokens.color.chart.series[2],
+  'boost_flat': tokens.color.chart.series[3],
+  'sorted_vec': tokens.color.chart.series[4],
   series:   tokens.color.chart.series,
 } as const
 
