@@ -244,7 +244,7 @@ the cost per operation does not scale with N at the modify point.
 The post's variant set substitutes `boost::container::flat_map` for
 `std::flat_map`. The toolchain used for this capture — GCC 13.3.0 on Ubuntu
 24.04 — does not provide `std::flat_map`; libstdc++ did not implement
-`<flat_map>` until GCC 14. `boost::flat_map` uses the same underlying primitive
+`<flat_map>` until GCC 15. `boost::flat_map` uses the same underlying primitive
 (sorted contiguous storage, `lower_bound` lookup, O(N) insert/erase) and its
 lookup curve tracks `sorted_vec` to within ~11% at small N (under 5% for N ≥ 16) across the entire sweep —
 empirical confirmation that the substitution does not change the story. The
