@@ -18,6 +18,10 @@ export const palette = {
   'cross-thread-malloc':   tokens.color.chart.series[0],
   'freelist-return-queue': tokens.color.chart.series[1],
   'arena-batch-handoff':   tokens.color.chart.series[2],
+  // SPSC queue demo (04): index-ordered to match LatencyVsLoadChart's variantColorByIndex
+  'lockfree-handrolled': tokens.color.chart.series[0],
+  'lockfree-boost':      tokens.color.chart.series[1],
+  'mutex-condvar':       tokens.color.chart.series[2],
   // map comparison demo (07): index-ordered so variantColor() assigns distinct colours
   'absl_flat':  tokens.color.chart.series[0],
   'std_unord':  tokens.color.chart.series[1],
