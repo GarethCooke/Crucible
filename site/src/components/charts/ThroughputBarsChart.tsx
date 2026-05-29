@@ -31,6 +31,8 @@ export interface LegacyRun {
   variant: string
   n: number
   k?: number
+  distribution?: string
+  key_type?: string
   ns_per_op: NsPerOp
   ops_per_sec: number
   branch_misses_per_op?: number
@@ -71,19 +73,22 @@ interface Props {
   metric?: 'ops_per_sec'
   kFilter?: number | number[]
   variantLabels?: Record<string, string>
+  distGrouped?: boolean
 }
 
-export function ThroughputBarsChart({ runs, stat = 'median', targetN, title, metric, kFilter, variantLabels }: Props) {
+export function ThroughputBarsChart({ runs, stat = 'median', targetN, title, metric, kFilter, variantLabels, distGrouped }: Props) {
   const ref = useChartEffect((el) => {
     if (runs.length === 0) return
     if (isThreadRun(runs[0])) {
       renderGrouped(el, runs as ThreadRun[], stat, title)
+    } else if (distGrouped) {
+      renderDistGrouped(el, runs as LegacyRun[], stat, targetN, title, variantLabels)
     } else if (Array.isArray(kFilter)) {
       renderKGrouped(el, runs as LegacyRun[], stat, kFilter, targetN, title, variantLabels)
     } else {
       renderLegacy(el, runs as LegacyRun[], stat, targetN, title, metric, kFilter, variantLabels)
     }
-  }, [runs, stat, targetN, title, metric, kFilter, variantLabels])
+  }, [runs, stat, targetN, title, metric, kFilter, variantLabels, distGrouped])
 
   return (
     <ChartZoom>
@@ -225,6 +230,62 @@ function renderKGrouped(
   appendYAxis(g, colors, axisLeft(y).ticks(5).tickFormat((v) => `${v} ns`))
   appendLegendRects(svg, variants.map((v) => ({
     label: capitalize(v),
+    color: variantColor(v),
+  })), { x: margin.left + inner.w + 8, y: margin.top }, { textSecondary: colors.textSecondary })
+}
+
+// ─── Distribution-grouped renderer (demo 8: bars grouped by input distribution) ─
+
+const DIST_ORDER = ['random', 'sorted', 'reverse', 'few_unique', 'sawtooth']
+const DIST_LABEL: Record<string, string> = {
+  random:     'random',
+  sorted:     'sorted',
+  reverse:    'reverse',
+  few_unique: 'few-unique',
+  sawtooth:   'sawtooth',
+}
+
+function renderDistGrouped(
+  el: SVGSVGElement,
+  runs: LegacyRun[],
+  stat: 'median' | 'min' | 'p99',
+  targetN?: number,
+  title?: string,
+  variantLabels?: Record<string, string>,
+) {
+  const ns = uniqueSortedNs(runs)
+  const n = targetN ?? ns[ns.length - 1]
+  const data = runs.filter((r) => r.n === n && r.distribution != null)
+  if (data.length === 0) return
+
+  const distValues = DIST_ORDER.filter((d) => data.some((r) => r.distribution === d))
+  const variants   = Array.from(new Set(data.map((r) => r.variant)))
+  const vals       = data.map((d) => d.ns_per_op[stat] ?? d.ns_per_op.median)
+  const { H, margin, svg, g, inner, colors, x0, x1, y } = setupGroupChart(
+    el,
+    distValues.map((d) => DIST_LABEL[d] ?? d),
+    variants,
+    Math.max(...vals),
+    title ?? `Input distribution · ${stat} ns/elem · N = ${n.toLocaleString()}`,
+  )
+
+  const grouped = group(data, (d) => d.distribution ?? '')
+  distValues.forEach((dist) => {
+    const distRuns = grouped.get(dist) ?? []
+    const gx = x0(DIST_LABEL[dist] ?? dist)
+    if (gx == null) return
+    distRuns.forEach((run) => {
+      const bx = gx + x1(run.variant)!
+      const nsVal = run.ns_per_op[stat] ?? run.ns_per_op.median
+      appendBarRect(g, bx, y(nsVal), x1.bandwidth(), inner.h - y(nsVal), nsVal, variantColor(run.variant), 1, colors)
+    })
+  })
+
+  appendXAxis(g, inner, colors, axisBottom(x0).tickSize(0), true)
+  appendXLabel(svg, `distribution  ·  ${stat} ns/elem  ·  N = ${n.toLocaleString()}`, margin.left + inner.w / 2, H - 8, colors)
+  appendYAxis(g, colors, axisLeft(y).ticks(5).tickFormat((v) => `${v} ns`))
+  appendLegendRects(svg, variants.map((v) => ({
+    label: variantLabels?.[v] ?? capitalize(v),
     color: variantColor(v),
   })), { x: margin.left + inner.w + 8, y: margin.top }, { textSecondary: colors.textSecondary })
 }

@@ -303,7 +303,10 @@ explains the hash-map performance shape. `absl::flat_hash_map`'s flat metadata
 layout keeps the effective working set small enough to stay L1-resident well past
 the point where the sorted-vector lookup has started chasing L2/L3. The
 [cache-hierarchy framing from demo 1](/posts/01-branch-prediction) is the right
-lens for reading the bends in the lookup curves.
+lens for reading the bends in the lookup curves. For a different angle on the
+same cache hierarchy — and a case where the L3 boundary marks a *cost rise*
+rather than a crossover — [demo 8](/posts/08-sorting-shootout) runs a sorting
+sweep across the same tiers with three sort variants.
 
 ---
 

@@ -44,6 +44,7 @@ add_subdirectory(demos/04-spsc-queue)
 add_subdirectory(demos/05-allocators)
 add_subdirectory(demos/06-aos-vs-soa)
 add_subdirectory(demos/07-no-crossover)
+add_subdirectory(demos/08-sorting-shootout)
 
 option(CRUCIBLE_BUILD_PILOTS "Build throwaway pilot benches under bench/pilots/" OFF)
 if(CRUCIBLE_BUILD_PILOTS)

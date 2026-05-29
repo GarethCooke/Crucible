@@ -495,6 +495,53 @@ if [[ "${SLUG}" == "07-no-crossover" ]]; then
 fi
 # ─────────────────────────────────────────────────────────────────────────────
 
+# ─── Demo 08: Sorting Shootout — Google Benchmark, distribution+key_type axes ──
+# Set A: 3 variants × N-sweep (2^10..2^26, 17 values) × random, u32.
+# Set B: 3 variants × 4 distributions (sorted/reverse/few_unique/sawtooth) × N=2^22, u32.
+# Set C: 3 variants × random × N=2^22, u64  (key-width callout).
+# Total: ~(51 + 12 + 3) × 5 reps = 330 outer repetitions.
+# Precondition: call --verify-restore manually before the headline capture.
+if [[ "${SLUG}" == "08-sorting-shootout" ]]; then
+    SORT_BINARY="${BENCH_ROOT}/build/demos/08-sorting-shootout/bench_08_sorting_shootout"
+
+    if [[ ! -x "${SORT_BINARY}" ]]; then
+        echo "ERROR: binary not found: ${SORT_BINARY}" >&2; exit 1
+    fi
+
+    echo "==> Resetting cset shield (clears stale state from prior session)..."
+    sudo cset shield --reset > /dev/null 2>&1 || true
+
+    echo "==> Collecting machine info..."
+    sudo -E cset shield --cpu=4-7 --kthread=on > /dev/null
+    SHIELD_ACTIVE=1
+    MACHINE_JSON=$(sudo -E cset shield --exec -- "${SORT_BINARY}" --machine-info \
+        | grep -v '^cset:' | tr -d '\000-\010\013-\037\177')
+    sudo -E cset shield --reset > /dev/null
+    SHIELD_ACTIVE=0
+
+    TMPFILE=$(mktemp /tmp/crucible_bench_XXXXXX.json)
+    sudo -E chmod 666 "${TMPFILE}"
+
+    echo "==> Running benchmarks (Sets A+B+C: 3 variants × 21 cells × 5 reps)..."
+    sudo -E cset shield --cpu=4-7 --kthread=on > /dev/null
+    SHIELD_ACTIVE=1
+    sudo -E cset shield --exec -- taskset -c 4 "${SORT_BINARY}" \
+        --benchmark_format=json \
+        --benchmark_report_aggregates_only=false \
+        | grep -v '^cset:' > "${TMPFILE}"
+    sudo -E cset shield --reset > /dev/null
+    SHIELD_ACTIVE=0
+
+    echo "==> Assembling output JSON..."
+    CAPTURED_AT=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    python3 "${BENCH_ROOT}/scripts/assemble_results_08.py" \
+        "${TMPFILE}" "${CAPTURED_AT}" "${MACHINE_JSON}" "${OUT_JSON}"
+
+    echo "==> Done: ${OUT_JSON}"
+    exit 0
+fi
+# ─────────────────────────────────────────────────────────────────────────────
+
 if [[ ! -x "${BINARY}" ]]; then
     echo "ERROR: binary not found at ${BINARY}" >&2
     exit 1

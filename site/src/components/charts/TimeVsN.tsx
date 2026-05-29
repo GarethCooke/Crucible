@@ -15,6 +15,8 @@ interface Props {
   thresholdMarkers?: ThresholdMarker[]
   annotateMaxGap?: boolean
   workloadFilter?: 'lookup' | 'modify_mix'
+  distributionFilter?: string
+  keyTypeFilter?: string
   variantLabels?: Record<string, string>
   yAxisLog?: boolean
 }
@@ -32,6 +34,8 @@ export async function TimeVsN({
   thresholdMarkers,
   annotateMaxGap = false,
   workloadFilter,
+  distributionFilter,
+  keyTypeFilter,
   variantLabels,
   yAxisLog = false,
 }: Props) {
@@ -53,6 +57,14 @@ export async function TimeVsN({
 
     if (workloadFilter) {
       runs = runs.filter((r) => (r as { workload?: string }).workload === workloadFilter)
+    }
+
+    if (distributionFilter) {
+      runs = runs.filter((r) => (r as { distribution?: string }).distribution === distributionFilter)
+    }
+
+    if (keyTypeFilter) {
+      runs = runs.filter((r) => (r as { key_type?: string }).key_type === keyTypeFilter)
     }
 
     if (typeof kFilter === 'number') {

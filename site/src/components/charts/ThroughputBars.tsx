@@ -17,6 +17,10 @@ interface Props {
   kFilter?: number | number[]
   /** Filter to a specific workload (e.g. "lookup" or "modify_mix"). */
   workloadFilter?: string
+  /** Filter to a specific distribution (e.g. "random"). */
+  distributionFilter?: string
+  /** Render bars grouped by input distribution (demo 8 chart 2). */
+  distGrouped?: boolean
   /** Display-name overrides: maps JSON variant name → X-axis label. */
   variantLabels?: Record<string, string>
 }
@@ -31,6 +35,8 @@ export async function ThroughputBars({
   title,
   kFilter,
   workloadFilter,
+  distributionFilter,
+  distGrouped,
   variantLabels,
 }: Props) {
   let runs: Run[] = runsIn ?? []
@@ -56,6 +62,12 @@ export async function ThroughputBars({
     )
   }
 
+  if (distributionFilter) {
+    runs = runs.filter(
+      (r) => (r as { distribution?: string }).distribution === distributionFilter,
+    )
+  }
+
   if (placement) {
     runs = runs.filter(
       (r) => (r as { placement?: string }).placement === placement,
@@ -78,6 +90,7 @@ export async function ThroughputBars({
       title={title}
       kFilter={kFilter}
       variantLabels={variantLabels}
+      distGrouped={distGrouped}
     />
   )
 }

@@ -1,0 +1,8 @@
+{
+  "demo": "08-sorting-shootout",
+  "title": "The sorting shootout: going around the comparison wall",
+  "machine": null,
+  "captured_at": null,
+  "runs": [],
+  "notes": "Capture pending — run bench/scripts/run_one.sh 08-sorting-shootout on the reference machine (isolated boot required; see bench/demos/08-sorting-shootout/README.md)."
+}

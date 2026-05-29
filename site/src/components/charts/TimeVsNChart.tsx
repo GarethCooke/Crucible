@@ -20,6 +20,8 @@ export interface TimeVsNRun {
   k?: number
   modify_pct?: number
   workload?: string
+  distribution?: string
+  key_type?: string
   ns_per_op: { median: number; min: number; p99: number; iqr: number }
 }
 

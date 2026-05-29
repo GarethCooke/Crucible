@@ -207,7 +207,7 @@ For a trading-shop pipeline scanning a chain of quotes or orders:
 
 The right layout in real code is rarely a layout decision in isolation — it's a derivative of which fields your hot path touches. The benchmark above is one way to make "hot path" empirical instead of intuitive.
 
-Where this connects: [demo 1](/posts/01-branch-prediction) established what the cache hierarchy looks like on this CPU; this post fills in the layout response to it. [Demo 3](/posts/03-simd-blackscholes) takes over from §[SIMD](#simd-escapes-compute-not-memory) for the compute-bound side of the SIMD question. The cache-staircase pattern — and the question of whether it creates a "small-N crossover" — repeats with map data structures in [demo 7](/posts/07-flatmap-vs-hashmap).
+Where this connects: [demo 1](/posts/01-branch-prediction) established what the cache hierarchy looks like on this CPU; this post fills in the layout response to it. [Demo 3](/posts/03-simd-blackscholes) takes over from §[SIMD](#simd-escapes-compute-not-memory) for the compute-bound side of the SIMD question. The cache-staircase pattern — and the question of whether it creates a "small-N crossover" — repeats with map data structures in [demo 7](/posts/07-flatmap-vs-hashmap). [Demo 8](/posts/08-sorting-shootout) reuses the same cache-tier band markers on the radix sort line, where the L3→DRAM transition is the primary cost driver rather than an algorithmic ramp.
 
 ---
 
