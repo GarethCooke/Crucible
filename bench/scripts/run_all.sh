@@ -19,6 +19,8 @@ DEMOS=(
     03-simd-blackscholes
     04-spsc-queue
     05-allocators
+    06-aos-vs-soa
+    07-no-crossover
 )
 
 for slug in "${DEMOS[@]}"; do

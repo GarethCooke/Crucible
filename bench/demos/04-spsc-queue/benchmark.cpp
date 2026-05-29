@@ -255,61 +255,28 @@ static RunResult run_spsc_variant(double ns_per_cycle, uint64_t rate_hz,
     return result;
 }
 
-// ─── Policy: lockfree-handrolled ─────────────────────────────────────────────
+// ─── Lockfree queue adapters ──────────────────────────────────────────────────
 
-struct HandrolledPolicy {
+struct HandrolledAdapter {
+    static constexpr const char* name = "lockfree-handrolled";
     using Queue = SPSCQueue<MarketTick, QUEUE_DEPTH>;
-    std::unique_ptr<Queue> q;
-
-    void reset() { q = std::make_unique<Queue>(); }
-
-    void consume(std::vector<uint64_t>& deq_ts, std::atomic<size_t>& warmup_consumed) {
-        size_t warmup_done = 0;
-        while (warmup_done < ITEMS_WARMUP) {
-            MarketTick t;
-            if (q->try_pop(t)) {
-                ++warmup_done;
-                warmup_consumed.store(warmup_done, std::memory_order_release);
-            }
-        }
-        size_t measured = 0;
-        while (measured < ITEMS_MEASURED) {
-            MarketTick t;
-            if (q->try_pop(t)) {
-                deq_ts[t.seq] = rdtscp_ordered();
-                ++measured;
-            }
-        }
-    }
-
-    void produce_warmup() {
-        for (size_t i = 0; i < ITEMS_WARMUP; ++i) {
-            MarketTick t{uint32_t(i), 1, WARMUP_SEQ};
-            while (!q->try_push(t)) {}
-        }
-    }
-
-    void produce_measured(std::vector<uint64_t>& enq_ts, uint64_t period_cycles) {
-        uint64_t next_release = rdtscp_ordered();
-        for (size_t i = 0; i < ITEMS_MEASURED; ++i) {
-            if (period_cycles > 0) {
-                while (__rdtsc() < next_release) { _mm_pause(); }
-                next_release += period_cycles;
-            }
-            MarketTick t{uint32_t(i & 0xFFFF), 1, uint64_t(i)};
-            enq_ts[i] = rdtscp_ordered();
-            while (!q->try_push(t)) {}
-        }
-    }
-
-    void signal_producer_done() {}
+    static bool try_pop(Queue& q, MarketTick& t)        { return q.try_pop(t); }
+    static bool try_push(Queue& q, const MarketTick& t) { return q.try_push(t); }
 };
 
-// ─── Policy: lockfree-boost ───────────────────────────────────────────────────
-
-struct BoostPolicy {
+struct BoostAdapter {
+    static constexpr const char* name = "lockfree-boost";
     using Queue = boost::lockfree::spsc_queue<
         MarketTick, boost::lockfree::capacity<QUEUE_DEPTH>>;
+    static bool try_pop(Queue& q, MarketTick& t)        { return q.pop(t); }
+    static bool try_push(Queue& q, const MarketTick& t) { return q.push(t); }
+};
+
+// ─── Policy: lockfree (handrolled or boost via adapter) ───────────────────────
+
+template <typename Adapter>
+struct LockfreePolicy {
+    using Queue = typename Adapter::Queue;
     std::unique_ptr<Queue> q;
 
     void reset() { q = std::make_unique<Queue>(); }
@@ -318,7 +285,7 @@ struct BoostPolicy {
         size_t warmup_done = 0;
         while (warmup_done < ITEMS_WARMUP) {
             MarketTick t;
-            if (q->pop(t)) {
+            if (Adapter::try_pop(*q, t)) {
                 ++warmup_done;
                 warmup_consumed.store(warmup_done, std::memory_order_release);
             }
@@ -326,7 +293,7 @@ struct BoostPolicy {
         size_t measured = 0;
         while (measured < ITEMS_MEASURED) {
             MarketTick t;
-            if (q->pop(t)) {
+            if (Adapter::try_pop(*q, t)) {
                 deq_ts[t.seq] = rdtscp_ordered();
                 ++measured;
             }
@@ -336,7 +303,7 @@ struct BoostPolicy {
     void produce_warmup() {
         for (size_t i = 0; i < ITEMS_WARMUP; ++i) {
             MarketTick t{uint32_t(i), 1, WARMUP_SEQ};
-            while (!q->push(t)) {}
+            while (!Adapter::try_push(*q, t)) {}
         }
     }
 
@@ -349,12 +316,15 @@ struct BoostPolicy {
             }
             MarketTick t{uint32_t(i & 0xFFFF), 1, uint64_t(i)};
             enq_ts[i] = rdtscp_ordered();
-            while (!q->push(t)) {}
+            while (!Adapter::try_push(*q, t)) {}
         }
     }
 
     void signal_producer_done() {}
 };
+
+using HandrolledPolicy = LockfreePolicy<HandrolledAdapter>;
+using BoostPolicy      = LockfreePolicy<BoostAdapter>;
 
 // ─── Policy: mutex-condvar (bounded) ─────────────────────────────────────────
 // Uses two condition variables for symmetric back-pressure:
@@ -537,6 +507,41 @@ static std::string emit_json_string(const char* variant,
     return result;
 }
 
+// ─── Stress test helpers ──────────────────────────────────────────────────────
+
+static bool verify_stress(const std::vector<uint64_t>& received, size_t n, const char* label) {
+    for (size_t i = 0; i < n; ++i) {
+        if (received[i] != uint64_t(i)) {
+            std::fprintf(stderr, "STRESS FAIL [%s]: pos %zu got %llu\n",
+                label, i, (unsigned long long)received[i]);
+            return false;
+        }
+    }
+    return true;
+}
+
+template <typename Adapter>
+static bool run_lockfree_stress(size_t n) {
+    typename Adapter::Queue q;
+    std::vector<uint64_t> received(n, UINT64_MAX);
+
+    std::thread cons([&] {
+        pin_to_core(CONSUMER_CORE);
+        size_t got = 0;
+        while (got < n) {
+            MarketTick t;
+            if (Adapter::try_pop(q, t)) received[got++] = t.seq;
+        }
+    });
+    pin_to_core(PRODUCER_CORE);
+    for (size_t i = 0; i < n; ++i) {
+        MarketTick t{uint32_t(i), 1, uint64_t(i)};
+        while (!Adapter::try_push(q, t)) {}
+    }
+    cons.join();
+    return verify_stress(received, n, Adapter::name);
+}
+
 // ─── Main ────────────────────────────────────────────────────────────────────
 
 int main(int argc, char* argv[]) {
@@ -568,59 +573,8 @@ int main(int argc, char* argv[]) {
         static constexpr size_t STRESS_ITEMS = 10'000'000;
         int failures = 0;
 
-        auto stress_lockfree_hr = [&] {
-            SPSCQueue<MarketTick, QUEUE_DEPTH> q;
-            std::vector<uint64_t> received(STRESS_ITEMS, UINT64_MAX);
-            std::thread cons([&] {
-                pin_to_core(CONSUMER_CORE);
-                size_t got = 0;
-                while (got < STRESS_ITEMS) {
-                    MarketTick t;
-                    if (q.try_pop(t)) received[got++] = t.seq;
-                }
-            });
-            pin_to_core(PRODUCER_CORE);
-            for (size_t i = 0; i < STRESS_ITEMS; ++i) {
-                MarketTick t{uint32_t(i), 1, uint64_t(i)};
-                while (!q.try_push(t)) {}
-            }
-            cons.join();
-            for (size_t i = 0; i < STRESS_ITEMS; ++i) {
-                if (received[i] != uint64_t(i)) {
-                    std::fprintf(stderr, "STRESS FAIL [lockfree-handrolled]: pos %zu got %llu\n",
-                        i, (unsigned long long)received[i]);
-                    return false;
-                }
-            }
-            return true;
-        };
-
-        auto stress_lockfree_boost = [&] {
-            boost::lockfree::spsc_queue<MarketTick, boost::lockfree::capacity<QUEUE_DEPTH>> q;
-            std::vector<uint64_t> received(STRESS_ITEMS, UINT64_MAX);
-            std::thread cons([&] {
-                pin_to_core(CONSUMER_CORE);
-                size_t got = 0;
-                while (got < STRESS_ITEMS) {
-                    MarketTick t;
-                    if (q.pop(t)) received[got++] = t.seq;
-                }
-            });
-            pin_to_core(PRODUCER_CORE);
-            for (size_t i = 0; i < STRESS_ITEMS; ++i) {
-                MarketTick t{uint32_t(i), 1, uint64_t(i)};
-                while (!q.push(t)) {}
-            }
-            cons.join();
-            for (size_t i = 0; i < STRESS_ITEMS; ++i) {
-                if (received[i] != uint64_t(i)) {
-                    std::fprintf(stderr, "STRESS FAIL [lockfree-boost]: pos %zu got %llu\n",
-                        i, (unsigned long long)received[i]);
-                    return false;
-                }
-            }
-            return true;
-        };
+        auto stress_lockfree_hr    = [&] { return run_lockfree_stress<HandrolledAdapter>(STRESS_ITEMS); };
+        auto stress_lockfree_boost = [&] { return run_lockfree_stress<BoostAdapter>(STRESS_ITEMS); };
 
         // Bounded mutex stress test — matches benchmark's back-pressure semantics
         auto stress_mutex = [&] {
@@ -659,14 +613,7 @@ int main(int argc, char* argv[]) {
             cv_not_empty.notify_all();
             cons.join();
 
-            for (size_t i = 0; i < STRESS_ITEMS; ++i) {
-                if (received[i] != uint64_t(i)) {
-                    std::fprintf(stderr, "STRESS FAIL [mutex-condvar]: pos %zu got %llu\n",
-                        i, (unsigned long long)received[i]);
-                    return false;
-                }
-            }
-            return true;
+            return verify_stress(received, STRESS_ITEMS, "mutex-condvar");
         };
 
         for (const auto& t : targets) {

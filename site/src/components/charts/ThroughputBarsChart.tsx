@@ -70,19 +70,20 @@ interface Props {
   title?: string
   metric?: 'ops_per_sec'
   kFilter?: number | number[]
+  variantLabels?: Record<string, string>
 }
 
-export function ThroughputBarsChart({ runs, stat = 'median', targetN, title, metric, kFilter }: Props) {
+export function ThroughputBarsChart({ runs, stat = 'median', targetN, title, metric, kFilter, variantLabels }: Props) {
   const ref = useChartEffect((el) => {
     if (runs.length === 0) return
     if (isThreadRun(runs[0])) {
       renderGrouped(el, runs as ThreadRun[], stat, title)
     } else if (Array.isArray(kFilter)) {
-      renderKGrouped(el, runs as LegacyRun[], stat, kFilter, targetN, title)
+      renderKGrouped(el, runs as LegacyRun[], stat, kFilter, targetN, title, variantLabels)
     } else {
-      renderLegacy(el, runs as LegacyRun[], stat, targetN, title, metric, kFilter)
+      renderLegacy(el, runs as LegacyRun[], stat, targetN, title, metric, kFilter, variantLabels)
     }
-  }, [runs, stat, targetN, title, metric, kFilter])
+  }, [runs, stat, targetN, title, metric, kFilter, variantLabels])
 
   return (
     <ChartZoom>
@@ -114,6 +115,7 @@ function renderLegacy(
   title?: string,
   metric?: 'ops_per_sec',
   kFilter?: number,
+  variantLabels?: Record<string, string>,
 ) {
   const ns = uniqueSortedNs(runs)
   const n = targetN ?? ns[ns.length - 1]
@@ -182,7 +184,7 @@ function renderLegacy(
     .attr('fill', colors.textMuted)
     .text((d) => `${((d.branch_misses_per_op ?? 0) * 100).toFixed(1)}% miss`)
 
-  appendAxesLegacy(g, svg, x, y, inner, H, margin, stat, n, colors, isNarrow, useOps)
+  appendAxesLegacy(g, svg, x, y, inner, H, margin, stat, n, colors, isNarrow, useOps, variantLabels)
 }
 
 // ─── K-grouped renderer (demo 6: bar groups per K value) ──────────────────────
@@ -194,6 +196,7 @@ function renderKGrouped(
   kFilter: number[],
   targetN?: number,
   title?: string,
+  variantLabels?: Record<string, string>,
 ) {
   const ns = uniqueSortedNs(runs)
   const n = targetN ?? ns[ns.length - 1]
@@ -339,6 +342,7 @@ function appendAxesLegacy(
   colors: Colors,
   isNarrow = false,
   useOps = false,
+  variantLabels?: Record<string, string>,
 ) {
   g.append('g')
     .attr('transform', `translate(0,${inner.h})`)
@@ -348,7 +352,7 @@ function appendAxesLegacy(
       const labels = sel.selectAll('text')
         .attr('font-size', typography.axisSize)
         .attr('fill', colors.textSecondary)
-        .text((d) => capitalize(d as string))
+        .text((d) => variantLabels?.[d as string] ?? capitalize(d as string))
       if (isNarrow) {
         labels
           .style('text-anchor', 'end')

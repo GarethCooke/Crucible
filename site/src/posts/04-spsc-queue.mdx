@@ -148,7 +148,7 @@ Two failure modes. Mutex and Boost fail by *latency wall*: queue fills toward ca
 
 **Mutex saturates around 9 MHz the way classical queueing theory predicts.** The consumer can't drain fast enough, the queue fills toward its 1024-entry capacity, and latency climbs to `queue_depth × consumer_period` — about 190 µs once depth pins at the ceiling. The mutex p50 line above 9 MHz is a near-horizontal plateau because depth is also a near-horizontal plateau at capacity.
 
-**Boost saturates around 28 MHz by the same mechanism**, just further to the right because its consumer is faster. Queue depth climbs to ~200 items at the top of the swept range; p50 climbs to ~10 µs. The Boost consumer is roughly 3× slower than the hand-rolled one — the standard gap between a portable header-only library and ~50 lines tuned for one machine. `boost::lockfree::spsc_queue` templates on arbitrary `T` and is defensive about ordering. The hand-rolled variant pads `head_` and `tail_` to separate 64-byte cache lines (so the consumer's tail-load doesn't trigger coherence traffic from the producer's tail-write), picks `acquire`/`release` semantics with exactly one writer per atomic, uses a mask instead of modulo for power-of-two capacity, and assumes POD items. A 2-3× consumer-period gap between a portable lock-free ring and a hand-tuned one is the standard result in SPSC microbenchmarks, not a Boost defect.
+**Boost saturates around 28 MHz by the same mechanism**, just further to the right because its consumer is faster. (That 28 MHz is *offered* load — the rate the pacer requests; it's higher than the ~14.9 M/s Boost actually delivers at saturation, because past the saturation point the producer spends its time blocked on a full queue rather than pushing items through.) Queue depth climbs to ~200 items at the top of the swept range; p50 climbs to ~10 µs. The Boost consumer is roughly 3× slower than the hand-rolled one — the standard gap between a portable header-only library and ~50 lines tuned for one machine. `boost::lockfree::spsc_queue` templates on arbitrary `T` and is defensive about ordering. The hand-rolled variant pads `head_` and `tail_` to separate 64-byte cache lines (so the consumer's tail-load doesn't trigger coherence traffic from the producer's tail-write), picks `acquire`/`release` semantics with exactly one writer per atomic, uses a mask instead of modulo for power-of-two capacity, and assumes POD items. A 2-3× consumer-period gap between a portable lock-free ring and a hand-tuned one is the standard result in SPSC microbenchmarks, not a Boost defect.
 
 **The hand-rolled variant doesn't saturate this way at all.** Throughput caps at ~14.7 M/s starting around 16 MHz offered load, but p50 stays near its 132 ns floor across the entire sweep — at 50 MHz target, p50 is still 264 ns and queue depth is still ~4. Its consumer drains items so quickly that the queue never deepens. The bottleneck is the producer side: each `try_push` plus the surrounding spin and timestamp costs more than the inter-arrival period the pacer is requesting, so the achieved rate caps at the producer's own throughput. Same outcome as the others — the variant can't keep up with the offered load — but expressed as a throughput ceiling rather than a latency wall.
 
@@ -177,12 +177,18 @@ against them for sporadic workloads.
 
 Saturated throughput: the producer runs flat-out with no pacing. Hand-rolled and
 Boost cap at near-identical rates — 14.7 M/s and 14.9 M/s respectively, within
-1.4%. Both are limited by the producer's per-iteration cost (timestamp, `try_push`,
-spin) rather than anything queue-implementation-specific. The latency distribution
-is what separates them under load (see the histograms above): Boost runs with its
-queue near capacity at saturation, hand-rolled with its queue near empty, so an
-item resident in Boost's queue waits ~200× longer end-to-end. Same throughput,
-very different residency.
+1.4% — but for opposite reasons, and the near-match is a coincidence. Hand-rolled
+is **producer-bound**: its consumer drains faster than the producer can push, the
+queue stays near empty, and the ceiling is the producer's own per-iteration cost
+(timestamp, `try_push`, spin). Boost is **consumer-bound**: its consumer is the ~3×
+slower one (see the load-sweep section above), so the queue fills, `try_push` starts
+failing and spinning, and the producer is throttled down to Boost's consumer drain
+rate. The 14.7-vs-14.9 agreement is two unrelated numbers — one producer rate, one
+consumer rate — happening to land close together, not evidence of a shared
+bottleneck. That difference is exactly what the queue-depth gap shows: Boost runs
+with its queue near capacity at saturation, hand-rolled with it near empty, so an
+item resident in Boost's queue waits ~200× longer end-to-end. Same throughput, very
+different residency — and very different reason for the ceiling.
 
 Mutex caps lower, at ~5.7 M/s — about 2.6× slower than lock-free. That's the
 "small multiple" rate gap: small enough that a throughput-only view would

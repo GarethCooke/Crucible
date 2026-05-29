@@ -40,7 +40,7 @@ Add a second GRUB entry that boots with full core isolation. Edit `/etc/grub.d/4
 menuentry 'Ubuntu (benchmark — cores 0-7 isolated)' {
     search --no-floppy --fs-uuid --set=root <your-root-uuid>
     linux /boot/vmlinuz-<version> root=UUID=<your-root-uuid> ro quiet splash \
-          isolcpus=0-7 nohz_full=0-7 rcu_nocbs=0-7
+          isolcpus=1-7 nohz_full=1-7 rcu_nocbs=1-7
     initrd /boot/initrd.img-<version>
 }
 ```
@@ -168,7 +168,7 @@ Manual deploy: upload `site/out/` to any static host.
 - ASUS ROG STRIX B550-F GAMING (Wi-Fi)
 - Ubuntu LTS, dual-boot with Windows
 - BIOS: Core Performance Boost disabled, SMT disabled, XMP enabled (DDR4-3200)
-- Core isolation: `isolcpus=0-7 nohz_full=0-7 rcu_nocbs=0-7` via dedicated GRUB entry
+- Core isolation: `isolcpus=1-7 nohz_full=1-7 rcu_nocbs=1-7` via dedicated GRUB entry
 
 CCX layout (verified via `lscpu --extended`): cores 0–3 share L3 instance 0 (CCX0); cores 4–7 share L3 instance 1 (CCX1). With SMT disabled the OS exposes 8 logical CPUs (0–7), one per physical core.
 

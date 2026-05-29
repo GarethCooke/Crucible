@@ -18,6 +18,8 @@ export interface TimeVsNRun {
   variant: string
   n: number
   k?: number
+  modify_pct?: number
+  workload?: string
   ns_per_op: { median: number; min: number; p99: number; iqr: number }
 }
 
@@ -29,10 +31,16 @@ interface Props {
   title?: string
   yAxisLabel?: string
   kFilter?: number | 'all'
-  xAxis?: 'n' | 'k'
+  nFilter?: number
+  xAxis?: 'n' | 'k' | 'modify_pct'
+  xScale?: 'log' | 'linear'
   thresholdMarkers?: ThresholdMarker[]
   /** Annotate the largest sorted/unsorted gap (demo 1 only). Default false. */
   annotateMaxGap?: boolean
+  /** Display-name overrides: maps JSON variant name → legend label. */
+  variantLabels?: Record<string, string>
+  /** Use log scale on the Y axis (needed for modify_pct charts with wide dynamic range). */
+  yAxisLog?: boolean
 }
 
 // Dash patterns keyed by K value. K=1 is solid.
@@ -44,15 +52,17 @@ const K_DASH: Record<number, string> = {
   16: '12,4',
 }
 
-export function TimeVsNChart({ runs, stat = 'median', title, yAxisLabel, kFilter, xAxis = 'n', thresholdMarkers, annotateMaxGap = false }: Props) {
+export function TimeVsNChart({ runs, stat = 'median', title, yAxisLabel, kFilter, nFilter, xAxis = 'n', xScale, thresholdMarkers, annotateMaxGap = false, variantLabels, yAxisLog = false }: Props) {
   const ref = useChartEffect((el) => {
     if (runs.length === 0) return
     if (xAxis === 'k') {
-      renderKAxis(el, runs, stat, title, yAxisLabel)
+      renderKAxis(el, runs, stat, title, yAxisLabel, variantLabels, xScale)
+    } else if (xAxis === 'modify_pct') {
+      renderModifyPctAxis(el, runs, stat, title, yAxisLabel, nFilter, variantLabels, yAxisLog)
     } else {
-      renderNAxis(el, runs, stat, title, yAxisLabel, kFilter, thresholdMarkers, annotateMaxGap)
+      renderNAxis(el, runs, stat, title, yAxisLabel, kFilter, thresholdMarkers, annotateMaxGap, variantLabels)
     }
-  }, [runs, stat, title, yAxisLabel, kFilter, xAxis, thresholdMarkers, annotateMaxGap])
+  }, [runs, stat, title, yAxisLabel, kFilter, nFilter, xAxis, xScale, thresholdMarkers, annotateMaxGap, variantLabels, yAxisLog])
 
   return (
     <ChartZoom>
@@ -72,6 +82,7 @@ function renderNAxis(
   kFilter?: number | 'all',
   thresholdMarkers?: ThresholdMarker[],
   annotateMaxGap = false,
+  variantLabels?: Record<string, string>,
 ) {
   const groupByK = kFilter === 'all'
   const H = 320
@@ -228,13 +239,130 @@ function renderNAxis(
   appendYAxis(g, colors, axisLeft(y).ticks(5).tickFormat((v) => `${(+v).toFixed(2)} ns`))
   appendYLabel(svg, yAxisLabel ?? `${stat} ns / element`, -(margin.top + inner.h / 2), 14, colors, typography.captionSize)
 
+  const labelFor = (v: string) => variantLabels?.[v] ?? capitalize(v)
   const legendItems = seriesList.map(({ variant, k }) => ({
     label: k != null
-      ? `${variant} (K=${k})`
-      : capitalize(variant),
+      ? `${labelFor(variant)} (K=${k})`
+      : labelFor(variant),
     color: variantColor(variant),
     dash: k != null ? (K_DASH[k] ?? 'none') : 'none',
   }))
+
+  appendLegendLines(svg, legendItems, {
+    x: margin.left + inner.w + 8,
+    y: margin.top,
+    spacing: 18,
+  }, { textSecondary: colors.textSecondary })
+}
+
+function renderModifyPctAxis(
+  el: SVGSVGElement,
+  runs: TimeVsNRun[],
+  stat: 'median' | 'min' | 'p99',
+  title?: string,
+  yAxisLabel?: string,
+  nFilter?: number,
+  variantLabels?: Record<string, string>,
+  yAxisLog = false,
+) {
+  const H = 320
+  const W = el.clientWidth || 700
+  const margin = { top: 32, right: 112, bottom: 56, left: 80 }
+  const { svg, g, inner, colors } = setupSVG(el, W, H, margin, title ?? DEFAULT_TITLE)
+
+  // Group runs by (variant, n) — each is one line.
+  const nsPerElem = (r: TimeVsNRun) => r.ns_per_op[stat] ?? r.ns_per_op.median
+  const pcts = Array.from(new Set(runs.map((r) => r.modify_pct ?? 0))).sort((a, b) => a - b)
+
+  type Series = { variant: string; n: number; runs: TimeVsNRun[] }
+  const seen = new Map<string, { variant: string; n: number }>()
+  runs.forEach((r) => {
+    const key = `${r.variant}|${r.n}`
+    if (!seen.has(key)) seen.set(key, { variant: r.variant, n: r.n })
+  })
+  const seriesList: Series[] = Array.from(seen.values())
+    .sort((a, b) => a.variant.localeCompare(b.variant) || a.n - b.n)
+    .map(({ variant, n }) => ({
+      variant,
+      n,
+      runs: runs
+        .filter((r) => r.variant === variant && r.n === n)
+        .sort((a, b) => (a.modify_pct ?? 0) - (b.modify_pct ?? 0)),
+    }))
+
+  // Linear 0–100 scale so spacing is proportional to value, not equal per tick.
+  const x = scaleLinear().domain([0, 100]).range([0, inner.w])
+  const allY = runs.map(nsPerElem)
+  const minY = Math.max(0.5, Math.min(...allY) * 0.85)
+  const maxY = max(allY)! * 1.25
+  const y = yAxisLog
+    ? scaleLog().domain([minY, maxY]).range([inner.h, 0])
+    : scaleLinear().domain([0, maxY]).range([inner.h, 0]).nice()
+
+  appendGrid(g, y, inner, { gridline: colors.border })
+
+  const lineGen = line<TimeVsNRun>()
+    .x((d) => x(d.modify_pct ?? 0))
+    .y((d) => y(nsPerElem(d)))
+
+  const nValues = Array.from(new Set(seriesList.map((s) => s.n))).sort((a, b) => a - b)
+
+  seriesList.forEach(({ variant, n, runs: sRuns }) => {
+    const col = variantColor(variant)
+    const nIdx = nValues.indexOf(n)
+    const dash = nValues.length > 1 ? (K_DASH[nIdx + 1] ?? 'none') : 'none'
+    const safeKey = `${variant}-${n}`
+
+    g.append('path')
+      .datum(sRuns)
+      .attr('fill', 'none')
+      .attr('stroke', col)
+      .attr('stroke-width', 2)
+      .attr('stroke-dasharray', dash)
+      .attr('opacity', 0.85)
+      .attr('d', lineGen)
+
+    g.selectAll(`.dot-mp-${safeKey}`)
+      .data(sRuns)
+      .join('circle')
+      .attr('class', `dot-mp-${safeKey}`)
+      .attr('cx', (d) => x(d.modify_pct ?? 0))
+      .attr('cy', (d) => y(nsPerElem(d)))
+      .attr('r', 3.5)
+      .attr('fill', col)
+      .attr('opacity', 0.9)
+  })
+
+  appendXAxis(g, inner, colors, axisBottom(x).tickValues(pcts).tickSize(0).tickFormat((v) => `${+v}%`), true)
+  const xLabel = nFilter != null
+    ? `modify_pct  ·  N=${nFilter.toLocaleString()}`
+    : 'modify_pct'
+  appendXLabel(svg, xLabel, margin.left + inner.w / 2, H - 8, colors)
+
+  const yFmt = yAxisLog
+    ? (v: { valueOf(): number }) => {
+        const ns = +v
+        if (ns >= 10000) return `${(ns / 1000).toFixed(0)} µs`
+        if (ns >= 1000)  return `${(ns / 1000).toFixed(1)} µs`
+        if (ns >= 1)     return `${ns.toFixed(0)} ns`
+        return `${ns.toFixed(1)} ns`
+      }
+    : (v: { valueOf(): number }) => `${(+v).toFixed(1)} ns`
+
+  appendYAxis(g, colors, axisLeft(y).ticks(5).tickFormat(yFmt))
+  appendYLabel(svg, yAxisLabel ?? `${stat} ns / op${yAxisLog ? '  ·  log scale' : ''}`, -(margin.top + inner.h / 2), 14, colors, typography.captionSize)
+
+  const labelFor = (v: string) => variantLabels?.[v] ?? capitalize(v)
+  const legendItems = seriesList.map(({ variant, n }) => {
+    const nIdx = nValues.indexOf(n)
+    return {
+      label: nValues.length > 1
+        ? `${labelFor(variant)} N=${n >= 1000 ? `${n / 1000}K` : n}`
+        : labelFor(variant),
+      color: variantColor(variant),
+      dash: nValues.length > 1 ? (K_DASH[nIdx + 1] ?? 'none') : 'none',
+    }
+  })
 
   appendLegendLines(svg, legendItems, {
     x: margin.left + inner.w + 8,
@@ -249,6 +377,8 @@ function renderKAxis(
   stat: 'median' | 'min' | 'p99',
   title?: string,
   yAxisLabel?: string,
+  variantLabels?: Record<string, string>,
+  xScale?: 'log' | 'linear',
 ) {
   const H = 320
   const W = el.clientWidth || 700
@@ -259,14 +389,25 @@ function renderKAxis(
   const ks = Array.from(new Set(runs.map((r) => r.k ?? 0))).sort((a, b) => a - b)
   const nsPerElem = (r: TimeVsNRun) => r.ns_per_op[stat] ?? r.ns_per_op.median
 
-  const x = scalePoint<number>().domain(ks).range([0, inner.w]).padding(0.3)
+  let toX: (v: number) => number
+  let appendKXAxis: () => void
+  if (xScale === 'linear') {
+    const lin = scaleLinear().domain([ks[0], ks[ks.length - 1]]).range([0, inner.w])
+    toX = (v) => lin(v)
+    appendKXAxis = () => appendXAxis(g, inner, colors, axisBottom(lin).tickValues(ks).tickSize(0).tickFormat((v) => `${+v}`), true)
+  } else {
+    const pt = scalePoint<number>().domain(ks).range([0, inner.w]).padding(0.3)
+    toX = (v) => pt(v) ?? 0
+    appendKXAxis = () => appendXAxis(g, inner, colors, axisBottom(pt).tickSize(0).tickFormat((v) => `${v}`), true)
+  }
+
   const allY = runs.map(nsPerElem)
   const y = scaleLinear().domain([0, max(allY)! * 1.15]).range([inner.h, 0]).nice()
 
   appendGrid(g, y, inner, { gridline: colors.border })
 
   const lineGen = line<TimeVsNRun>()
-    .x((d) => x(d.k ?? 0)!)
+    .x((d) => toX(d.k ?? 0))
     .y((d) => y(nsPerElem(d)))
 
   variants.forEach((v) => {
@@ -285,21 +426,21 @@ function renderKAxis(
       .data(vRuns)
       .join('circle')
       .attr('class', `dot-k-${v}`)
-      .attr('cx', (d) => x(d.k ?? 0)!)
+      .attr('cx', (d) => toX(d.k ?? 0))
       .attr('cy', (d) => y(nsPerElem(d)))
       .attr('r', 3.5)
       .attr('fill', col)
       .attr('opacity', 0.9)
   })
 
-  appendXAxis(g, inner, colors, axisBottom(x).tickSize(0).tickFormat((v) => `${v}`), true)
+  appendKXAxis()
   appendXLabel(svg, 'K (fields per element)', margin.left + inner.w / 2, H - 8, colors)
 
   appendYAxis(g, colors, axisLeft(y).ticks(5).tickFormat((v) => `${(+v).toFixed(2)} ns`))
   appendYLabel(svg, yAxisLabel ?? `${stat} ns / element`, -(margin.top + inner.h / 2), 14, colors, typography.captionSize)
 
   appendLegendLines(svg, variants.map((v) => ({
-    label: capitalize(v),
+    label: variantLabels?.[v] ?? capitalize(v),
     color: variantColor(v),
   })), { x: margin.left + inner.w + 8, y: margin.top, spacing: 20 }, { textSecondary: colors.textSecondary })
 }

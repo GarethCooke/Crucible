@@ -2,7 +2,7 @@
 # Wraps `perf stat -j` around the false-sharing benchmark binary.
 #
 # PRECONDITION: must be run from the benchmark GRUB entry with kernel params
-#   isolcpus=0-7 nohz_full=0-7 rcu_nocbs=0-7
+#   isolcpus=1-7 nohz_full=1-7 rcu_nocbs=1-7
 # The script aborts if /sys/devices/system/cpu/isolated does not read "0-7".
 # See /methodology for the dual-GRUB-entry setup.
 #
@@ -20,7 +20,7 @@
 #   <placement>_<threads>t_<padded|unpadded>.bench.json  Google Benchmark JSON
 #
 # Prerequisites:
-#   Boot into the benchmark GRUB entry (isolcpus=0-7 nohz_full=0-7 rcu_nocbs=0-7)
+#   Boot into the benchmark GRUB entry (isolcpus=1-7 nohz_full=1-7 rcu_nocbs=1-7)
 #   sudo sysctl kernel.perf_event_paranoid=1
 #   linux-tools-$(uname -r) installed
 
@@ -46,7 +46,7 @@ if [[ "$ISOLATED" != "1-7" ]]; then
     echo "ERROR: cores 1-7 are not isolated as required." >&2
     echo "  /sys/devices/system/cpu/isolated = '${ISOLATED}'" >&2
     echo "  Boot into the benchmark GRUB entry:" >&2
-    echo "    isolcpus=0-7 nohz_full=0-7 rcu_nocbs=0-7" >&2
+    echo "    isolcpus=1-7 nohz_full=1-7 rcu_nocbs=1-7" >&2
     echo "  (kernel reports 1-7 because cpu0 is the boot CPU and cannot be isolated)" >&2
     echo "  See /methodology for the dual-GRUB-entry setup." >&2
     exit 1
@@ -82,7 +82,7 @@ SLUG="${PLACEMENT}_${THREADS}t_${PADDED_STR}"
 PERF_OUT="${SLUG}.perf.json"
 BENCH_OUT="${SLUG}.bench.json"
 
-echo "==> Isolation: cores 0-7 confirmed (isolcpus=0-7 nohz_full=0-7 rcu_nocbs=0-7)"
+echo "==> Isolation: cores 0-7 confirmed (isolcpus=1-7 nohz_full=1-7 rcu_nocbs=1-7)"
 echo "==> Running benchmark: $FILTER"
 echo "    perf JSON  → $PERF_OUT"
 echo "    bench JSON → $BENCH_OUT"

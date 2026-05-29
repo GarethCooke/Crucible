@@ -120,6 +120,7 @@ export default async function PostPage({ params }: { params: { slug: string } })
           components={components}
           options={{
             mdxOptions: {
+              useDynamicImport: true,
               remarkPlugins: [remarkGfm, remarkMath],
               rehypePlugins: [
                 rehypeSlug,

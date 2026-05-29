@@ -51,6 +51,7 @@ export const tokens = {
         'oklch(52% 0.17 30)',    // darker red-orange
         'oklch(78% 0.15 95)',    // light yellow-green
         'oklch(60% 0.17 320)',   // mid rose
+        'oklch(70% 0.16 260)',   // mid purple
       ] as const,
     },
   },

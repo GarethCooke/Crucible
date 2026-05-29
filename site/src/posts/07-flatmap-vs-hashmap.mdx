@@ -1,33 +1,318 @@
 ---
-title: "std::flat_map vs hash map: where the crossover actually sits"
-date: "2026-05-25"
-status: "in-progress"
-expectedAt: "June 2026"
-summary: "Five map implementations swept from N=16 to N≈10⁶ on the same machine. Where does the sorted-vector primitive stop beating the hash map? And does the answer depend on the workload mix more than the size?"
+title: "No crossover: absl::flat_hash_map wins at every N and workload mix"
+date: "2026-05-26"
+summary: "Five map implementations swept from N=8 to N≈4M on a Zen 2 CCX. The 'small map → flat structure' folklore expected a crossover; the data found none. absl::flat_hash_map is fastest at every N, in both pure-lookup and modify-mixed workloads, and the sorted-vector primitives collapse under any modify load at non-trivial N."
 ---
 
-<InProgressNotice expectedAt="June 2026" />
+export const LABELS = {
+  absl_flat:  "absl::flat_hash_map",
+  std_unord:  "std::unordered_map",
+  std_map:    "std::map",
+  boost_flat: "boost::flat_map",
+  sorted_vec: "vector + lower_bound",
+}
+
+export const VARIANTS = ["absl_flat", "std_unord", "std_map", "boost_flat", "sorted_vec"]
+
+export const CACHE_MARKERS = [
+  { label: "L1",  n:       2048 },
+  { label: "L2",  n:      32768 },
+  { label: "L3",  n:    1048576 },
+]
+
+The C++ performance folklore says sorted vectors beat hash maps at small N.
+Cache locality, no hash overhead, `lower_bound` on a contiguous array beats
+pointer-chasing into buckets for tiny maps. The advice is load-bearing in real
+codebases — config maps, routing tables, anything that holds tens to a few
+hundred entries under steady read load.
+
+The data disagrees. On this machine, `absl::flat_hash_map` wins at every N from
+8 entries to 4 million, in both pure-lookup and modify-mixed workloads. There is
+no crossover in the swept range. And under any modify load at non-trivial N, the
+sorted-vector primitives don't just lose — they collapse.
 
 ## The thesis
 
-Most C++ code reaches for `std::unordered_map` (or, if it's paying attention, `absl::flat_hash_map`) regardless of how many entries the map will hold. For the maps that show up most often in real code — small ones, holding tens to a few hundred entries — that's the wrong default.
+The "small map → flat structure" folklore does not survive contact with a current
+open-addressing hash map. `absl::flat_hash_map` wins at every N tested, from 8
+entries to 4 million, in both pure-lookup and modify-mixed workloads. Even
+`std::unordered_map` beats the sorted-vector primitives at small N — the folklore
+is wrong in a more comprehensive way than the conventional "use flat_map at small
+N" version of it suggests.
 
-When the working set fits in L1, a sorted vector with `std::lower_bound` beats a hash table on cache locality alone. The hash function, the bucket arithmetic, the probe sequence — they're all overhead the sorted vector skips. The interesting question isn't _whether_ the crossover exists; it's _where it sits_ on a real machine, and _how the workload mix moves it_.
+Under any modify load at non-trivial N, the sorted-vector primitives degrade
+catastrophically. Their O(N) insert/erase amplifies the modify fraction into
+10×–1000× slowdowns. At N = 65536 and 90% modify, `sorted_vec` and
+`boost::flat_map` land at ~17 µs/op against `absl::flat_hash_map`'s ~22 ns/op —
+a ~780× gap.
 
-## What the post will cover
+The actionable takeaway is unromantic: reach for `absl::flat_hash_map` by
+default, regardless of map size.
 
-Five implementations swept from N = 16 to N ≈ 10⁶ on the reference machine, with cache-hierarchy bands (L1, L2, L3, DRAM) drawn on the chart so you can see why the curves bend where they do:
+## The setup
 
-1. `std::map` — red-black tree, included as the worst-case baseline.
-2. `std::vector<std::pair<K, V>> + std::lower_bound` — the sorted-vector primitive.
-3. `std::flat_map` — C++23's sorted-container adaptor.
-4. `std::unordered_map` — the standard hash map most code reaches for.
-5. `absl::flat_hash_map` — open-addressing, the current best-in-class for general use.
+Five implementations, swept from N = 8 to N = 4 194 304 (14 points on a log
+scale), with two workloads:
 
-The headline chart is the time-per-lookup curve across the N sweep, with the crossover where the hash maps start winning. Supporting views: throughput bars at three discrete N (small / medium / large) that show the ranking inverting across scales, and an insert-mix sweep that shows how the picture shifts as the workload moves from pure-lookup toward insert-heavy.
+| JSON name     | Display name              | One-line description                                      |
+| ------------- | ------------------------- | --------------------------------------------------------- |
+| `std_map`     | `std::map`                | Red-black tree; node-based; baseline.                     |
+| `sorted_vec`  | `vector + lower_bound`    | Sorted contiguous primitive.                              |
+| `boost_flat`  | `boost::flat_map`         | Library wrapper over the sorted-vector primitive.         |
+| `std_unord`   | `std::unordered_map`      | Chaining hash map; `absl::Hash` as hasher.                |
+| `absl_flat`   | `absl::flat_hash_map`     | Open-addressing hash map; `absl::Hash` as hasher.         |
 
-## What makes the post interesting
+Both hash maps use `absl::Hash<uint64_t>` as the hasher — this controls for
+hash-function differences so the comparison isolates the structural difference
+(chaining vs. open addressing). The hasher choice is visible in the benchmark
+source ([`bench/demos/07-no-crossover/benchmark.cpp`](https://github.com/GarethCooke/Crucible/tree/master/bench/demos/07-no-crossover/benchmark.cpp)).
 
-The "flat structure beats hash map at small N" result is folklore in C++ perf circles but rarely measured precisely. This post puts a number on it for a specific machine, draws the cache-hierarchy bands so you can see _why_ the crossover is where it is, and shows how far the answer moves when the workload mix changes. The actionable takeaway: if your map has fewer than ~X entries (where X depends on key type, workload mix, and machine), the contiguous primitive is the right default — and we'll publish the X.
+Two workloads. **Lookup**: 4096-entry cyclic index over a populated map, 100%
+hit rate, steady-state, hot cache. **Modify-mix**: steady-state erase+insert at
+a configurable modify fraction (0%, 10%, 25%, 50%, 75%, 90%). Keys generated by
+`mt19937_64(seed=42)` with distinctness via `unordered_set`; op sequence by
+`mt19937_64(seed=1337)`. 5 outer repetitions per cell; reported number is the
+median of repetitions.
 
-Expected to ship in June 2026.
+## The headline picture: no crossover
+
+Log-log axes, all five variants, lookup workload only. Cache-tier boundaries
+drawn at N = 2 K (L1d capacity), N = 32 K (L2), N = 1 M (L3 per CCX) for
+`pair<uint64_t, uint64_t>` data on the reference machine (32 KiB L1d,
+512 KiB L2, 16 MiB L3 per CCX).
+These boundaries are the contiguous (sorted-vector) footprint; the hash-map
+variants carry slot and metadata overhead, so they cross each tier somewhat
+earlier than the markers suggest — visible in `absl::flat_hash_map` departing
+its flat region before the L1 marker.
+
+<TimeVsN
+  slug="07-no-crossover"
+  variants={VARIANTS}
+  workloadFilter="lookup"
+  variantLabels={LABELS}
+  thresholdMarkers={CACHE_MARKERS}
+  title="Lookup time vs N — all five variants, log-log"
+  yAxisLabel="median ns / op"
+/>
+
+What to read off the chart:
+
+- **`absl::flat_hash_map`** sits near 3.5 ns/op from N = 8 through N ≈ 512 —
+  close to L1 hit cost — and only rises meaningfully once the table exceeds L1.
+  At N = 4 M it reaches ~18.5 ns/op, still the fastest variant by a wide margin.
+- **`std::unordered_map`** has the same shape — same hasher, chaining vs.
+  open-addressing — but sits ~4× higher at small N (14.2 ns vs. 3.5 ns at
+  N = 64), narrowing to ~1.6× at N = 4 M (29.3 ns vs. 18.5 ns) as both hit
+  DRAM. The probing/metadata advantage of `absl::flat_hash_map` is worth more
+  in cache than it is in DRAM.
+- **`vector + lower_bound`** and **`boost::flat_map`** track each other
+  within ~11% across the entire range (under 5% for N ≥ 16) — they are the same
+  sorted-contiguous primitive; the residual is Boost's container bookkeeping over
+  a raw vector. Against `absl::flat_hash_map` the gap widens monotonically: ~3× at
+  N = 8 (11.4 ns vs. 3.5 ns), ~13× at N = 1 024 (48.3 ns vs. 3.8 ns), ~24× at
+  N = 4 M (437.5 ns vs. 18.5 ns). Binary search's O(log N) pointer walk
+  traverses more cache lines as N grows; the hash map's random-access probing
+  stays bounded.
+- **`std::map`** is not uniformly the worst at small N. At N ≤ 512 it beats
+  `sorted_vec` and `boost::flat_map` by a few nanoseconds — a red-black tree
+  whose nodes fit in L1 lets the branch predictor handle the walk, and the fixed
+  tree depth at tiny N means fewer comparisons than `lower_bound`'s full log
+  scan. At N ≥ 1 024 the node-based layout loses to the contiguous primitives,
+  and by N = 4 M `std::map`, `vector + lower_bound`, and `boost::flat_map` have
+  converged into a ~440–460 ns/op cluster — all roughly 24× slower than
+  `absl::flat_hash_map`. The wide margin at large N is between the hash maps and
+  this cluster, not within it.
+
+## The ranking at three cache tiers
+
+The log-log chart compresses the absolute gaps. These three bar charts show the
+ranking at three fixed N values — one per cache tier — so the ratios are
+impossible to miss.
+
+<ThroughputBars
+  slug="07-no-crossover"
+  variants={VARIANTS}
+  workloadFilter="lookup"
+  variantLabels={LABELS}
+  targetN={64}
+  title="N = 64 (L1-resident)"
+/>
+
+<ThroughputBars
+  slug="07-no-crossover"
+  variants={VARIANTS}
+  workloadFilter="lookup"
+  variantLabels={LABELS}
+  targetN={4096}
+  title="N = 4 096 (L1 → L2 boundary)"
+/>
+
+<ThroughputBars
+  slug="07-no-crossover"
+  variants={VARIANTS}
+  workloadFilter="lookup"
+  variantLabels={LABELS}
+  targetN={1048576}
+  title="N = 1 048 576 (L3 → DRAM boundary)"
+/>
+
+At every tier the ranking is the same: `absl::flat_hash_map` first, then
+`std::unordered_map`, then the sorted-vector and tree variants. The gap between
+`absl::flat_hash_map` and `std::unordered_map` is roughly stable in absolute
+nanoseconds; the gap between the hash maps and the sorted-vector primitives
+widens sharply with N as the binary-search cost scales with working-set size.
+
+## Under modify load, sorted containers collapse
+
+The lookup picture already makes the case. The modify-mix picture makes it
+unarguable.
+
+Modify-mix workload: a configurable fraction of operations is erase+insert
+(steady-state, map stays at size N); the rest are lookups. Three panels, one per
+N, log Y axis. N = 256 and N = 4 096 show the onset; N = 65 536 shows the
+collapse.
+
+<TimeVsN
+  slug="07-no-crossover"
+  variants={VARIANTS}
+  workloadFilter="modify_mix"
+  nFilter={256}
+  xAxis="modify_pct"
+  yAxisLog={true}
+  variantLabels={LABELS}
+  title="Modify-mix sensitivity — N = 256"
+  yAxisLabel="median ns / op  ·  log scale"
+/>
+
+<TimeVsN
+  slug="07-no-crossover"
+  variants={VARIANTS}
+  workloadFilter="modify_mix"
+  nFilter={4096}
+  xAxis="modify_pct"
+  yAxisLog={true}
+  variantLabels={LABELS}
+  title="Modify-mix sensitivity — N = 4 096"
+  yAxisLabel="median ns / op  ·  log scale"
+/>
+
+<TimeVsN
+  slug="07-no-crossover"
+  variants={VARIANTS}
+  workloadFilter="modify_mix"
+  nFilter={65536}
+  xAxis="modify_pct"
+  yAxisLog={true}
+  variantLabels={LABELS}
+  title="Modify-mix sensitivity — N = 65 536"
+  yAxisLabel="median ns / op  ·  log scale"
+/>
+
+At N = 65 536, 90% modify: `sorted_vec` lands at **~17 308 ns/op** (~17.3 µs),
+`boost::flat_map` at **~17 217 ns/op** (~17.2 µs), `absl::flat_hash_map` at
+**~22 ns/op**. That is a **~780× gap**. The hash-map lines barely move as
+modify fraction increases — O(1) amortised insert/erase costs roughly the same
+as a lookup. The sorted-vector lines climb three orders of magnitude on a log
+axis.
+
+`std::map` shows a moderate cost increase under modify load (node allocation
+and tree rebalancing) but nothing like the sorted-vector collapse. At N = 65 536,
+90% modify, it lands at ~340 ns/op — costly, but not catastrophic compared to
+the contiguous containers.
+
+## The mechanism
+
+`sorted_vec` and `boost::flat_map` store elements in a contiguous array, sorted
+by key. Lookup is O(log N) cache-line touches — fast. Insert and erase are O(N):
+inserting a new key requires shifting all elements above it one position; erasing
+shifts all elements below. At N = 65 536, each modify operation shifts up to
+65 536 elements.
+
+The modify-mix workload dials up the fraction of O(N) operations directly. At
+10% modify, roughly 1 in 10 operations is O(N). At 90% modify, 9 in 10 are. The
+per-operation cost grows as `modify_pct × O(N) + (1 - modify_pct) × O(log N)`;
+the O(N) term dominates rapidly. At N = 65 536 and 90% modify, each operation
+is almost entirely O(N) erase+insert — hence the ~17 µs/op observed.
+
+`absl::flat_hash_map` and `std::unordered_map` are O(1) amortised for both
+lookup and insert/erase. The modify fraction is just adjusting the mix of two
+roughly equal-cost operations. Their lines stay near-flat on a log axis because
+the cost per operation does not scale with N at the modify point.
+
+## The `boost::flat_map` substitution
+
+The post's variant set substitutes `boost::container::flat_map` for
+`std::flat_map`. The toolchain used for this capture — GCC 13.3.0 on Ubuntu
+24.04 — does not provide `std::flat_map`; libstdc++ did not implement
+`<flat_map>` until GCC 15. `boost::flat_map` uses the same underlying primitive
+(sorted contiguous storage, `lower_bound` lookup, O(N) insert/erase) and its
+lookup curve tracks `sorted_vec` to within ~11% at small N (under 5% for N ≥ 16) across the entire sweep —
+empirical confirmation that the substitution does not change the story. The
+substitution and its rationale are documented in the [bench README](https://github.com/GarethCooke/Crucible/tree/master/bench/demos/07-no-crossover/README.md).
+
+## What this doesn't show
+
+- **Other open-addressing hash maps.** Folly F14, robin_hood, ankerl,
+  `ska::flat_hash_map` — all out of scope. Any of them might beat or lose to
+  `absl::flat_hash_map`; that is a separate sweep. This post establishes the
+  sorted-vector baseline picture; the hash-map-vs-hash-map comparison is future
+  work.
+- **Other key types.** `uint64_t` keys with `absl::Hash` is the cheapest
+  possible hash path. String keys, expensive-hash custom keys, and small-struct
+  keys would change the absolute numbers and possibly the ordering between the
+  hash maps. `sorted_vec`'s `lower_bound` also scales with the comparator; for
+  `uint64_t` that is a single integer compare.
+- **Cache-cold lookups.** The lookup workload is steady-state with a 4096-entry
+  cyclic index over a populated map; the map structure is hot in cache.
+  A cold-cache pattern would change the picture, especially for `sorted_vec`
+  where `lower_bound`'s sequential reads prefetch well.
+- **Multi-thread / contended access.** Single-thread throughout.
+- **`std::flat_map` once libstdc++ ships it.** Substituted for
+  `boost::flat_map` — see the substitution section above. If a future libstdc++
+  delivers a measurably different implementation, a re-run would be warranted.
+- **Hash function variations.** Both hash maps use `absl::Hash<uint64_t>`;
+  switching `std::unordered_map` to `std::hash<uint64_t>` (the identity function
+  on most implementations) would change `std_unord`'s numbers. This post pins
+  the hasher and says so.
+- **`std::map`'s small-N edge over `sorted_vec`.** Real, reproducible, and
+  worth knowing (a few nanoseconds at N ≤ 512 in pure lookup). It does not
+  change the post's conclusion — `absl::flat_hash_map` beats `std::map` at every
+  N — but it contradicts the simple mental model of "tree is always worse than
+  contiguous for small maps."
+
+## Takeaway
+
+Reach for `absl::flat_hash_map` by default, regardless of map size.
+
+The "small map → flat structure" folklore was plausible before open-addressing
+hash maps with good metadata layouts became standard. On current hardware, with
+a current open-addressing implementation, the folklore's premise does not hold.
+`absl::flat_hash_map` wins in cache; it wins at DRAM; it wins under pure lookup
+and under mixed workloads. Sorted containers are only competitive when the map is
+truly read-only and modify performance is permanently irrelevant — a narrower
+niche than the folklore implies.
+
+If you cannot take `absl` as a dependency, `std::unordered_map` still beats
+`sorted_vec` and `boost::flat_map` at small N, and does not collapse under modify
+load. It is a worse choice than `absl::flat_hash_map` everywhere in this sweep,
+but it is not the wrong default.
+
+The cache-staircase structure visible on the headline chart — the same L3
+cliff that [demo 6](/posts/06-aos-vs-soa) established for AoS vs SoA — also
+explains the hash-map performance shape. `absl::flat_hash_map`'s flat metadata
+layout keeps the effective working set small enough to stay L1-resident well past
+the point where the sorted-vector lookup has started chasing L2/L3. The
+[cache-hierarchy framing from demo 1](/posts/01-branch-prediction) is the right
+lens for reading the bends in the lookup curves.
+
+---
+
+*AMD Ryzen 7 3800X, Zen 2 (SMT off), 3.9 GHz base, governor = performance,
+turbo disabled (BIOS Core Performance Boost off), cores 0–7 isolated (core 0
+carries unavoidable kernel housekeeping), single thread pinned to CCX1 (cores
+4–7), headless Ubuntu 24.04. GCC 13.3, -O3 -march=native -DNDEBUG.
+5 outer repetitions per cell, median ns_per_op reported (working-set-sweep convention).*
+
+*Source: [`bench/demos/07-no-crossover/`](https://github.com/GarethCooke/Crucible/tree/master/bench/demos/07-no-crossover) · [JSON](https://github.com/GarethCooke/Crucible/blob/master/site/src/data/perf/07-no-crossover.json).*
+
+*[Methodology →](/methodology)*
