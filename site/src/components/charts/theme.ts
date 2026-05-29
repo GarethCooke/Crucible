@@ -14,6 +14,10 @@ export const palette = {
   'soa-scalar':  tokens.color.chart.series[0],
   'aos-scalar':  tokens.color.chart.series[1],
   'soa-autovec': tokens.color.chart.series[2],
+  // allocators demo (05): index-ordered to match PressureSweepChart's variantColorByIndex
+  'cross-thread-malloc':   tokens.color.chart.series[0],
+  'freelist-return-queue': tokens.color.chart.series[1],
+  'arena-batch-handoff':   tokens.color.chart.series[2],
   // map comparison demo (07): index-ordered so variantColor() assigns distinct colours
   'absl_flat':  tokens.color.chart.series[0],
   'std_unord':  tokens.color.chart.series[1],
