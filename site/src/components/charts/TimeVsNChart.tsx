@@ -33,6 +33,7 @@ interface Props {
   kFilter?: number | 'all'
   nFilter?: number
   xAxis?: 'n' | 'k' | 'modify_pct'
+  xScale?: 'log' | 'linear'
   thresholdMarkers?: ThresholdMarker[]
   /** Annotate the largest sorted/unsorted gap (demo 1 only). Default false. */
   annotateMaxGap?: boolean
@@ -51,17 +52,17 @@ const K_DASH: Record<number, string> = {
   16: '12,4',
 }
 
-export function TimeVsNChart({ runs, stat = 'median', title, yAxisLabel, kFilter, nFilter, xAxis = 'n', thresholdMarkers, annotateMaxGap = false, variantLabels, yAxisLog = false }: Props) {
+export function TimeVsNChart({ runs, stat = 'median', title, yAxisLabel, kFilter, nFilter, xAxis = 'n', xScale, thresholdMarkers, annotateMaxGap = false, variantLabels, yAxisLog = false }: Props) {
   const ref = useChartEffect((el) => {
     if (runs.length === 0) return
     if (xAxis === 'k') {
-      renderKAxis(el, runs, stat, title, yAxisLabel, variantLabels)
+      renderKAxis(el, runs, stat, title, yAxisLabel, variantLabels, xScale)
     } else if (xAxis === 'modify_pct') {
       renderModifyPctAxis(el, runs, stat, title, yAxisLabel, nFilter, variantLabels, yAxisLog)
     } else {
       renderNAxis(el, runs, stat, title, yAxisLabel, kFilter, thresholdMarkers, annotateMaxGap, variantLabels)
     }
-  }, [runs, stat, title, yAxisLabel, kFilter, nFilter, xAxis, thresholdMarkers, annotateMaxGap, variantLabels, yAxisLog])
+  }, [runs, stat, title, yAxisLabel, kFilter, nFilter, xAxis, xScale, thresholdMarkers, annotateMaxGap, variantLabels, yAxisLog])
 
   return (
     <ChartZoom>
@@ -289,7 +290,8 @@ function renderModifyPctAxis(
         .sort((a, b) => (a.modify_pct ?? 0) - (b.modify_pct ?? 0)),
     }))
 
-  const x = scalePoint<number>().domain(pcts).range([0, inner.w]).padding(0.3)
+  // Linear 0–100 scale so spacing is proportional to value, not equal per tick.
+  const x = scaleLinear().domain([0, 100]).range([0, inner.w])
   const allY = runs.map(nsPerElem)
   const minY = Math.max(0.5, Math.min(...allY) * 0.85)
   const maxY = max(allY)! * 1.25
@@ -300,7 +302,7 @@ function renderModifyPctAxis(
   appendGrid(g, y, inner, { gridline: colors.border })
 
   const lineGen = line<TimeVsNRun>()
-    .x((d) => x(d.modify_pct ?? 0)!)
+    .x((d) => x(d.modify_pct ?? 0))
     .y((d) => y(nsPerElem(d)))
 
   const nValues = Array.from(new Set(seriesList.map((s) => s.n))).sort((a, b) => a - b)
@@ -324,14 +326,14 @@ function renderModifyPctAxis(
       .data(sRuns)
       .join('circle')
       .attr('class', `dot-mp-${safeKey}`)
-      .attr('cx', (d) => x(d.modify_pct ?? 0)!)
+      .attr('cx', (d) => x(d.modify_pct ?? 0))
       .attr('cy', (d) => y(nsPerElem(d)))
       .attr('r', 3.5)
       .attr('fill', col)
       .attr('opacity', 0.9)
   })
 
-  appendXAxis(g, inner, colors, axisBottom(x).tickSize(0).tickFormat((v) => `${v}%`), true)
+  appendXAxis(g, inner, colors, axisBottom(x).tickValues(pcts).tickSize(0).tickFormat((v) => `${+v}%`), true)
   const xLabel = nFilter != null
     ? `modify_pct  ·  N=${nFilter.toLocaleString()}`
     : 'modify_pct'
@@ -376,6 +378,7 @@ function renderKAxis(
   title?: string,
   yAxisLabel?: string,
   variantLabels?: Record<string, string>,
+  xScale?: 'log' | 'linear',
 ) {
   const H = 320
   const W = el.clientWidth || 700
@@ -386,14 +389,25 @@ function renderKAxis(
   const ks = Array.from(new Set(runs.map((r) => r.k ?? 0))).sort((a, b) => a - b)
   const nsPerElem = (r: TimeVsNRun) => r.ns_per_op[stat] ?? r.ns_per_op.median
 
-  const x = scalePoint<number>().domain(ks).range([0, inner.w]).padding(0.3)
+  let toX: (v: number) => number
+  let appendKXAxis: () => void
+  if (xScale === 'linear') {
+    const lin = scaleLinear().domain([ks[0], ks[ks.length - 1]]).range([0, inner.w])
+    toX = (v) => lin(v)
+    appendKXAxis = () => appendXAxis(g, inner, colors, axisBottom(lin).tickValues(ks).tickSize(0).tickFormat((v) => `${+v}`), true)
+  } else {
+    const pt = scalePoint<number>().domain(ks).range([0, inner.w]).padding(0.3)
+    toX = (v) => pt(v) ?? 0
+    appendKXAxis = () => appendXAxis(g, inner, colors, axisBottom(pt).tickSize(0).tickFormat((v) => `${v}`), true)
+  }
+
   const allY = runs.map(nsPerElem)
   const y = scaleLinear().domain([0, max(allY)! * 1.15]).range([inner.h, 0]).nice()
 
   appendGrid(g, y, inner, { gridline: colors.border })
 
   const lineGen = line<TimeVsNRun>()
-    .x((d) => x(d.k ?? 0)!)
+    .x((d) => toX(d.k ?? 0))
     .y((d) => y(nsPerElem(d)))
 
   variants.forEach((v) => {
@@ -412,14 +426,14 @@ function renderKAxis(
       .data(vRuns)
       .join('circle')
       .attr('class', `dot-k-${v}`)
-      .attr('cx', (d) => x(d.k ?? 0)!)
+      .attr('cx', (d) => toX(d.k ?? 0))
       .attr('cy', (d) => y(nsPerElem(d)))
       .attr('r', 3.5)
       .attr('fill', col)
       .attr('opacity', 0.9)
   })
 
-  appendXAxis(g, inner, colors, axisBottom(x).tickSize(0).tickFormat((v) => `${v}`), true)
+  appendKXAxis()
   appendXLabel(svg, 'K (fields per element)', margin.left + inner.w / 2, H - 8, colors)
 
   appendYAxis(g, colors, axisLeft(y).ticks(5).tickFormat((v) => `${(+v).toFixed(2)} ns`))

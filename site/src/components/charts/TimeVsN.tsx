@@ -11,6 +11,7 @@ interface Props {
   kFilter?: number | 'all'
   nFilter?: number
   xAxis?: 'n' | 'k' | 'modify_pct'
+  xScale?: 'log' | 'linear'
   thresholdMarkers?: ThresholdMarker[]
   annotateMaxGap?: boolean
   workloadFilter?: 'lookup' | 'modify_mix'
@@ -27,6 +28,7 @@ export async function TimeVsN({
   kFilter,
   nFilter,
   xAxis = 'n',
+  xScale,
   thresholdMarkers,
   annotateMaxGap = false,
   workloadFilter,
@@ -72,6 +74,7 @@ export async function TimeVsN({
         kFilter={kFilter}
         nFilter={nFilter}
         xAxis={xAxis}
+        xScale={xScale}
         thresholdMarkers={thresholdMarkers}
         annotateMaxGap={annotateMaxGap}
         variantLabels={variantLabels}
