@@ -21,6 +21,8 @@ interface Props {
   distributionFilter?: string
   /** Render bars grouped by input distribution (demo 8 chart 2). */
   distGrouped?: boolean
+  /** Filter to a specific key type (e.g. "u32"). */
+  keyTypeFilter?: string
   /** Display-name overrides: maps JSON variant name → X-axis label. */
   variantLabels?: Record<string, string>
 }
@@ -37,6 +39,7 @@ export async function ThroughputBars({
   workloadFilter,
   distributionFilter,
   distGrouped,
+  keyTypeFilter,
   variantLabels,
 }: Props) {
   let runs: Run[] = runsIn ?? []
@@ -65,6 +68,12 @@ export async function ThroughputBars({
   if (distributionFilter) {
     runs = runs.filter(
       (r) => (r as { distribution?: string }).distribution === distributionFilter,
+    )
+  }
+
+  if (keyTypeFilter) {
+    runs = runs.filter(
+      (r) => (r as { key_type?: string }).key_type === keyTypeFilter,
     )
   }
 

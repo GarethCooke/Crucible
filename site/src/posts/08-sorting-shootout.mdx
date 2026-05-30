@@ -7,14 +7,10 @@ summary: "std::sort is the default everyone reaches for, and on fixed-width inte
 tags: ["sorting", "radix", "cache", "tail-latency", "cpp"]
 ---
 
-import TimeVsN from "@/components/charts/TimeVsN";
-import ThroughputBars from "@/components/charts/ThroughputBars";
-import CodeCompare from "@/components/CodeCompare";
-
-<!-- NOTE TO CC: frontmatter shape and import paths must match demo 7's shipped MDX
+{/* NOTE TO CC: frontmatter shape and import paths must match demo 7's shipped MDX
      exactly. The `status: "in-progress"` and `expectedAt` fields from the teaser
      stub are intentionally removed. Every number below is from the captured
-     08-sorting-shootout.json; do not edit numerals without re-deriving from the JSON. -->
+     08-sorting-shootout.json; do not edit numerals without re-deriving from the JSON. */}
 
 `std::sort` is the first thing everyone reaches for, and on a array of plain integers it is almost never the fastest option. Not because the implementation is weak — libstdc++'s introsort is excellent — but because it is playing a game it cannot win. Sort 67 million random 32-bit keys on the reference machine and `std::sort` spends about **74 ns per element**. A hand-rolled radix sort spends about **15**. Same machine, same data, same `-O3 -march=native`. The five-times gap is not a tuning detail; it is the difference between two cost models.
 
@@ -53,10 +49,14 @@ Here is the per-element cost of all three sorts on random 32-bit keys, from a th
 
 <TimeVsN
   slug="08-sorting-shootout"
-  distribution="random"
-  keyType="u32"
+  distributionFilter="random"
+  keyTypeFilter="u32"
   variants={["std_sort", "pdqsort", "radix_lsd"]}
-  cacheBands="radix_lsd"
+  thresholdMarkers={[
+    { label: "L1d", n: 8192 },
+    { label: "L2", n: 131072 },
+    { label: "L3", n: 4194304 },
+  ]}
 />
 
 Radix sits on the floor across almost the entire sweep. At 67 million keys it is roughly **5× faster than `std::sort`** and **1.9× faster than `pdqsort`**, and its line is nearly flat where the comparison sorts ramp upward — exactly what "no `log n`" looks like on a chart.
@@ -73,9 +73,9 @@ The chart above is random data. Real data usually isn't random — it's partiall
 
 <ThroughputBars
   slug="08-sorting-shootout"
-  n={4194304}
-  keyType="u32"
-  groupBy="distribution"
+  targetN={4194304}
+  keyTypeFilter="u32"
+  distGrouped={true}
   variants={["std_sort", "pdqsort", "radix_lsd"]}
   stat="median"
 />
