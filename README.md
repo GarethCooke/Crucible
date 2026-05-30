@@ -178,6 +178,52 @@ Full machine spec committed to `bench/machine/` on first benchmark run.
 
 ---
 
+## Raspberry Pi 5 bench rig
+
+A second reference machine for cross-architecture demos (ARM NEON, AArch64). Headless, active cooler fitted.
+
+- Raspberry Pi 5 — 4× Arm Cortex-A76, AArch64 (BCM2712)
+- Raspberry Pi OS Lite 64-bit (Bookworm)
+- No BIOS, no SMT (Cortex-A76 is a single-thread-per-core design)
+- Core isolation: `isolcpus=2,3 nohz_full=2,3 rcu_nocbs=2,3` via `cmdline.txt` (see below)
+- Cores 0–1: OS and IRQ housekeeping. Cores 2–3: isolated. Benchmark pins to core 3; core 2 is a quiet buffer.
+
+### One-time boot setup (on the Pi — run once, then reboot)
+
+Edit `/boot/firmware/cmdline.txt` (Bookworm). On older pre-Bookworm images the path is `/boot/cmdline.txt` — check which your image uses with `ls /boot/firmware/cmdline.txt 2>/dev/null || ls /boot/cmdline.txt`.
+
+The file is a **single line** — append (do not add a newline) the following three parameters:
+
+```text
+isolcpus=2,3 nohz_full=2,3 rcu_nocbs=2,3
+```
+
+Reboot, then verify isolation took:
+
+```bash
+cat /sys/devices/system/cpu/isolated   # must print: 2-3
+```
+
+If the file shows anything other than `2-3`, the boot parameters were not applied. Re-check the edit (ensure it is on the same line, no stray newlines) and reboot again.
+
+### Per-session capture flow
+
+After every boot, run these two steps before any capture:
+
+```bash
+# 1. Put the rig in capture-ready state (root required)
+sudo ./bench/scripts/pi-rig-setup.sh
+
+# 2. Verify all conditions pass before committing a run
+./bench/scripts/pi-preflight.sh
+```
+
+`pi-rig-setup.sh` sets the CPU governor to `performance`, pins the clock, stops irqbalance and jitter services, turns swap off, and sets `kernel.perf_event_paranoid=1`. It is idempotent — safe to run multiple times.
+
+`pi-preflight.sh` is read-only: it asserts isolation, governor, clock pin, throttle status (`vcgencmd get_throttled` must return `0x0`), and perf usability. It exits nonzero with a specific message on the first failure. The throttle check (zero active or historical throttle events) is the Pi analogue of the x86 rig's turbo-off guarantee and cannot be skipped.
+
+---
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
