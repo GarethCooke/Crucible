@@ -1,18 +1,10 @@
 ---
 title: "The comparison lower bound is a wall. Integer keys let you walk around it."
-slug: "08-sorting-shootout"
-demo: 8
 date: "2026-05-30"
-summary: "std::sort is the default everyone reaches for, and on fixed-width integer keys it's rarely the fastest. A look at why a radix sort sidesteps the Ω(n log n) wall, why input shape decides the comparison-sort race, and why the data-independent sort is the one you want on a hot path's p99."
-tags: ["sorting", "radix", "cache", "tail-latency", "cpp"]
+summary: "std::sort is the default everyone reaches for, and on fixed-width integer keys it's rarely the fastest. A look at why a radix sort sidesteps the Ω(n log n) wall, why input shape decides the comparison-sort race, and why a data-independent sort is the one you want when a worst-case input on a hot path is what you have to bound."
 ---
 
-{/* NOTE TO CC: frontmatter shape and import paths must match demo 7's shipped MDX
-     exactly. The `status: "in-progress"` and `expectedAt` fields from the teaser
-     stub are intentionally removed. Every number below is from the captured
-     08-sorting-shootout.json; do not edit numerals without re-deriving from the JSON. */}
-
-`std::sort` is the first thing everyone reaches for, and on a array of plain integers it is almost never the fastest option. Not because the implementation is weak — libstdc++'s introsort is excellent — but because it is playing a game it cannot win. Sort 67 million random 32-bit keys on the reference machine and `std::sort` spends about **74 ns per element**. A hand-rolled radix sort spends about **15**. Same machine, same data, same `-O3 -march=native`. The five-times gap is not a tuning detail; it is the difference between two cost models.
+`std::sort` is the first thing everyone reaches for, and on an array of plain integers it is almost never the fastest option. Not because the implementation is weak — libstdc++'s introsort is excellent — but because it is playing a game it cannot win. Sort 67 million random 32-bit keys on the reference machine and `std::sort` spends about **74 ns per element**. A hand-rolled radix sort spends about **15**. Same machine, same data, same `-O3 -march=native`. The five-times gap is not a tuning detail; it is the difference between two cost models.
 
 ## The wall
 
@@ -63,7 +55,7 @@ Radix sits on the floor across almost the entire sweep. At 67 million keys it is
 
 Two things are worth slowing down for.
 
-**The cache knee on the radix line.** Radix is essentially flat at ~11 ns/element until about 4 million keys, then it bends upward to ~15. Four million 32-bit keys is 16 MB — the size of this machine's L3 slice. Past that point the scatter writes spill to main memory and radix becomes bandwidth-bound rather than compute-bound. The comparison sorts don't show this knee nearly as clearly, because their `log n` growth swamps it. The band markers on the chart sit on the radix line for that reason: it's the one variant whose curve is shaped by the cache hierarchy rather than by its own asymptotics.
+**The cache knee on the radix line.** Radix is essentially flat at ~11 ns/element until about 4 million keys, then it bends upward to ~15. Four million 32-bit keys is 16 MB — the size of this machine's L3 slice. Past that point the scatter writes spill to main memory and radix becomes bandwidth-bound rather than compute-bound. The comparison sorts don't show this knee nearly as clearly, because their `log n` growth swamps it. The band markers — the same cache-tier bands [demo 6](/posts/06-aos-vs-soa) and [demo 7](/posts/07-flatmap-vs-hashmap) introduced — sit on the radix line for that reason: it's the one variant whose curve is shaped by the cache hierarchy rather than by its own asymptotics. One caveat on the bands: they mark the single-array footprint. Radix's ping-pong scratch buffer doubles its working set at small N, so it crosses the lower tiers earlier than the markers suggest — that's the bump just left of the L1 band in the next paragraph.
 
 **The window where radix loses.** Look between 4,000 and 8,000 elements: radix bumps up to ~20–23 ns/element while `pdqsort` dips to ~16–18 and briefly wins. This isn't noise — it's radix paying for its scratch buffer. Because radix works on two n-element arrays at once, its working set is *twice* the input. At ~4 K keys that doubled footprint is 32 KB — exactly the L1 data cache — and at ~8 K it spills into L2. The in-place comparison sorts cross that same boundary at twice the element count, so for one narrow band radix is fighting the cache while they aren't. It's a clean illustration of the trade radix makes: O(n) auxiliary memory buys you the linear cost, and you pay for it precisely where capacity bites. Above ~16 K elements radix is back on the floor and stays there.
 
@@ -82,7 +74,7 @@ The chart above is random data. Real data usually isn't random — it's partiall
 
 The comparison sorts swing wildly. `pdqsort` — pattern-defeating quicksort — detects sorted runs and few-unique-key inputs and short-circuits them: it sorts already-sorted data at **0.75 ns/element**, a 35× spread from its random-data cost of ~26. `std::sort` is less aggressive about it but still ranges roughly 9× from its best input to its worst. Radix, by contrast, spans **1.8×** across all five distributions. It does the same four passes regardless of what the data looks like; the input's shape is invisible to it.
 
-There's a tidy inversion buried in those numbers. The comparison sorts are *fastest* on pre-sorted input and slowest on random. Radix is the reverse — it's actually slightly **slower** on sorted input (~22 ns/element) than on random (~12). Sequential keys make every byte of the key vary across the full range, which fans the scatter writes across all 256 buckets on every pass; random keys happen to be no worse, and few-unique keys are better because the high passes collapse into a single bucket. Same operation, opposite preference. It's the cleanest demonstration I know that these two families don't just differ in speed — they're sensitive to completely different properties of the data.
+There's a tidy inversion buried in those numbers. The comparison sorts are *fastest* on ordered input — sorted or reverse-sorted — and slowest on random. Radix is the reverse: sorted and reverse-sorted are its *worst* inputs (~21–22 ns/element), random is its *best* (~12), and few-unique sits in between (~15). Sequential keys make the high-order bytes vary across the full range, fanning the scatter writes across all 256 buckets on every pass; few-unique collapses those high passes into a single bucket, so it beats the sorted worst case without matching random. Same operation, opposite preference. It's the cleanest demonstration I know that these two families don't just differ in speed — they're sensitive to completely different properties of the data.
 
 One honest limit: the sawtooth input (eight repeating ramps) defeats `pdqsort`'s pattern detection entirely — at ~27.5 ns/element it's no faster than on random data. "Pattern-defeating" defeats the adversarial patterns it was designed for; it does not make every structured input free.
 
@@ -105,8 +97,14 @@ This is a deliberately narrow result, and the boundaries matter more than the he
 - **Bare keys, no payload.** These are arrays of keys with nothing attached. Sorting key-plus-payload records changes the arithmetic — the scatter moves more bytes, and stability starts to matter (LSD radix is stable; `std::sort` and `pdqsort` are not). That's a separate measurement.
 - **Single-threaded, one machine.** No parallel sorts, no `std::execution::par`. All numbers from the single documented reference machine; see [methodology](/methodology).
 
-The takeaway isn't "use radix." It's that `std::sort`'s universality has a cost, and when your keys happen to be narrow fixed-width integers — which, on a hot path moving IDs, timestamps, or prices, they often are — you can trade that universality for a sort whose cost is linear and whose tail is something you can actually reason about. The default is a fine default. It just isn't free, and on this one shape of problem you can do better.
+The takeaway isn't "use radix." It's that `std::sort`'s universality has a cost, and when your keys happen to be narrow fixed-width integers — which, on a hot path moving IDs, timestamps, or prices, they often are — you can trade that universality for a sort whose cost is linear and whose tail is something you can actually reason about. The default is a fine default. It just isn't free, and on this one shape of problem you can do better. It pairs with [demo 1](/posts/01-branch-prediction) from the other side: demo 1 measured the *payoff* of sorting — a branch-predictable downstream loop — and this post measures its *price*.
 
 ## Reproducing this
 
 The benchmark harness, the radix implementation, and the capture script are in the repository under `bench/demos/08-sorting-shootout/`. The one subtlety worth flagging for anyone reproducing it: sorting mutates its input, so the harness restores a pristine copy from a master buffer **outside** the timed region on every iteration. Skip that and every iteration after the first measures the cost of sorting already-sorted data — which silently flatters the comparison sorts (radix is unaffected) and produces a plausible, wrong result. All numbers here are median per-element times over five repetitions; see [methodology](/methodology) for the machine spec and statistical conventions.
+
+---
+
+*AMD Ryzen 7 3800X, Zen 2 (SMT off), 3.9 GHz base, governor = performance, turbo disabled (BIOS Core Performance Boost off), cores 0–7 isolated (core 0 carries unavoidable kernel housekeeping), single thread pinned to core 4 (CCX1). Headless Ubuntu 24.04. GCC 13.3, -O3 -march=native -std=c++20. 5 outer repetitions per cell, median ns_per_op reported (working-set-sweep convention).*
+
+*[Methodology →](/methodology)*
