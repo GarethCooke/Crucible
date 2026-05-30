@@ -165,7 +165,108 @@ static void bin_run(const std::vector<uint64_t>& enq_ts,
                     const std::vector<uint64_t>& deq_ts,
                     double ns_per_cycle,
                     RunResult& result,
-                    WarmupVerify* wv) {
+                    WarmupVerify* wv,
+                    const char* variant_name,
+                    uint64_t offered_rate_hz);
+
+// ─── Post-run stall diagnostic ────────────────────────────────────────────────
+// Computes max producer/consumer inter-item gaps and the queue backlog at the
+// largest consumer stall. All arithmetic is over post-run arrays; nothing here
+// touches the measured hot loop. Stderr-only: no JSON schema changes.
+static void emit_stall_diagnostic(const std::vector<uint64_t>& enq_ts,
+                                  const std::vector<uint64_t>& deq_ts,
+                                  double ns_per_cycle,
+                                  const char* variant_name,
+                                  uint64_t offered_rate_hz) {
+    const size_t N = ITEMS_MEASURED;
+
+    // Count zero deq_ts entries; for lockfree variants this contradicts the
+    // stress-test zero-loss guarantee — flag loudly rather than silently skip.
+    size_t zero_deq_count = 0;
+    for (size_t i = 0; i < N; ++i) {
+        if (deq_ts[i] == 0) ++zero_deq_count;
+    }
+    if (zero_deq_count > 0) {
+        std::fprintf(stderr,
+            "WARN stall-diag [%s]: %zu deq_ts zero entries — items dropped"
+            " (contradicts stress-test zero-loss guarantee)\n",
+            variant_name, zero_deq_count);
+    }
+
+    // Max enqueue gap: largest producer inter-item pause (cycles → ns).
+    uint64_t max_enq_gap_cyc = 0;
+    for (size_t i = 1; i < N; ++i) {
+        uint64_t gap = enq_ts[i] - enq_ts[i - 1];
+        if (gap > max_enq_gap_cyc) max_enq_gap_cyc = gap;
+    }
+
+    // Max dequeue gap: largest consumer inter-item pause, its item index, and
+    // the surrounding timestamps needed for the backlog count.
+    uint64_t max_deq_gap_cyc = 0;
+    size_t   max_deq_gap_idx = 0;
+    uint64_t gap_start_ts    = 0;  // deq_ts of item just before the max gap
+    uint64_t gap_end_ts      = 0;  // deq_ts of item just after the max gap
+
+    std::vector<uint64_t> deq_gaps;
+    deq_gaps.reserve(N);
+
+    uint64_t prev_deq = 0;
+    bool have_prev = false;
+    for (size_t i = 0; i < N; ++i) {
+        if (deq_ts[i] == 0) continue;
+        if (have_prev) {
+            uint64_t gap = deq_ts[i] - prev_deq;
+            deq_gaps.push_back(gap);
+            if (gap > max_deq_gap_cyc) {
+                max_deq_gap_cyc = gap;
+                max_deq_gap_idx = i;
+                gap_start_ts    = prev_deq;
+                gap_end_ts      = deq_ts[i];
+            }
+        }
+        prev_deq = deq_ts[i];
+        have_prev = true;
+    }
+
+    // Backlog: items enqueued while the consumer was stalled (during max gap).
+    // enq_ts is monotonically increasing, so this counts the pile-up.
+    size_t backlog = 0;
+    for (size_t j = 0; j < N; ++j) {
+        if (enq_ts[j] > gap_start_ts && enq_ts[j] <= gap_end_ts) ++backlog;
+    }
+
+    const double max_enq_gap_ns = static_cast<double>(max_enq_gap_cyc) * ns_per_cycle;
+    const double max_deq_gap_ns = static_cast<double>(max_deq_gap_cyc) * ns_per_cycle;
+
+    std::fprintf(stderr,
+        "DIAG %s @offered=%lluHz:"
+        " max_enq_gap=%.0f ns  max_deq_gap=%.0f ns (at item %zu)  backlog=%zu items\n",
+        variant_name, (unsigned long long)offered_rate_hz,
+        max_enq_gap_ns, max_deq_gap_ns, max_deq_gap_idx, backlog);
+
+    // Warn when max dequeue gap exceeds 50× the median — contamination signal.
+    if (!deq_gaps.empty()) {
+        auto mid = deq_gaps.begin() + static_cast<ptrdiff_t>(deq_gaps.size() / 2);
+        std::nth_element(deq_gaps.begin(), mid, deq_gaps.end());
+        const double median_deq_gap_ns = static_cast<double>(*mid) * ns_per_cycle;
+        if (median_deq_gap_ns > 0.0 && max_deq_gap_ns > 50.0 * median_deq_gap_ns) {
+            std::fprintf(stderr,
+                "WARN %s @offered=%lluHz: max_deq_gap=%.0f ns is %.0fx median"
+                " inter-dequeue (%.1f ns) — possible consumer stall\n",
+                variant_name, (unsigned long long)offered_rate_hz,
+                max_deq_gap_ns, max_deq_gap_ns / median_deq_gap_ns,
+                median_deq_gap_ns);
+        }
+    }
+}
+
+static void bin_run(const std::vector<uint64_t>& enq_ts,
+                    const std::vector<uint64_t>& deq_ts,
+                    double ns_per_cycle,
+                    RunResult& result,
+                    WarmupVerify* wv,
+                    const char* variant_name,
+                    uint64_t offered_rate_hz) {
     crucible::Histogram run_hist;
     for (size_t i = 0; i < ITEMS_MEASURED; ++i) {
         if (deq_ts[i] == 0) {
@@ -187,6 +288,7 @@ static void bin_run(const std::vector<uint64_t>& enq_ts,
         result.top_bucket_count += run_hist.counts[crucible::HISTOGRAM_BUCKET_COUNT - 1];
     }
     result.hist.merge(run_hist);
+    emit_stall_diagnostic(enq_ts, deq_ts, ns_per_cycle, variant_name, offered_rate_hz);
 }
 
 // ─── M8: wall-clock accumulation helper ──────────────────────────────────────
@@ -208,7 +310,8 @@ static inline void accumulate_wall_time(RunResult& r,
 
 template <typename Policy>
 static RunResult run_spsc_variant(double ns_per_cycle, uint64_t rate_hz,
-                                   WarmupVerify* wv, Policy policy) {
+                                   WarmupVerify* wv, Policy policy,
+                                   const char* variant_name) {
     const uint64_t period_cycles = pacing_period_cycles(rate_hz, ns_per_cycle);
 
     RunResult result;
@@ -250,7 +353,7 @@ static RunResult run_spsc_variant(double ns_per_cycle, uint64_t rate_hz,
         clock_gettime(CLOCK_MONOTONIC_RAW, &t1);
         accumulate_wall_time(result, t0, t1);
 
-        bin_run(enq_ts, deq_ts, ns_per_cycle, result, wv);
+        bin_run(enq_ts, deq_ts, ns_per_cycle, result, wv, variant_name, rate_hz);
     }
     return result;
 }
@@ -411,17 +514,17 @@ struct MutexCondvarPolicy {
 
 static RunResult run_lockfree_handrolled(double ns_per_cycle, uint64_t rate_hz,
                                           WarmupVerify* wv) {
-    return run_spsc_variant(ns_per_cycle, rate_hz, wv, HandrolledPolicy{});
+    return run_spsc_variant(ns_per_cycle, rate_hz, wv, HandrolledPolicy{}, "lockfree-handrolled");
 }
 
 static RunResult run_lockfree_boost(double ns_per_cycle, uint64_t rate_hz,
                                      WarmupVerify* wv) {
-    return run_spsc_variant(ns_per_cycle, rate_hz, wv, BoostPolicy{});
+    return run_spsc_variant(ns_per_cycle, rate_hz, wv, BoostPolicy{}, "lockfree-boost");
 }
 
 static RunResult run_mutex_condvar(double ns_per_cycle, uint64_t rate_hz,
                                     WarmupVerify* wv) {
-    return run_spsc_variant(ns_per_cycle, rate_hz, wv, MutexCondvarPolicy{});
+    return run_spsc_variant(ns_per_cycle, rate_hz, wv, MutexCondvarPolicy{}, "mutex-condvar");
 }
 
 // ─── Dispatch ────────────────────────────────────────────────────────────────
