@@ -246,6 +246,8 @@ net loss. The technique pays when the same data is scanned many times, when
 a sorted structure can be maintained incrementally, or when ordering falls
 out of the problem naturally (events in time order, an index column).
 
+[Demo 8](/posts/08-sorting-shootout) measures what the sort itself costs across three variants — `std::sort`, pdqsort, and a hand-rolled LSD radix — and shows where radix's data-independent runtime makes it the p99 winner even when its median is not the best.
+
 ## Takeaway
 
 Two O(n) algorithms with identical instruction counts can differ by 7× in

@@ -1,5 +1,5 @@
 import { loadPerfData } from '@/lib/perf-data'
-import { ThroughputBarsChart, type Run } from './ThroughputBarsChart'
+import { ThroughputBarsChart, type Run, type LegacyRun } from './ThroughputBarsChart'
 import { NoData } from './NoData'
 
 interface Props {
@@ -17,6 +17,12 @@ interface Props {
   kFilter?: number | number[]
   /** Filter to a specific workload (e.g. "lookup" or "modify_mix"). */
   workloadFilter?: string
+  /** Filter to a specific distribution (e.g. "random"). */
+  distributionFilter?: string
+  /** Render bars grouped by input distribution (demo 8 chart 2). */
+  distGrouped?: boolean
+  /** Filter to a specific key type (e.g. "u32"). */
+  keyTypeFilter?: string
   /** Display-name overrides: maps JSON variant name → X-axis label. */
   variantLabels?: Record<string, string>
 }
@@ -31,6 +37,9 @@ export async function ThroughputBars({
   title,
   kFilter,
   workloadFilter,
+  distributionFilter,
+  distGrouped,
+  keyTypeFilter,
   variantLabels,
 }: Props) {
   let runs: Run[] = runsIn ?? []
@@ -56,6 +65,14 @@ export async function ThroughputBars({
     )
   }
 
+  if (distributionFilter) {
+    runs = runs.filter((r) => (r as LegacyRun).distribution === distributionFilter)
+  }
+
+  if (keyTypeFilter) {
+    runs = runs.filter((r) => (r as LegacyRun).key_type === keyTypeFilter)
+  }
+
   if (placement) {
     runs = runs.filter(
       (r) => (r as { placement?: string }).placement === placement,
@@ -78,6 +95,7 @@ export async function ThroughputBars({
       title={title}
       kFilter={kFilter}
       variantLabels={variantLabels}
+      distGrouped={distGrouped}
     />
   )
 }

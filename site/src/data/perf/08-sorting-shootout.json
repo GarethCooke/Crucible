@@ -1,0 +1,1082 @@
+{
+  "demo": "08-sorting-shootout",
+  "title": "The sorting shootout: going around the comparison wall",
+  "machine": {
+    "cpu": "AMD Ryzen 7 3800X 8-Core Processor",
+    "cores_physical": 8,
+    "cores_logical": 8,
+    "smt_enabled": false,
+    "ram_gb": 31,
+    "ram_speed_mhz": null,
+    "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+    "kernel": "6.8.0-117-generic",
+    "governor": "performance",
+    "turbo": false,
+    "isolated_cpus": "1-7",
+    "isolated_cpus_requested": "1-7",
+    "isolated_cpus_effective": "1-7",
+    "isolated_cpus_source": "cmdline+probe",
+    "cpu_affinity": "4-7",
+    "lscpu_extended": "CPU NODE SOCKET CORE L1d:L1i:L2:L3 ONLINE    MAXMHZ    MINMHZ       MHZ\n  0    0      0    0 0:0:0:0          yes 4560.0552 2200.0000 3907.1680\n  1    0      0    1 1:1:1:0          yes 4560.0552 2200.0000 3900.0000\n  2    0      0    2 2:2:2:0          yes 4560.0552 2200.0000 3900.0000\n  3    0      0    3 3:3:3:0          yes 4560.0552 2200.0000 3900.0000\n  4    0      0    4 4:4:4:1          yes 4560.0552 2200.0000 3900.0000\n  5    0      0    5 5:5:5:1          yes 4560.0552 2200.0000 3900.0000\n  6    0      0    6 6:6:6:1          yes 4560.0552 2200.0000 3900.0000\n  7    0      0    7 7:7:7:1          yes 4560.0552 2200.0000 3900.0000"
+  },
+  "captured_at": "2026-05-29T23:52:21Z",
+  "runs": [
+    {
+      "variant": "pdqsort",
+      "n": 4194304,
+      "distribution": "few_unique",
+      "key_type": "u32",
+      "iterations": 25,
+      "ns_per_op": {
+        "median": 6.6753,
+        "min": 6.6746,
+        "p99": 6.6799,
+        "iqr": 0.0015
+      },
+      "ops_per_sec": 149807974,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "radix_lsd",
+      "n": 4194304,
+      "distribution": "few_unique",
+      "key_type": "u32",
+      "iterations": 11,
+      "ns_per_op": {
+        "median": 14.7457,
+        "min": 14.6438,
+        "p99": 14.8627,
+        "iqr": 0.0547
+      },
+      "ops_per_sec": 67816404,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "std_sort",
+      "n": 4194304,
+      "distribution": "few_unique",
+      "key_type": "u32",
+      "iterations": 6,
+      "ns_per_op": {
+        "median": 28.8234,
+        "min": 28.7856,
+        "p99": 28.8446,
+        "iqr": 0.0119
+      },
+      "ops_per_sec": 34694486,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "pdqsort",
+      "n": 1024,
+      "distribution": "random",
+      "key_type": "u32",
+      "iterations": 84894,
+      "ns_per_op": {
+        "median": 8.058,
+        "min": 8.0451,
+        "p99": 8.0613,
+        "iqr": 0.0057
+      },
+      "ops_per_sec": 124023251,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "pdqsort",
+      "n": 2048,
+      "distribution": "random",
+      "key_type": "u32",
+      "iterations": 32799,
+      "ns_per_op": {
+        "median": 10.307,
+        "min": 10.2817,
+        "p99": 10.4101,
+        "iqr": 0.0815
+      },
+      "ops_per_sec": 96998851,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "pdqsort",
+      "n": 4096,
+      "distribution": "random",
+      "key_type": "u32",
+      "iterations": 10872,
+      "ns_per_op": {
+        "median": 15.645,
+        "min": 15.6378,
+        "p99": 15.6709,
+        "iqr": 0.0137
+      },
+      "ops_per_sec": 63920637,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "pdqsort",
+      "n": 8192,
+      "distribution": "random",
+      "key_type": "u32",
+      "iterations": 4661,
+      "ns_per_op": {
+        "median": 18.3279,
+        "min": 18.315,
+        "p99": 18.3317,
+        "iqr": 0.0027
+      },
+      "ops_per_sec": 54559471,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "pdqsort",
+      "n": 16384,
+      "distribution": "random",
+      "key_type": "u32",
+      "iterations": 2237,
+      "ns_per_op": {
+        "median": 19.0985,
+        "min": 19.08,
+        "p99": 19.0996,
+        "iqr": 0.0129
+      },
+      "ops_per_sec": 52360099,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "pdqsort",
+      "n": 32768,
+      "distribution": "random",
+      "key_type": "u32",
+      "iterations": 1054,
+      "ns_per_op": {
+        "median": 20.2526,
+        "min": 20.2437,
+        "p99": 20.255,
+        "iqr": 0.0091
+      },
+      "ops_per_sec": 49377701,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "pdqsort",
+      "n": 65536,
+      "distribution": "random",
+      "key_type": "u32",
+      "iterations": 502,
+      "ns_per_op": {
+        "median": 21.2543,
+        "min": 21.2519,
+        "p99": 21.2619,
+        "iqr": 0.0023
+      },
+      "ops_per_sec": 47049863,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "pdqsort",
+      "n": 131072,
+      "distribution": "random",
+      "key_type": "u32",
+      "iterations": 244,
+      "ns_per_op": {
+        "median": 21.8955,
+        "min": 21.8936,
+        "p99": 21.8978,
+        "iqr": 0.0019
+      },
+      "ops_per_sec": 45672101,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "pdqsort",
+      "n": 262144,
+      "distribution": "random",
+      "key_type": "u32",
+      "iterations": 118,
+      "ns_per_op": {
+        "median": 22.609,
+        "min": 22.6025,
+        "p99": 22.6144,
+        "iqr": 0.0014
+      },
+      "ops_per_sec": 44230738,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "pdqsort",
+      "n": 524288,
+      "distribution": "random",
+      "key_type": "u32",
+      "iterations": 57,
+      "ns_per_op": {
+        "median": 23.5316,
+        "min": 23.5252,
+        "p99": 23.5343,
+        "iqr": 0.0014
+      },
+      "ops_per_sec": 42496574,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "pdqsort",
+      "n": 1048576,
+      "distribution": "random",
+      "key_type": "u32",
+      "iterations": 28,
+      "ns_per_op": {
+        "median": 24.1848,
+        "min": 24.1835,
+        "p99": 24.1876,
+        "iqr": 0.0018
+      },
+      "ops_per_sec": 41348841,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "pdqsort",
+      "n": 2097152,
+      "distribution": "random",
+      "key_type": "u32",
+      "iterations": 13,
+      "ns_per_op": {
+        "median": 24.9255,
+        "min": 24.9211,
+        "p99": 24.9304,
+        "iqr": 0.0005
+      },
+      "ops_per_sec": 40120439,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "pdqsort",
+      "n": 4194304,
+      "distribution": "random",
+      "key_type": "u32",
+      "iterations": 6,
+      "ns_per_op": {
+        "median": 25.7134,
+        "min": 25.7083,
+        "p99": 25.7205,
+        "iqr": 0.0099
+      },
+      "ops_per_sec": 38890924,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "pdqsort",
+      "n": 8388608,
+      "distribution": "random",
+      "key_type": "u32",
+      "iterations": 3,
+      "ns_per_op": {
+        "median": 26.5276,
+        "min": 26.5255,
+        "p99": 26.5351,
+        "iqr": 0.0031
+      },
+      "ops_per_sec": 37697200,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "pdqsort",
+      "n": 16777216,
+      "distribution": "random",
+      "key_type": "u32",
+      "iterations": 2,
+      "ns_per_op": {
+        "median": 27.2599,
+        "min": 27.2541,
+        "p99": 27.2656,
+        "iqr": 0.0036
+      },
+      "ops_per_sec": 36685553,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "pdqsort",
+      "n": 33554432,
+      "distribution": "random",
+      "key_type": "u32",
+      "iterations": 1,
+      "ns_per_op": {
+        "median": 28.0811,
+        "min": 28.0764,
+        "p99": 28.0883,
+        "iqr": 0.0058
+      },
+      "ops_per_sec": 35611663,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "pdqsort",
+      "n": 67108864,
+      "distribution": "random",
+      "key_type": "u32",
+      "iterations": 1,
+      "ns_per_op": {
+        "median": 28.7531,
+        "min": 28.7503,
+        "p99": 28.7589,
+        "iqr": 0.0026
+      },
+      "ops_per_sec": 34779343,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "radix_lsd",
+      "n": 1024,
+      "distribution": "random",
+      "key_type": "u32",
+      "iterations": 119616,
+      "ns_per_op": {
+        "median": 6.0784,
+        "min": 5.7344,
+        "p99": 8.0832,
+        "iqr": 0.5769
+      },
+      "ops_per_sec": 164471051,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "radix_lsd",
+      "n": 2048,
+      "distribution": "random",
+      "key_type": "u32",
+      "iterations": 51808,
+      "ns_per_op": {
+        "median": 7.2737,
+        "min": 6.9003,
+        "p99": 7.6175,
+        "iqr": 0.0359
+      },
+      "ops_per_sec": 137430802,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "radix_lsd",
+      "n": 4096,
+      "distribution": "random",
+      "key_type": "u32",
+      "iterations": 7427,
+      "ns_per_op": {
+        "median": 23.0764,
+        "min": 23.0181,
+        "p99": 23.0929,
+        "iqr": 0.0288
+      },
+      "ops_per_sec": 43332139,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "radix_lsd",
+      "n": 8192,
+      "distribution": "random",
+      "key_type": "u32",
+      "iterations": 4380,
+      "ns_per_op": {
+        "median": 19.4117,
+        "min": 19.4028,
+        "p99": 19.4211,
+        "iqr": 0.0105
+      },
+      "ops_per_sec": 51514117,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "radix_lsd",
+      "n": 16384,
+      "distribution": "random",
+      "key_type": "u32",
+      "iterations": 5297,
+      "ns_per_op": {
+        "median": 8.0645,
+        "min": 8.0564,
+        "p99": 8.0709,
+        "iqr": 0.0124
+      },
+      "ops_per_sec": 124000022,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "radix_lsd",
+      "n": 32768,
+      "distribution": "random",
+      "key_type": "u32",
+      "iterations": 2829,
+      "ns_per_op": {
+        "median": 7.5685,
+        "min": 7.5592,
+        "p99": 7.5778,
+        "iqr": 0.0109
+      },
+      "ops_per_sec": 132127848,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "radix_lsd",
+      "n": 65536,
+      "distribution": "random",
+      "key_type": "u32",
+      "iterations": 1116,
+      "ns_per_op": {
+        "median": 9.5384,
+        "min": 9.5337,
+        "p99": 9.5656,
+        "iqr": 0.0283
+      },
+      "ops_per_sec": 104837276,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "radix_lsd",
+      "n": 131072,
+      "distribution": "random",
+      "key_type": "u32",
+      "iterations": 485,
+      "ns_per_op": {
+        "median": 11.0277,
+        "min": 11.0114,
+        "p99": 11.0553,
+        "iqr": 0.0147
+      },
+      "ops_per_sec": 90679948,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "radix_lsd",
+      "n": 262144,
+      "distribution": "random",
+      "key_type": "u32",
+      "iterations": 226,
+      "ns_per_op": {
+        "median": 11.8359,
+        "min": 11.7983,
+        "p99": 11.8647,
+        "iqr": 0.0183
+      },
+      "ops_per_sec": 84489667,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "radix_lsd",
+      "n": 524288,
+      "distribution": "random",
+      "key_type": "u32",
+      "iterations": 125,
+      "ns_per_op": {
+        "median": 10.7055,
+        "min": 10.6596,
+        "p99": 10.75,
+        "iqr": 0.0322
+      },
+      "ops_per_sec": 93410580,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "radix_lsd",
+      "n": 1048576,
+      "distribution": "random",
+      "key_type": "u32",
+      "iterations": 59,
+      "ns_per_op": {
+        "median": 11.341,
+        "min": 11.2119,
+        "p99": 11.4342,
+        "iqr": 0.1826
+      },
+      "ops_per_sec": 88174990,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "radix_lsd",
+      "n": 2097152,
+      "distribution": "random",
+      "key_type": "u32",
+      "iterations": 29,
+      "ns_per_op": {
+        "median": 11.3963,
+        "min": 11.3919,
+        "p99": 11.4487,
+        "iqr": 0.0296
+      },
+      "ops_per_sec": 87747993,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "radix_lsd",
+      "n": 4194304,
+      "distribution": "random",
+      "key_type": "u32",
+      "iterations": 14,
+      "ns_per_op": {
+        "median": 12.1969,
+        "min": 11.707,
+        "p99": 12.2676,
+        "iqr": 0.082
+      },
+      "ops_per_sec": 81992998,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "radix_lsd",
+      "n": 8388608,
+      "distribution": "random",
+      "key_type": "u32",
+      "iterations": 6,
+      "ns_per_op": {
+        "median": 14.0826,
+        "min": 12.9015,
+        "p99": 14.2079,
+        "iqr": 0.0689
+      },
+      "ops_per_sec": 71010729,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "radix_lsd",
+      "n": 16777216,
+      "distribution": "random",
+      "key_type": "u32",
+      "iterations": 3,
+      "ns_per_op": {
+        "median": 14.2747,
+        "min": 14.2061,
+        "p99": 14.5288,
+        "iqr": 0.1369
+      },
+      "ops_per_sec": 70054838,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "radix_lsd",
+      "n": 33554432,
+      "distribution": "random",
+      "key_type": "u32",
+      "iterations": 1,
+      "ns_per_op": {
+        "median": 15.1075,
+        "min": 14.7336,
+        "p99": 15.2093,
+        "iqr": 0.1231
+      },
+      "ops_per_sec": 66193135,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "radix_lsd",
+      "n": 67108864,
+      "distribution": "random",
+      "key_type": "u32",
+      "iterations": 1,
+      "ns_per_op": {
+        "median": 14.8222,
+        "min": 14.7816,
+        "p99": 14.9803,
+        "iqr": 0.0878
+      },
+      "ops_per_sec": 67467180,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "std_sort",
+      "n": 1024,
+      "distribution": "random",
+      "key_type": "u32",
+      "iterations": 75788,
+      "ns_per_op": {
+        "median": 9.0339,
+        "min": 9.0169,
+        "p99": 9.0407,
+        "iqr": 0.0053
+      },
+      "ops_per_sec": 110660166,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "std_sort",
+      "n": 2048,
+      "distribution": "random",
+      "key_type": "u32",
+      "iterations": 23478,
+      "ns_per_op": {
+        "median": 14.1206,
+        "min": 14.0118,
+        "p99": 14.3792,
+        "iqr": 0.1823
+      },
+      "ops_per_sec": 70809027,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "std_sort",
+      "n": 4096,
+      "distribution": "random",
+      "key_type": "u32",
+      "iterations": 5480,
+      "ns_per_op": {
+        "median": 30.6088,
+        "min": 30.4988,
+        "p99": 30.8365,
+        "iqr": 0.1718
+      },
+      "ops_per_sec": 32670998,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "std_sort",
+      "n": 8192,
+      "distribution": "random",
+      "key_type": "u32",
+      "iterations": 2337,
+      "ns_per_op": {
+        "median": 36.2331,
+        "min": 36.198,
+        "p99": 36.3832,
+        "iqr": 0.0773
+      },
+      "ops_per_sec": 27598639,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "std_sort",
+      "n": 16384,
+      "distribution": "random",
+      "key_type": "u32",
+      "iterations": 1062,
+      "ns_per_op": {
+        "median": 39.8114,
+        "min": 39.7433,
+        "p99": 39.9624,
+        "iqr": 0.0969
+      },
+      "ops_per_sec": 25118053,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "std_sort",
+      "n": 32768,
+      "distribution": "random",
+      "key_type": "u32",
+      "iterations": 490,
+      "ns_per_op": {
+        "median": 43.3341,
+        "min": 43.2699,
+        "p99": 43.4469,
+        "iqr": 0.0507
+      },
+      "ops_per_sec": 23076392,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "std_sort",
+      "n": 65536,
+      "distribution": "random",
+      "key_type": "u32",
+      "iterations": 229,
+      "ns_per_op": {
+        "median": 46.5312,
+        "min": 46.4882,
+        "p99": 46.5953,
+        "iqr": 0.0384
+      },
+      "ops_per_sec": 21491303,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "std_sort",
+      "n": 131072,
+      "distribution": "random",
+      "key_type": "u32",
+      "iterations": 106,
+      "ns_per_op": {
+        "median": 50.1142,
+        "min": 50.1021,
+        "p99": 50.1519,
+        "iqr": 0.0217
+      },
+      "ops_per_sec": 19954668,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "std_sort",
+      "n": 262144,
+      "distribution": "random",
+      "key_type": "u32",
+      "iterations": 51,
+      "ns_per_op": {
+        "median": 52.583,
+        "min": 52.5687,
+        "p99": 52.6089,
+        "iqr": 0.0062
+      },
+      "ops_per_sec": 19017816,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "std_sort",
+      "n": 524288,
+      "distribution": "random",
+      "key_type": "u32",
+      "iterations": 24,
+      "ns_per_op": {
+        "median": 55.0677,
+        "min": 55.0269,
+        "p99": 55.0765,
+        "iqr": 0.0147
+      },
+      "ops_per_sec": 18159705,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "std_sort",
+      "n": 1048576,
+      "distribution": "random",
+      "key_type": "u32",
+      "iterations": 12,
+      "ns_per_op": {
+        "median": 58.0076,
+        "min": 57.9518,
+        "p99": 58.0356,
+        "iqr": 0.0489
+      },
+      "ops_per_sec": 17239337,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "std_sort",
+      "n": 2097152,
+      "distribution": "random",
+      "key_type": "u32",
+      "iterations": 5,
+      "ns_per_op": {
+        "median": 62.0407,
+        "min": 61.9811,
+        "p99": 62.062,
+        "iqr": 0.0234
+      },
+      "ops_per_sec": 16119043,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "std_sort",
+      "n": 4194304,
+      "distribution": "random",
+      "key_type": "u32",
+      "iterations": 3,
+      "ns_per_op": {
+        "median": 63.9103,
+        "min": 63.8142,
+        "p99": 63.9175,
+        "iqr": 0.0572
+      },
+      "ops_per_sec": 15647893,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "std_sort",
+      "n": 8388608,
+      "distribution": "random",
+      "key_type": "u32",
+      "iterations": 1,
+      "ns_per_op": {
+        "median": 66.1047,
+        "min": 65.9385,
+        "p99": 66.1953,
+        "iqr": 0.1773
+      },
+      "ops_per_sec": 15127742,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "std_sort",
+      "n": 16777216,
+      "distribution": "random",
+      "key_type": "u32",
+      "iterations": 1,
+      "ns_per_op": {
+        "median": 69.5038,
+        "min": 69.4394,
+        "p99": 69.6719,
+        "iqr": 0.0997
+      },
+      "ops_per_sec": 14387919,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "std_sort",
+      "n": 33554432,
+      "distribution": "random",
+      "key_type": "u32",
+      "iterations": 1,
+      "ns_per_op": {
+        "median": 72.3223,
+        "min": 72.2118,
+        "p99": 72.4496,
+        "iqr": 0.1543
+      },
+      "ops_per_sec": 13827191,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "std_sort",
+      "n": 67108864,
+      "distribution": "random",
+      "key_type": "u32",
+      "iterations": 1,
+      "ns_per_op": {
+        "median": 74.0163,
+        "min": 73.9748,
+        "p99": 74.2514,
+        "iqr": 0.2213
+      },
+      "ops_per_sec": 13510722,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "pdqsort",
+      "n": 4194304,
+      "distribution": "reverse",
+      "key_type": "u32",
+      "iterations": 111,
+      "ns_per_op": {
+        "median": 1.5083,
+        "min": 1.5024,
+        "p99": 1.5108,
+        "iqr": 0.0063
+      },
+      "ops_per_sec": 663000938,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "radix_lsd",
+      "n": 4194304,
+      "distribution": "reverse",
+      "key_type": "u32",
+      "iterations": 9,
+      "ns_per_op": {
+        "median": 21.0377,
+        "min": 19.0843,
+        "p99": 21.6118,
+        "iqr": 2.3622
+      },
+      "ops_per_sec": 47535499,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "std_sort",
+      "n": 4194304,
+      "distribution": "reverse",
+      "key_type": "u32",
+      "iterations": 23,
+      "ns_per_op": {
+        "median": 7.0816,
+        "min": 7.0662,
+        "p99": 7.0969,
+        "iqr": 0.0114
+      },
+      "ops_per_sec": 141210575,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "pdqsort",
+      "n": 4194304,
+      "distribution": "sawtooth",
+      "key_type": "u32",
+      "iterations": 6,
+      "ns_per_op": {
+        "median": 27.4994,
+        "min": 27.4726,
+        "p99": 27.5183,
+        "iqr": 0.0211
+      },
+      "ops_per_sec": 36365060,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "radix_lsd",
+      "n": 4194304,
+      "distribution": "sawtooth",
+      "key_type": "u32",
+      "iterations": 9,
+      "ns_per_op": {
+        "median": 16.5055,
+        "min": 16.3244,
+        "p99": 17.9539,
+        "iqr": 1.1939
+      },
+      "ops_per_sec": 60585752,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "std_sort",
+      "n": 4194304,
+      "distribution": "sawtooth",
+      "key_type": "u32",
+      "iterations": 6,
+      "ns_per_op": {
+        "median": 29.4931,
+        "min": 29.4116,
+        "p99": 29.5106,
+        "iqr": 0.0296
+      },
+      "ops_per_sec": 33906641,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "pdqsort",
+      "n": 4194304,
+      "distribution": "sorted",
+      "key_type": "u32",
+      "iterations": 222,
+      "ns_per_op": {
+        "median": 0.7542,
+        "min": 0.7383,
+        "p99": 0.7661,
+        "iqr": 0.0041
+      },
+      "ops_per_sec": 1325598615,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "radix_lsd",
+      "n": 4194304,
+      "distribution": "sorted",
+      "key_type": "u32",
+      "iterations": 8,
+      "ns_per_op": {
+        "median": 21.7575,
+        "min": 19.8804,
+        "p99": 22.5628,
+        "iqr": 2.4088
+      },
+      "ops_per_sec": 45963651,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "std_sort",
+      "n": 4194304,
+      "distribution": "sorted",
+      "key_type": "u32",
+      "iterations": 17,
+      "ns_per_op": {
+        "median": 9.5836,
+        "min": 9.5582,
+        "p99": 9.6217,
+        "iqr": 0.0132
+      },
+      "ops_per_sec": 104345241,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "pdqsort",
+      "n": 4194304,
+      "distribution": "random",
+      "key_type": "u64",
+      "iterations": 6,
+      "ns_per_op": {
+        "median": 26.3342,
+        "min": 26.3276,
+        "p99": 26.3461,
+        "iqr": 0.0092
+      },
+      "ops_per_sec": 37974089,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "radix_lsd",
+      "n": 4194304,
+      "distribution": "random",
+      "key_type": "u64",
+      "iterations": 5,
+      "ns_per_op": {
+        "median": 35.0523,
+        "min": 34.1383,
+        "p99": 35.1885,
+        "iqr": 0.3489
+      },
+      "ops_per_sec": 28529251,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    },
+    {
+      "variant": "std_sort",
+      "n": 4194304,
+      "distribution": "random",
+      "key_type": "u64",
+      "iterations": 3,
+      "ns_per_op": {
+        "median": 64.2243,
+        "min": 64.1652,
+        "p99": 64.3911,
+        "iqr": 0.113
+      },
+      "ops_per_sec": 15570661,
+      "compile_flags": "-O3 -march=native -std=c++20",
+      "notes": "ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration."
+    }
+  ],
+  "notes": "66 cells total: 63 u32 + 3 u64. Variants: pdqsort, radix_lsd, std_sort. Distributions: few_unique, random, reverse, sawtooth, sorted. Approximately 25 inner iterations per outer rep (Google Benchmark auto-scaled). ns_per_op is nanoseconds per element sorted; input restored from a master copy outside the timed region each iteration (PauseTiming/ResumeTiming). Fixed seeds: u32 master = 0xC0FFEE42, u64 master = 0xDEADBEEF1234. pdqsort vendored from github.com/orlp/pdqsort (zlib licence)."
+}

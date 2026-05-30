@@ -28,6 +28,10 @@ export const palette = {
   'std_map':    tokens.color.chart.series[2],
   'boost_flat': tokens.color.chart.series[3],
   'sorted_vec': tokens.color.chart.series[4],
+  // sorting shootout demo (08): same series palette so colours are consistent site-wide
+  'std_sort':   tokens.color.chart.series[0],
+  'pdqsort':    tokens.color.chart.series[1],
+  'radix_lsd':  tokens.color.chart.series[2],
   series:   tokens.color.chart.series,
 } as const
 
