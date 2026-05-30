@@ -223,7 +223,7 @@ export default function MethodologyPage() {
               percentiles computed from histograms merged across runs.
             </li>
             <li>
-              <strong>Working-set sweep</strong> (demos 6, 7):
+              <strong>Working-set sweep</strong> (demos 6, 7, 8):
               5 outer repetitions per cell; median <code>ns_per_op</code> reported.
               Sweep coverage substitutes for higher per-cell rep count.
             </li>

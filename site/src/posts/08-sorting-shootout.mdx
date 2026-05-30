@@ -49,13 +49,16 @@ Here is the per-element cost of all three sorts on random 32-bit keys, from a th
     { label: "L2", n: 131072 },
     { label: "L3", n: 4194304 },
   ]}
+  variantLabels={{ std_sort: "std::sort", pdqsort: "pdqsort", radix_lsd: "LSD radix" }}
+  yAxisLabel="ns per element"
+  title="Per-element sort cost vs N — random u32 keys, log-log"
 />
 
 Radix sits on the floor across almost the entire sweep. At 67 million keys it is roughly **5× faster than `std::sort`** and **1.9× faster than `pdqsort`**, and its line is nearly flat where the comparison sorts ramp upward — exactly what "no `log n`" looks like on a chart.
 
 Two things are worth slowing down for.
 
-**The cache knee on the radix line.** Radix is essentially flat at ~11 ns/element until about 4 million keys, then it bends upward to ~15. Four million 32-bit keys is 16 MB — the size of this machine's L3 slice. Past that point the scatter writes spill to main memory and radix becomes bandwidth-bound rather than compute-bound. The comparison sorts don't show this knee nearly as clearly, because their `log n` growth swamps it. The band markers — the same cache-tier bands [demo 6](/posts/06-aos-vs-soa) and [demo 7](/posts/07-flatmap-vs-hashmap) introduced — sit on the radix line for that reason: it's the one variant whose curve is shaped by the cache hierarchy rather than by its own asymptotics. One caveat on the bands: they mark the single-array footprint. Radix's ping-pong scratch buffer doubles its working set at small N, so it crosses the lower tiers earlier than the markers suggest — that's the bump just left of the L1 band in the next paragraph.
+**The cache knee on the radix line.** Setting aside the small-N bump discussed below, radix climbs gently from ~7–8 ns/element in the L1/L2 region to ~11–12 by a few hundred thousand keys, then bends upward to ~15 at the right edge of the sweep. The bend sits just past four million keys, and four million 32-bit keys is 16 MB — the size of this machine's L3 slice. Past that point the scatter writes spill to main memory and radix becomes bandwidth-bound rather than compute-bound. The comparison sorts don't show this knee nearly as clearly, because their `log n` growth swamps it. The band markers — the same cache-tier bands [demo 6](/posts/06-aos-vs-soa) and [demo 7](/posts/07-flatmap-vs-hashmap) introduced — sit on the radix line for that reason: it's the one variant whose curve is shaped by the cache hierarchy rather than by its own asymptotics. The markers mark the single-array footprint, and that needs a qualification in each direction. At small N, radix's ping-pong scratch buffer doubles its working set, so it hits the lower tiers earlier than the markers suggest — that's the bump just left of the L1 band in the next paragraph. At the L3 boundary the doubling does _not_ move the knee: the two arrays are streamed sequentially rather than held resident together, so the single-array 16 MB footprint is the line that bites — which is why the knee sits at four million keys, not at two.
 
 **The window where radix loses.** Look between 4,000 and 8,000 elements: radix bumps up to ~20–23 ns/element while `pdqsort` dips to ~16–18 and briefly wins. This isn't noise — it's radix paying for its scratch buffer. Because radix works on two n-element arrays at once, its working set is *twice* the input. At ~4 K keys that doubled footprint is 32 KB — exactly the L1 data cache — and at ~8 K it spills into L2. The in-place comparison sorts cross that same boundary at twice the element count, so for one narrow band radix is fighting the cache while they aren't. It's a clean illustration of the trade radix makes: O(n) auxiliary memory buys you the linear cost, and you pay for it precisely where capacity bites. Above ~16 K elements radix is back on the floor and stays there.
 
@@ -70,6 +73,8 @@ The chart above is random data. Real data usually isn't random — it's partiall
   distGrouped={true}
   variants={["std_sort", "pdqsort", "radix_lsd"]}
   stat="median"
+  variantLabels={{ std_sort: "std::sort", pdqsort: "pdqsort", radix_lsd: "LSD radix" }}
+  title="Sort cost across input distributions — N = 4,194,304 (u32)"
 />
 
 The comparison sorts swing wildly. `pdqsort` — pattern-defeating quicksort — detects sorted runs and few-unique-key inputs and short-circuits them: it sorts already-sorted data at **0.75 ns/element**, a 35× spread from its random-data cost of ~26. `std::sort` is less aggressive about it but still ranges roughly 9× from its best input to its worst. Radix, by contrast, spans **1.8×** across all five distributions. It does the same four passes regardless of what the data looks like; the input's shape is invisible to it.
@@ -86,7 +91,7 @@ A comparison sort's answer depends on the data. `pdqsort`'s median is excellent,
 
 ## Key width is the knob
 
-Radix's advantage is bought with passes, and wider keys cost more passes. A 64-bit key is eight byte-passes instead of four, so the linear cost doubles while the comparison sorts grow only with `log n`. At four million random keys the picture shifts sharply: against `std::sort`, radix's lead falls from **5.2× at 32-bit to 1.8× at 64-bit** — and `pdqsort` overtakes radix entirely, landing at ~26 ns/element to radix's ~35. Radix still beats `std::sort` on 64-bit keys, but it is no longer the obvious winner. The crossover lives in the key width: the narrower your integer keys, the more decisively the counting sort wins.
+Radix's advantage is bought with passes, and wider keys cost more passes. A 64-bit key is eight byte-passes instead of four, so radix's pass count doubles — and because the wider keys move twice the bytes per pass, its measured per-element cost nearly triples — while the comparison sorts grow only with `log n`. At four million random keys the picture shifts sharply: against `std::sort`, radix's lead falls from **5.2× at 32-bit to 1.8× at 64-bit** — and `pdqsort` overtakes radix entirely, landing at ~26 ns/element to radix's ~35. Radix still beats `std::sort` on 64-bit keys, but it is no longer the obvious winner. The balance tips on the key width: the narrower your integer keys, the more decisively the counting sort wins.
 
 ## What this doesn't show
 
@@ -97,14 +102,16 @@ This is a deliberately narrow result, and the boundaries matter more than the he
 - **Bare keys, no payload.** These are arrays of keys with nothing attached. Sorting key-plus-payload records changes the arithmetic — the scatter moves more bytes, and stability starts to matter (LSD radix is stable; `std::sort` and `pdqsort` are not). That's a separate measurement.
 - **Single-threaded, one machine.** No parallel sorts, no `std::execution::par`. All numbers from the single documented reference machine; see [methodology](/methodology).
 
-The takeaway isn't "use radix." It's that `std::sort`'s universality has a cost, and when your keys happen to be narrow fixed-width integers — which, on a hot path moving IDs, timestamps, or prices, they often are — you can trade that universality for a sort whose cost is linear and whose tail is something you can actually reason about. The default is a fine default. It just isn't free, and on this one shape of problem you can do better. It pairs with [demo 1](/posts/01-branch-prediction) from the other side: demo 1 measured the *payoff* of sorting — a branch-predictable downstream loop — and this post measures its *price*.
+The takeaway isn't "use radix." It's that `std::sort`'s universality has a cost, and when your keys happen to be narrow fixed-width integers — which, on a hot path moving IDs, timestamps, or prices, they often are — you can trade that universality for a sort whose cost is linear and whose tail is something you can actually reason about. The default is a fine default. It just isn't free, and on this one shape of problem you can do better. It pairs with [demo 1](/posts/01-branch-prediction) from the other side: demo 1 measured the *payoff* of sorting — a branch-predictable downstream loop — and this post measures its *price*. (Demo 1's one-second sort is on its small-range keys — `std::sort`'s easy case; the ~5× headline here is against random keys, the hard one. Same operation, opposite end of the input-shape sensitivity this post is about.)
 
 ## Reproducing this
 
-The benchmark harness, the radix implementation, and the capture script are in the repository under `bench/demos/08-sorting-shootout/`. The one subtlety worth flagging for anyone reproducing it: sorting mutates its input, so the harness restores a pristine copy from a master buffer **outside** the timed region on every iteration. Skip that and every iteration after the first measures the cost of sorting already-sorted data — which silently flatters the comparison sorts (radix is unaffected) and produces a plausible, wrong result. All numbers here are median per-element times over five repetitions; see [methodology](/methodology) for the machine spec and statistical conventions.
+The benchmark harness, the radix implementation, and the capture script are in the repository under `bench/demos/08-sorting-shootout/`. `pdqsort` is Orson Peters' pattern-defeating quicksort, vendored into that directory as a single header under the zlib licence. The one subtlety worth flagging for anyone reproducing it: sorting mutates its input, so the harness restores a pristine copy from a master buffer **outside** the timed region on every iteration. Skip that and every iteration after the first measures the cost of sorting already-sorted data — which silently flatters the comparison sorts (radix is unaffected) and produces a plausible, wrong result. All numbers here are median per-element times over five repetitions; see [methodology](/methodology) for the machine spec and statistical conventions.
 
 ---
 
-*AMD Ryzen 7 3800X, Zen 2 (SMT off), 3.9 GHz base, governor = performance, turbo disabled (BIOS Core Performance Boost off), cores 0–7 isolated (core 0 carries unavoidable kernel housekeeping), single thread pinned to core 4 (CCX1). Headless Ubuntu 24.04. GCC 13.3, -O3 -march=native -std=c++20. 5 outer repetitions per cell, median ns_per_op reported (working-set-sweep convention).*
+*AMD Ryzen 7 3800X, Zen 2 (SMT off), 3.9 GHz base, governor = performance, turbo disabled (BIOS Core Performance Boost off), cores 0–7 isolated (core 0 carries unavoidable kernel housekeeping), single thread pinned to core 4 (CCX1), headless Ubuntu 24.04. GCC 13.3, -O3 -march=native -std=c++20. 5 outer repetitions per cell, median ns_per_op reported (working-set-sweep convention).*
+
+*Source: [`bench/demos/08-sorting-shootout/`](https://github.com/GarethCooke/Crucible/tree/master/bench/demos/08-sorting-shootout) · [JSON](https://github.com/GarethCooke/Crucible/blob/master/site/src/data/perf/08-sorting-shootout.json).*
 
 *[Methodology →](/methodology)*
