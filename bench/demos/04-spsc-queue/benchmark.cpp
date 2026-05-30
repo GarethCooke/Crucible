@@ -177,7 +177,9 @@ static void emit_stall_diagnostic(const std::vector<uint64_t>& enq_ts,
                                   const std::vector<uint64_t>& deq_ts,
                                   double ns_per_cycle,
                                   const char* variant_name,
-                                  uint64_t offered_rate_hz) {
+                                  uint64_t offered_rate_hz,
+                                  uint64_t p99_ns,
+                                  uint64_t p999_ns) {
     const size_t N = ITEMS_MEASURED;
 
     // Count zero deq_ts entries; for lockfree variants this contradicts the
@@ -240,8 +242,10 @@ static void emit_stall_diagnostic(const std::vector<uint64_t>& enq_ts,
 
     std::fprintf(stderr,
         "DIAG %s @offered=%lluHz:"
-        " max_enq_gap=%.0f ns  max_deq_gap=%.0f ns (at item %zu)  backlog=%zu items\n",
+        " p99=%llu ns  p99.9=%llu ns"
+        "  max_enq_gap=%.0f ns  max_deq_gap=%.0f ns (at item %zu)  backlog=%zu items\n",
         variant_name, (unsigned long long)offered_rate_hz,
+        (unsigned long long)p99_ns, (unsigned long long)p999_ns,
         max_enq_gap_ns, max_deq_gap_ns, max_deq_gap_idx, backlog);
 
     // Warn when max dequeue gap exceeds 50× the median — contamination signal.
@@ -288,7 +292,8 @@ static void bin_run(const std::vector<uint64_t>& enq_ts,
         result.top_bucket_count += run_hist.counts[crucible::HISTOGRAM_BUCKET_COUNT - 1];
     }
     result.hist.merge(run_hist);
-    emit_stall_diagnostic(enq_ts, deq_ts, ns_per_cycle, variant_name, offered_rate_hz);
+    emit_stall_diagnostic(enq_ts, deq_ts, ns_per_cycle, variant_name, offered_rate_hz,
+                          run_hist.percentile(99.0), run_hist.percentile(99.9));
 }
 
 // ─── M8: wall-clock accumulation helper ──────────────────────────────────────
