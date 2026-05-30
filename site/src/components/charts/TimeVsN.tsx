@@ -56,15 +56,15 @@ export async function TimeVsN({
       : data.runs
 
     if (workloadFilter) {
-      runs = runs.filter((r) => (r as { workload?: string }).workload === workloadFilter)
+      runs = runs.filter((r) => r.workload === workloadFilter)
     }
 
     if (distributionFilter) {
-      runs = runs.filter((r) => (r as { distribution?: string }).distribution === distributionFilter)
+      runs = runs.filter((r) => r.distribution === distributionFilter)
     }
 
     if (keyTypeFilter) {
-      runs = runs.filter((r) => (r as { key_type?: string }).key_type === keyTypeFilter)
+      runs = runs.filter((r) => r.key_type === keyTypeFilter)
     }
 
     if (typeof kFilter === 'number') {

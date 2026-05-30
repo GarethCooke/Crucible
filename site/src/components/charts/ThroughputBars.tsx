@@ -1,5 +1,5 @@
 import { loadPerfData } from '@/lib/perf-data'
-import { ThroughputBarsChart, type Run } from './ThroughputBarsChart'
+import { ThroughputBarsChart, type Run, type LegacyRun } from './ThroughputBarsChart'
 import { NoData } from './NoData'
 
 interface Props {
@@ -66,15 +66,11 @@ export async function ThroughputBars({
   }
 
   if (distributionFilter) {
-    runs = runs.filter(
-      (r) => (r as { distribution?: string }).distribution === distributionFilter,
-    )
+    runs = runs.filter((r) => (r as LegacyRun).distribution === distributionFilter)
   }
 
   if (keyTypeFilter) {
-    runs = runs.filter(
-      (r) => (r as { key_type?: string }).key_type === keyTypeFilter,
-    )
+    runs = runs.filter((r) => (r as LegacyRun).key_type === keyTypeFilter)
   }
 
   if (placement) {

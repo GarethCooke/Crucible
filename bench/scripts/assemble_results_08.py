@@ -164,14 +164,19 @@ def main() -> None:
     for (key_type, variant, distribution, n), reps_list in sorted(
         groups.items(), key=lambda x: (x[0][0], x[0][2], x[0][1], x[0][3])
     ):
+        if n == 0:
+            print(f"ERROR: parsed n=0 for group {(key_type, variant, distribution, n)} — skipping.",
+                  file=sys.stderr)
+            continue
+
         times = [r["real_time"] for r in reps_list]   # ns per benchmark iteration
         ops_s = [r.get("items_per_second", 0.0) for r in reps_list]
 
         # ns_per_op = ns per element = real_time / n
-        ns_vals     = [t / n for t in times] if n > 0 else times
-        ns_per_op   = bench_stats(ns_vals)
+        ns_vals   = [t / n for t in times]
+        ns_per_op = bench_stats(ns_vals)
 
-        med_ops     = sorted(ops_s)[len(ops_s) // 2]
+        med_ops = percentile(sorted(ops_s), 50)
         inner_iters = reps_list[0].get("iterations", 0)
 
         run = {

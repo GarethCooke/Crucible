@@ -14,6 +14,7 @@
 template <class T>
 void radix_lsd(std::vector<T>& a, std::vector<T>& tmp) {
     static_assert(std::is_unsigned_v<T>, "LSD radix here assumes unsigned fixed-width keys");
+    static_assert(sizeof(T) % 2 == 0, "LSD radix requires even byte-width: odd pass count leaves result in tmp, not a");
     const size_t n = a.size();
     for (unsigned shift = 0; shift < sizeof(T) * 8; shift += 8) {
         size_t count[256] = {0};

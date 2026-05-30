@@ -236,14 +236,13 @@ function renderKGrouped(
 
 // ─── Distribution-grouped renderer (demo 8: bars grouped by input distribution) ─
 
-const DIST_ORDER = ['random', 'sorted', 'reverse', 'few_unique', 'sawtooth']
-const DIST_LABEL: Record<string, string> = {
-  random:     'random',
-  sorted:     'sorted',
-  reverse:    'reverse',
-  few_unique: 'few-unique',
-  sawtooth:   'sawtooth',
-}
+const DISTS: { key: string; label: string }[] = [
+  { key: 'random',     label: 'random' },
+  { key: 'sorted',     label: 'sorted' },
+  { key: 'reverse',    label: 'reverse' },
+  { key: 'few_unique', label: 'few-unique' },
+  { key: 'sawtooth',   label: 'sawtooth' },
+]
 
 function renderDistGrouped(
   el: SVGSVGElement,
@@ -258,26 +257,26 @@ function renderDistGrouped(
   const data = runs.filter((r) => r.n === n && r.distribution != null)
   if (data.length === 0) return
 
-  const distValues = DIST_ORDER.filter((d) => data.some((r) => r.distribution === d))
-  const variants   = Array.from(new Set(data.map((r) => r.variant)))
-  const vals       = data.map((d) => d.ns_per_op[stat] ?? d.ns_per_op.median)
+  const distItems = DISTS.filter((d) => data.some((r) => r.distribution === d.key))
+  const variants  = Array.from(new Set(data.map((r) => r.variant)))
+  const vals      = data.map((d) => d.ns_per_op[stat] ?? d.ns_per_op.median)
   const { H, margin, svg, g, inner, colors, x0, x1, y } = setupGroupChart(
     el,
-    distValues.map((d) => DIST_LABEL[d] ?? d),
+    distItems.map((d) => d.label),
     variants,
-    Math.max(...vals),
+    max(vals)!,
     title ?? `Input distribution · ${stat} ns/elem · N = ${n.toLocaleString()}`,
   )
 
   const grouped = group(data, (d) => d.distribution ?? '')
-  distValues.forEach((dist) => {
-    const distRuns = grouped.get(dist) ?? []
-    const gx = x0(DIST_LABEL[dist] ?? dist)
+  distItems.forEach(({ key, label }) => {
+    const distRuns = grouped.get(key) ?? []
+    const gx = x0(label)
     if (gx == null) return
     distRuns.forEach((run) => {
       const bx = gx + x1(run.variant)!
       const nsVal = run.ns_per_op[stat] ?? run.ns_per_op.median
-      appendBarRect(g, bx, y(nsVal), x1.bandwidth(), inner.h - y(nsVal), nsVal, variantColor(run.variant), 1, colors)
+      appendBarRect(g, bx, y(nsVal), x1.bandwidth(), inner.h - y(nsVal), nsVal, variantColor(run.variant), 2, colors)
     })
   })
 
