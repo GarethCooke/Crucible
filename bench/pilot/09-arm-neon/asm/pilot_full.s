@@ -17,7 +17,7 @@ Disassembly of section .plt:
 
 0000000000000e50 <.plt>:
      e50:	stp	x16, x30, [sp, #-16]!
-     e54:	adrp	x16, 1f000 <__abi_tag+0x1a130>
+     e54:	adrp	x16, 1f000 <__abi_tag+0x1a2e8>
      e58:	ldr	x17, [x16, #4088]
      e5c:	add	x16, x16, #0xff8
      e60:	br	x17
@@ -216,10 +216,10 @@ Disassembly of section .text:
     1094:	stp	x19, x20, [sp, #16]
     1098:	mov	w20, w0
     109c:	add	x19, sp, #0x118
-    10a0:	adrp	x0, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x7b0>
+    10a0:	adrp	x0, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x960>
     10a4:	stp	x21, x22, [sp, #32]
     10a8:	mov	x21, x1
-    10ac:	add	x1, x0, #0x610
+    10ac:	add	x1, x0, #0x450
     10b0:	mov	x0, x2
     10b4:	str	x2, [sp, #176]
     10b8:	mov	x2, x19
@@ -230,14 +230,14 @@ Disassembly of section .text:
     10cc:	stp	d10, d11, [sp, #112]
     10d0:	stp	d12, d13, [sp, #128]
     10d4:	stp	d14, d15, [sp, #144]
-    10d8:	bl	43a0 <std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::basic_string<std::allocator<char> >(char const*, std::allocator<char> const&)>
+    10d8:	bl	41e0 <std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::basic_string<std::allocator<char> >(char const*, std::allocator<char> const&)>
     10dc:	cmp	w20, #0x1
     10e0:	b.le	1a5c <main+0x9dc>
     10e4:	add	x0, sp, #0xc8
-    10e8:	adrp	x22, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x7b0>
-    10ec:	adrp	x24, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x7b0>
-    10f0:	add	x22, x22, #0x618
-    10f4:	add	x24, x24, #0x628
+    10e8:	adrp	x22, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x960>
+    10ec:	adrp	x24, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x960>
+    10f0:	add	x22, x22, #0x458
+    10f4:	add	x24, x24, #0x468
     10f8:	mov	w27, #0x1                   	// #1
     10fc:	str	x0, [sp, #168]
     1100:	mov	x25, #0x100000              	// #1048576
@@ -253,27 +253,27 @@ Disassembly of section .text:
     1128:	cmp	w20, w28
     112c:	b.gt	152c <main+0x4ac>
     1130:	ldr	x20, [sp, #176]
-    1134:	adrp	x0, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x7b0>
-    1138:	add	x1, x0, #0x610
+    1134:	adrp	x0, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x960>
+    1138:	add	x1, x0, #0x450
     113c:	mov	x0, x20
-    1140:	bl	4480 <bool std::operator==<char, std::char_traits<char>, std::allocator<char> >(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, char const*)>
+    1140:	bl	42c0 <bool std::operator==<char, std::char_traits<char>, std::allocator<char> >(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, char const*)>
     1144:	tbnz	w0, #0, 115c <main+0xdc>
-    1148:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x7b0>
+    1148:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x960>
     114c:	mov	x0, x20
-    1150:	add	x1, x1, #0x638
-    1154:	bl	4480 <bool std::operator==<char, std::char_traits<char>, std::allocator<char> >(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, char const*)>
+    1150:	add	x1, x1, #0x478
+    1154:	bl	42c0 <bool std::operator==<char, std::char_traits<char>, std::allocator<char> >(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, char const*)>
     1158:	tbz	w0, #0, 1900 <main+0x880>
     115c:	mrs	x0, fpcr
     1160:	orr	x0, x0, #0x1000000
     1164:	msr	fpcr, x0
     1168:	mrs	x2, fpcr
-    116c:	adrp	x0, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x7b0>
+    116c:	adrp	x0, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x960>
     1170:	tst	x2, #0x1000000
-    1174:	adrp	x3, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x7b0>
-    1178:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x7b0>
-    117c:	add	x3, x3, #0x608
-    1180:	add	x0, x0, #0x698
-    1184:	add	x1, x1, #0x600
+    1174:	adrp	x3, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x960>
+    1178:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x960>
+    117c:	add	x3, x3, #0x448
+    1180:	add	x0, x0, #0x4d8
+    1184:	add	x1, x1, #0x440
     1188:	csel	x1, x3, x1, eq	// eq = none
     118c:	bl	1040 <printf@plt>
     1190:	mov	x0, x25
@@ -442,7 +442,7 @@ Disassembly of section .text:
     141c:	b.ls	1244 <main+0x1c4>  // b.plast
     1420:	mov	x0, x19
     1424:	str	x2, [sp, #168]
-    1428:	bl	4500 <std::mersenne_twister_engine<unsigned long, 32ul, 624ul, 397ul, 31ul, 2567483615ul, 11ul, 4294967295ul, 7ul, 2636928640ul, 15ul, 4022730752ul, 18ul, 1812433253ul>::_M_gen_rand()>
+    1428:	bl	4340 <std::mersenne_twister_engine<unsigned long, 32ul, 624ul, 397ul, 31ul, 2567483615ul, 11ul, 4294967295ul, 7ul, 2636928640ul, 15ul, 4022730752ul, 18ul, 1812433253ul>::_M_gen_rand()>
     142c:	ldr	x2, [sp, #168]
     1430:	ldr	x1, [sp, #5272]
     1434:	b	1244 <main+0x1c4>
@@ -456,7 +456,7 @@ Disassembly of section .text:
     1454:	ldr	x2, [sp, #168]
     1458:	mov	x0, x19
     145c:	ldr	x1, [x23, #8]
-    1460:	bl	43a0 <std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::basic_string<std::allocator<char> >(char const*, std::allocator<char> const&)>
+    1460:	bl	41e0 <std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::basic_string<std::allocator<char> >(char const*, std::allocator<char> const&)>
     1464:	bl	f60 <__errno_location@plt>
     1468:	ldr	x26, [sp, #280]
     146c:	mov	x23, x0
@@ -483,25 +483,25 @@ Disassembly of section .text:
     14c0:	b	1130 <main+0xb0>
     14c4:	mov	x0, x19
     14c8:	str	x2, [sp, #168]
-    14cc:	bl	4500 <std::mersenne_twister_engine<unsigned long, 32ul, 624ul, 397ul, 31ul, 2567483615ul, 11ul, 4294967295ul, 7ul, 2636928640ul, 15ul, 4022730752ul, 18ul, 1812433253ul>::_M_gen_rand()>
+    14cc:	bl	4340 <std::mersenne_twister_engine<unsigned long, 32ul, 624ul, 397ul, 31ul, 2567483615ul, 11ul, 4294967295ul, 7ul, 2636928640ul, 15ul, 4022730752ul, 18ul, 1812433253ul>::_M_gen_rand()>
     14d0:	ldr	x2, [sp, #168]
     14d4:	ldr	x5, [sp, #5272]
     14d8:	b	13b8 <main+0x338>
     14dc:	mov	x0, x19
     14e0:	str	x2, [sp, #168]
-    14e4:	bl	4500 <std::mersenne_twister_engine<unsigned long, 32ul, 624ul, 397ul, 31ul, 2567483615ul, 11ul, 4294967295ul, 7ul, 2636928640ul, 15ul, 4022730752ul, 18ul, 1812433253ul>::_M_gen_rand()>
+    14e4:	bl	4340 <std::mersenne_twister_engine<unsigned long, 32ul, 624ul, 397ul, 31ul, 2567483615ul, 11ul, 4294967295ul, 7ul, 2636928640ul, 15ul, 4022730752ul, 18ul, 1812433253ul>::_M_gen_rand()>
     14e8:	ldr	x2, [sp, #168]
     14ec:	ldr	x1, [sp, #5272]
     14f0:	b	1360 <main+0x2e0>
     14f4:	mov	x0, x19
     14f8:	str	x2, [sp, #168]
-    14fc:	bl	4500 <std::mersenne_twister_engine<unsigned long, 32ul, 624ul, 397ul, 31ul, 2567483615ul, 11ul, 4294967295ul, 7ul, 2636928640ul, 15ul, 4022730752ul, 18ul, 1812433253ul>::_M_gen_rand()>
+    14fc:	bl	4340 <std::mersenne_twister_engine<unsigned long, 32ul, 624ul, 397ul, 31ul, 2567483615ul, 11ul, 4294967295ul, 7ul, 2636928640ul, 15ul, 4022730752ul, 18ul, 1812433253ul>::_M_gen_rand()>
     1500:	ldr	x2, [sp, #168]
     1504:	ldr	x5, [sp, #5272]
     1508:	b	12fc <main+0x27c>
     150c:	mov	x0, x19
     1510:	str	x2, [sp, #168]
-    1514:	bl	4500 <std::mersenne_twister_engine<unsigned long, 32ul, 624ul, 397ul, 31ul, 2567483615ul, 11ul, 4294967295ul, 7ul, 2636928640ul, 15ul, 4022730752ul, 18ul, 1812433253ul>::_M_gen_rand()>
+    1514:	bl	4340 <std::mersenne_twister_engine<unsigned long, 32ul, 624ul, 397ul, 31ul, 2567483615ul, 11ul, 4294967295ul, 7ul, 2636928640ul, 15ul, 4022730752ul, 18ul, 1812433253ul>::_M_gen_rand()>
     1518:	ldr	x2, [sp, #168]
     151c:	ldr	x6, [sp, #5272]
     1520:	b	12a0 <main+0x220>
@@ -572,20 +572,20 @@ Disassembly of section .text:
     1624:	add	x27, x27, #0x1
     1628:	cmp	x27, #0x100
     162c:	b.ne	1588 <main+0x508>  // b.any
-    1630:	adrp	x0, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x7b0>
-    1634:	add	x1, x0, #0x610
+    1630:	adrp	x0, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x960>
+    1634:	add	x1, x0, #0x450
     1638:	ldr	x0, [sp, #176]
-    163c:	bl	4480 <bool std::operator==<char, std::char_traits<char>, std::allocator<char> >(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, char const*)>
+    163c:	bl	42c0 <bool std::operator==<char, std::char_traits<char>, std::allocator<char> >(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, char const*)>
     1640:	tbnz	w0, #0, 19ec <main+0x96c>
-    1644:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x7b0>
+    1644:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x960>
     1648:	ldr	x0, [sp, #176]
-    164c:	add	x1, x1, #0x640
-    1650:	bl	4480 <bool std::operator==<char, std::char_traits<char>, std::allocator<char> >(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, char const*)>
+    164c:	add	x1, x1, #0x480
+    1650:	bl	42c0 <bool std::operator==<char, std::char_traits<char>, std::allocator<char> >(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, char const*)>
     1654:	tbnz	w0, #0, 194c <main+0x8cc>
-    1658:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x7b0>
+    1658:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x960>
     165c:	ldr	x0, [sp, #176]
-    1660:	add	x1, x1, #0x648
-    1664:	bl	4480 <bool std::operator==<char, std::char_traits<char>, std::allocator<char> >(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, char const*)>
+    1660:	add	x1, x1, #0x488
+    1664:	bl	42c0 <bool std::operator==<char, std::char_traits<char>, std::allocator<char> >(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, char const*)>
     1668:	mov	x6, x27
     166c:	mov	x5, x26
     1670:	mov	x4, x20
@@ -615,20 +615,20 @@ Disassembly of section .text:
     16d0:	fmov	s31, w0
     16d4:	fcmpe	s30, s31
     16d8:	b.ge	19c8 <main+0x948>  // b.tcont
-    16dc:	adrp	x0, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x7b0>
-    16e0:	add	x0, x0, #0x6f8
+    16dc:	adrp	x0, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x960>
+    16e0:	add	x0, x0, #0x538
     16e4:	bl	1040 <printf@plt>
-    16e8:	adrp	x0, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x7b0>
+    16e8:	adrp	x0, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x960>
     16ec:	ldr	x1, [sp, #208]
     16f0:	mov	x2, x25
-    16f4:	add	x0, x0, #0x730
+    16f4:	add	x0, x0, #0x570
     16f8:	bl	1040 <printf@plt>
-    16fc:	adrp	x0, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x7b0>
+    16fc:	adrp	x0, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x960>
     1700:	scvtf	d15, x25
     1704:	mov	x27, #0x1                   	// #1
-    1708:	ldr	d14, [x0, #2416]
-    170c:	adrp	x0, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x7b0>
-    1710:	add	x0, x0, #0x648
+    1708:	ldr	d14, [x0, #1968]
+    170c:	adrp	x0, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x960>
+    1710:	add	x0, x0, #0x488
     1714:	str	x0, [sp, #184]
     1718:	add	x0, sp, #0xf0
     171c:	str	x0, [sp, #168]
@@ -649,7 +649,7 @@ Disassembly of section .text:
     1758:	nop
     175c:	nop
     1760:	ldp	x0, x1, [sp, #176]
-    1764:	bl	4480 <bool std::operator==<char, std::char_traits<char>, std::allocator<char> >(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, char const*)>
+    1764:	bl	42c0 <bool std::operator==<char, std::char_traits<char>, std::allocator<char> >(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, char const*)>
     1768:	mov	x6, x25
     176c:	mov	x5, x26
     1770:	mov	x4, x20
@@ -678,8 +678,8 @@ Disassembly of section .text:
     17cc:	scvtf	d1, x2
     17d0:	ldr	s31, [sp, #200]
     17d4:	add	x3, x0, x27, lsl #3
-    17d8:	adrp	x0, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x7b0>
-    17dc:	add	x0, x0, #0x748
+    17d8:	adrp	x0, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x960>
+    17dc:	add	x0, x0, #0x588
     17e0:	fdiv	d0, d1, d15
     17e4:	fmul	d1, d1, d14
     17e8:	fdiv	d1, d15, d1
@@ -705,9 +705,9 @@ Disassembly of section .text:
     1838:	bl	1d24 <void std::__insertion_sort<double*, __gnu_cxx::__ops::_Iter_less_iter>(double*, double*, __gnu_cxx::__ops::_Iter_less_iter) [clone .isra.0]>
     183c:	mov	x1, #0xcd6500000000        	// #225833675390976
     1840:	ldr	d0, [sp, #296]
-    1844:	adrp	x0, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x7b0>
+    1844:	adrp	x0, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x960>
     1848:	movk	x1, #0x41cd, lsl #48
-    184c:	add	x0, x0, #0x770
+    184c:	add	x0, x0, #0x5b0
     1850:	fmov	d1, x1
     1854:	fdiv	d1, d1, d0
     1858:	bl	1040 <printf@plt>
@@ -752,20 +752,20 @@ Disassembly of section .text:
     18f4:	b	13ac <main+0x32c>
     18f8:	mvni	v31.2s, #0xc0, lsl #24
     18fc:	b	1354 <main+0x2d4>
-    1900:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x7b0>
+    1900:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x960>
     1904:	mov	x0, x20
-    1908:	add	x1, x1, #0x640
-    190c:	bl	4480 <bool std::operator==<char, std::char_traits<char>, std::allocator<char> >(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, char const*)>
+    1908:	add	x1, x1, #0x480
+    190c:	bl	42c0 <bool std::operator==<char, std::char_traits<char>, std::allocator<char> >(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, char const*)>
     1910:	tbnz	w0, #0, 115c <main+0xdc>
-    1914:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x7b0>
+    1914:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x960>
     1918:	mov	x0, x20
-    191c:	add	x1, x1, #0x648
-    1920:	bl	4480 <bool std::operator==<char, std::char_traits<char>, std::allocator<char> >(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, char const*)>
+    191c:	add	x1, x1, #0x488
+    1920:	bl	42c0 <bool std::operator==<char, std::char_traits<char>, std::allocator<char> >(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, char const*)>
     1924:	tbnz	w0, #0, 115c <main+0xdc>
-    1928:	adrp	x0, 1f000 <__abi_tag+0x1a130>
+    1928:	adrp	x0, 1f000 <__abi_tag+0x1a2e8>
     192c:	ldr	x0, [x0, #4056]
-    1930:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x7b0>
-    1934:	add	x1, x1, #0x658
+    1930:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x960>
+    1934:	add	x1, x1, #0x498
     1938:	ldr	x2, [x21]
     193c:	ldr	x0, [x0]
     1940:	bl	e90 <fprintf@plt>
@@ -800,12 +800,12 @@ Disassembly of section .text:
     19b4:	bl	2020 <price_scalar(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)>
     19b8:	b	178c <main+0x70c>
     19bc:	mov	x0, x24
-    19c0:	bl	3850 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)>
+    19c0:	bl	36a0 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)>
     19c4:	b	178c <main+0x70c>
-    19c8:	adrp	x0, 1f000 <__abi_tag+0x1a130>
+    19c8:	adrp	x0, 1f000 <__abi_tag+0x1a2e8>
     19cc:	ldr	x0, [x0, #4056]
-    19d0:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x7b0>
-    19d4:	add	x1, x1, #0x6c0
+    19d0:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x960>
+    19d4:	add	x1, x1, #0x500
     19d8:	ldr	x2, [sp, #208]
     19dc:	ldr	x0, [x0]
     19e0:	bl	e90 <fprintf@plt>
@@ -837,7 +837,7 @@ Disassembly of section .text:
     1a48:	bl	27e0 <price_autovec(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)>
     1a4c:	b	178c <main+0x70c>
     1a50:	mov	x0, x24
-    1a54:	bl	3850 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)>
+    1a54:	bl	36a0 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)>
     1a58:	b	168c <main+0x60c>
     1a5c:	mov	x25, #0x100000              	// #1048576
     1a60:	b	1130 <main+0xb0>
@@ -846,11 +846,11 @@ Disassembly of section .text:
     1a6c:	bl	f30 <std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::_M_dispose()@plt>
     1a70:	mov	x0, x20
     1a74:	bl	1000 <_Unwind_Resume@plt>
-    1a78:	adrp	x0, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x7b0>
-    1a7c:	add	x0, x0, #0x630
+    1a78:	adrp	x0, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x960>
+    1a7c:	add	x0, x0, #0x470
     1a80:	bl	f80 <std::__throw_out_of_range(char const*)@plt>
-    1a84:	adrp	x0, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x7b0>
-    1a88:	add	x0, x0, #0x630
+    1a84:	adrp	x0, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x960>
+    1a88:	add	x0, x0, #0x470
     1a8c:	bl	ee0 <std::__throw_invalid_argument(char const*)@plt>
     1a90:	ldr	w1, [x23]
     1a94:	mov	x20, x0
@@ -873,7 +873,7 @@ Disassembly of section .text:
     1ad0:	ldr	x1, [sp]
     1ad4:	add	x2, sp, #0x8
     1ad8:	mov	x6, sp
-    1adc:	adrp	x0, 1f000 <__abi_tag+0x1a130>
+    1adc:	adrp	x0, 1f000 <__abi_tag+0x1a2e8>
     1ae0:	ldr	x0, [x0, #4024]
     1ae4:	mov	x3, #0x0                   	// #0
     1ae8:	mov	x4, #0x0                   	// #0
@@ -881,7 +881,7 @@ Disassembly of section .text:
     1af0:	bl	fb0 <abort@plt>
 
 0000000000001af4 <call_weak_fn>:
-    1af4:	adrp	x0, 1f000 <__abi_tag+0x1a130>
+    1af4:	adrp	x0, 1f000 <__abi_tag+0x1a2e8>
     1af8:	ldr	x0, [x0, #4048]
     1afc:	cbz	x0, 1b04 <call_weak_fn+0x10>
     1b00:	b	1030 <__gmon_start__@plt>
@@ -900,7 +900,7 @@ Disassembly of section .text:
     1b2c:	add	x1, x1, #0x108
     1b30:	cmp	x1, x0
     1b34:	b.eq	1b4c <deregister_tm_clones+0x2c>  // b.none
-    1b38:	adrp	x1, 1f000 <__abi_tag+0x1a130>
+    1b38:	adrp	x1, 1f000 <__abi_tag+0x1a2e8>
     1b3c:	ldr	x1, [x1, #4040]
     1b40:	cbz	x1, 1b4c <deregister_tm_clones+0x2c>
     1b44:	mov	x16, x1
@@ -917,7 +917,7 @@ Disassembly of section .text:
     1b68:	add	x1, x2, x1, asr #3
     1b6c:	asr	x1, x1, #1
     1b70:	cbz	x1, 1b88 <register_tm_clones+0x38>
-    1b74:	adrp	x2, 1f000 <__abi_tag+0x1a130>
+    1b74:	adrp	x2, 1f000 <__abi_tag+0x1a2e8>
     1b78:	ldr	x2, [x2, #4064]
     1b7c:	cbz	x2, 1b88 <register_tm_clones+0x38>
     1b80:	mov	x16, x2
@@ -932,7 +932,7 @@ Disassembly of section .text:
     1b9c:	adrp	x19, 20000 <memcpy@GLIBC_2.17>
     1ba0:	ldrb	w0, [x19, #264]
     1ba4:	tbnz	w0, #0, 1bcc <__do_global_dtors_aux+0x40>
-    1ba8:	adrp	x0, 1f000 <__abi_tag+0x1a130>
+    1ba8:	adrp	x0, 1f000 <__abi_tag+0x1a2e8>
     1bac:	ldr	x0, [x0, #4032]
     1bb0:	cbz	x0, 1bc0 <__do_global_dtors_aux+0x34>
     1bb4:	adrp	x0, 20000 <memcpy@GLIBC_2.17>
@@ -1215,11 +1215,11 @@ Disassembly of section .text:
     1fe0:	ldr	x0, [sp, #24]
     1fe4:	ldp	x29, x30, [sp], #32
     1fe8:	ret
-    1fec:	adrp	x3, 1f000 <__abi_tag+0x1a130>
+    1fec:	adrp	x3, 1f000 <__abi_tag+0x1a2e8>
     1ff0:	ldr	x3, [x3, #4056]
-    1ff4:	adrp	x0, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x7b0>
+    1ff4:	adrp	x0, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x960>
     1ff8:	mov	x2, #0x16                  	// #22
-    1ffc:	add	x0, x0, #0x5e8
+    1ffc:	add	x0, x0, #0x428
     2000:	mov	x1, #0x1                   	// #1
     2004:	ldr	x3, [x3]
     2008:	bl	ff0 <fwrite@plt>
@@ -2226,1437 +2226,1325 @@ Disassembly of section .text:
     2f9c:	ret
 
 0000000000002fa0 <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)>:
-    2fa0:	cbz	x6, 384c <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x8ac>
-    2fa4:	mov	w11, #0x4f3                 	// #1267
-    2fa8:	mov	w10, #0x21bb                	// #8635
-    2fac:	stp	x29, x30, [sp, #-176]!
-    2fb0:	mov	w9, #0xd1b8                	// #53688
-    2fb4:	mov	w8, #0x251a                	// #9498
-    2fb8:	movk	w11, #0x3fb5, lsl #16
-    2fbc:	movk	w10, #0x3d90, lsl #16
-    2fc0:	movk	w9, #0xbdeb, lsl #16
-    2fc4:	movk	w8, #0x3def, lsl #16
-    2fc8:	mov	w7, #0xc2b00000            	// #-1028653056
-    2fcc:	mov	x29, sp
-    2fd0:	stp	d8, d9, [sp, #32]
-    2fd4:	fmov	s8, w11
-    2fd8:	fmov	s9, w10
-    2fdc:	stp	d10, d11, [sp, #48]
-    2fe0:	fmov	s10, w9
-    2fe4:	fmov	s11, w8
-    2fe8:	stp	d14, d15, [sp, #80]
-    2fec:	fmov	s14, w7
-    2ff0:	str	x19, [sp, #16]
-    2ff4:	mov	x19, #0x0                   	// #0
-    2ff8:	stp	d12, d13, [sp, #64]
-    2ffc:	nop
-    3000:	ldr	s15, [x2, x19, lsl #2]
-    3004:	ldr	s21, [x4, x19, lsl #2]
-    3008:	ldr	s13, [x0, x19, lsl #2]
-    300c:	fcmp	s15, #0.0
-    3010:	ldr	s12, [x1, x19, lsl #2]
-    3014:	ldr	s24, [x3, x19, lsl #2]
-    3018:	fmul	s19, s21, s21
-    301c:	b.pl	3060 <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0xc0>  // b.nfrst
-    3020:	fmov	s0, s15
-    3024:	stp	s24, s21, [sp, #108]
-    3028:	str	s19, [sp, #116]
-    302c:	stp	x0, x1, [sp, #120]
-    3030:	stp	x2, x3, [sp, #136]
-    3034:	stp	x4, x5, [sp, #152]
-    3038:	str	x6, [sp, #168]
-    303c:	bl	ec0 <sqrtf@plt>
-    3040:	ldr	s19, [sp, #116]
-    3044:	fmov	s31, s0
-    3048:	ldp	x0, x1, [sp, #120]
-    304c:	ldp	x2, x3, [sp, #136]
-    3050:	ldp	x4, x5, [sp, #152]
-    3054:	ldr	x6, [sp, #168]
-    3058:	ldp	s24, s21, [sp, #108]
-    305c:	b	3064 <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0xc4>
-    3060:	fsqrt	s31, s15
-    3064:	fmul	s21, s21, s31
-    3068:	fdiv	s30, s13, s12
-    306c:	fmov	w7, s30
-    3070:	and	w8, w7, #0x7fffff
-    3074:	ubfx	x7, x7, #23, #8
-    3078:	orr	w8, w8, #0x3f800000
-    307c:	fmov	s31, w8
-    3080:	fcmpe	s31, s8
-    3084:	b.ge	356c <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x5cc>  // b.tcont
-    3088:	sub	w8, w7, #0x7f
-    308c:	fmov	s29, #1.000000000000000000e+00
-    3090:	mov	w7, #0x5d4f                	// #23887
-    3094:	mov	w12, #0xe9bf                	// #59839
-    3098:	movk	w7, #0xbdfe, lsl #16
-    309c:	movk	w12, #0x3e11, lsl #16
-    30a0:	fmov	s22, #5.000000000000000000e-01
-    30a4:	mov	w11, #0xae50                	// #44624
-    30a8:	mov	w10, #0xceac                	// #52908
-    30ac:	scvtf	s20, w8
-    30b0:	fmov	s23, w7
-    30b4:	movk	w11, #0xbe2a, lsl #16
-    30b8:	movk	w10, #0x3e4c, lsl #16
-    30bc:	fsub	s31, s31, s29
-    30c0:	mov	w9, #0xfffc                	// #65532
-    30c4:	mov	w7, #0xaaaa                	// #43690
-    30c8:	fmov	s25, w12
-    30cc:	movk	w9, #0xbe7f, lsl #16
-    30d0:	movk	w7, #0x3eaa, lsl #16
-    30d4:	fmov	s26, w11
-    30d8:	mov	w12, #0x7218                	// #29208
-    30dc:	fmov	s27, w10
-    30e0:	movk	w12, #0x3f31, lsl #16
-    30e4:	fmov	s28, w9
-    30e8:	fmov	s30, w7
-    30ec:	fmadd	s16, s31, s9, s10
-    30f0:	fmul	s7, s31, s31
-    30f4:	fmov	s18, w12
-    30f8:	fmadd	s19, s19, s22, s24
-    30fc:	fmadd	s16, s31, s16, s11
-    3100:	fmul	s17, s7, s22
-    3104:	fmadd	s23, s31, s16, s23
-    3108:	fmadd	s25, s31, s23, s25
-    310c:	fmadd	s26, s31, s25, s26
-    3110:	fmadd	s27, s31, s26, s27
-    3114:	fmadd	s28, s31, s27, s28
-    3118:	fmadd	s30, s31, s28, s30
-    311c:	fmul	s30, s30, s7
-    3120:	fnmsub	s30, s31, s30, s17
-    3124:	fadd	s31, s31, s30
-    3128:	fmadd	s31, s20, s18, s31
-    312c:	fmadd	s31, s15, s19, s31
-    3130:	fdiv	s31, s31, s21
-    3134:	fcmpe	s31, #0.0
-    3138:	fsub	s28, s31, s21
-    313c:	b.mi	35fc <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x65c>  // b.first
-    3140:	mov	w7, #0x3389                	// #13193
-    3144:	mov	w11, #0x466f                	// #18031
-    3148:	fmov	s22, #-5.000000000000000000e-01
-    314c:	movk	w7, #0x3e6d, lsl #16
-    3150:	mov	w10, #0x1eea                	// #7914
-    3154:	movk	w11, #0x3faa, lsl #16
-    3158:	movk	w10, #0xbfe9, lsl #16
-    315c:	fmov	s30, w7
-    3160:	mov	w9, #0x778                 	// #1912
-    3164:	mov	w8, #0x8f89                	// #36745
-    3168:	fmov	s21, w11
-    316c:	movk	w9, #0x3fe4, lsl #16
-    3170:	movk	w8, #0xbeb6, lsl #16
-    3174:	fmov	s23, w10
-    3178:	mov	w7, #0x85fa                	// #34298
-    317c:	fmov	s25, w9
-    3180:	movk	w7, #0x3ea3, lsl #16
-    3184:	fmov	s26, w8
-    3188:	fmov	s27, w7
-    318c:	fmul	s22, s31, s22
-    3190:	fmadd	s30, s31, s30, s29
-    3194:	fmul	s22, s22, s31
-    3198:	fcmpe	s22, s14
-    319c:	fdiv	s30, s29, s30
-    31a0:	fmadd	s29, s30, s21, s23
-    31a4:	fmadd	s29, s30, s29, s25
-    31a8:	fmadd	s29, s30, s29, s26
-    31ac:	fmadd	s29, s30, s29, s27
-    31b0:	fmul	s30, s30, s29
-    31b4:	b.mi	3688 <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x6e8>  // b.first
-    31b8:	mov	w7, #0x42b00000            	// #1118830592
-    31bc:	fmov	s29, w7
-    31c0:	fcmpe	s22, s29
-    31c4:	b.gt	3280 <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x2e0>
-    31c8:	mov	w7, #0xaa3b                	// #43579
-    31cc:	movk	w7, #0x3fb8, lsl #16
-    31d0:	fmov	s29, w7
-    31d4:	fmul	s29, s22, s29
-    31d8:	fcmpe	s29, #0.0
-    31dc:	b.ge	37b8 <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x818>  // b.tcont
-    31e0:	fmov	s26, #5.000000000000000000e-01
-    31e4:	mov	w7, #0x7218                	// #29208
-    31e8:	mov	w10, #0xb61                 	// #2913
-    31ec:	movk	w7, #0x3f31, lsl #16
-    31f0:	mov	w9, #0x8889                	// #34953
-    31f4:	fmov	s27, #1.000000000000000000e+00
-    31f8:	movk	w10, #0x3ab6, lsl #16
-    31fc:	movk	w9, #0x3c08, lsl #16
-    3200:	fmov	s18, w7
-    3204:	mov	w8, #0xaaab                	// #43691
-    3208:	mov	w7, #0xaaab                	// #43691
-    320c:	fsub	s29, s29, s26
-    3210:	movk	w8, #0x3d2a, lsl #16
-    3214:	movk	w7, #0x3e2a, lsl #16
-    3218:	fmov	s19, w10
-    321c:	mov	w11, #0x422a                	// #16938
-    3220:	fmov	s21, w9
-    3224:	movk	w11, #0x3ecc, lsl #16
-    3228:	fmov	s23, w8
-    322c:	fmov	s25, w7
-    3230:	fmov	s20, w11
-    3234:	fcvtzs	s29, s29
-    3238:	scvtf	s29, s29
-    323c:	fmsub	s22, s29, s18, s22
-    3240:	fcvtzs	w7, s29
-    3244:	fmadd	s21, s22, s19, s21
-    3248:	add	w7, w7, #0x7f
-    324c:	fmov	s29, w7
-    3250:	fmadd	s23, s22, s21, s23
-    3254:	fmadd	s25, s22, s23, s25
-    3258:	shl	v29.2s, v29.2s, #23
-    325c:	fmadd	s26, s22, s25, s26
-    3260:	fmadd	s26, s22, s26, s27
-    3264:	fmadd	s27, s22, s26, s27
-    3268:	fmul	s29, s27, s29
-    326c:	fmul	s29, s29, s20
-    3270:	fcmpe	s31, #0.0
-    3274:	fmul	s30, s30, s29
-    3278:	b.mi	3298 <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x2f8>  // b.first
-    327c:	b	3290 <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x2f0>
-    3280:	mov	w7, #0x484f                	// #18511
-    3284:	movk	w7, #0x7e46, lsl #16
-    3288:	fmov	s31, w7
-    328c:	fmul	s30, s31, s30
-    3290:	fmov	s31, #1.000000000000000000e+00
-    3294:	fsub	s30, s31, s30
-    3298:	fnmul	s15, s24, s15
-    329c:	fmul	s30, s13, s30
-    32a0:	movi	v31.2s, #0x0
-    32a4:	fcmpe	s15, s14
-    32a8:	b.mi	3360 <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x3c0>  // b.first
-    32ac:	mov	w7, #0x42b00000            	// #1118830592
-    32b0:	fmov	s31, w7
-    32b4:	fcmpe	s15, s31
-    32b8:	b.gt	3690 <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x6f0>
-    32bc:	mov	w7, #0xaa3b                	// #43579
-    32c0:	movk	w7, #0x3fb8, lsl #16
-    32c4:	fmov	s31, w7
-    32c8:	fmul	s31, s15, s31
-    32cc:	fcmpe	s31, #0.0
-    32d0:	b.ge	36a0 <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x700>  // b.tcont
-    32d4:	fmov	s27, #5.000000000000000000e-01
-    32d8:	mov	w7, #0x7218                	// #29208
-    32dc:	mov	w10, #0xb61                 	// #2913
-    32e0:	movk	w7, #0x3f31, lsl #16
-    32e4:	mov	w9, #0x8889                	// #34953
-    32e8:	fmov	s29, #1.000000000000000000e+00
-    32ec:	movk	w10, #0x3ab6, lsl #16
-    32f0:	movk	w9, #0x3c08, lsl #16
-    32f4:	fmov	s22, w7
-    32f8:	mov	w8, #0xaaab                	// #43691
-    32fc:	mov	w7, #0xaaab                	// #43691
-    3300:	fsub	s31, s31, s27
-    3304:	movk	w8, #0x3d2a, lsl #16
-    3308:	movk	w7, #0x3e2a, lsl #16
-    330c:	fmov	s23, w10
-    3310:	fmov	s24, w9
-    3314:	fmov	s25, w8
-    3318:	fmov	s26, w7
-    331c:	fcvtzs	s31, s31
-    3320:	scvtf	s31, s31
-    3324:	fmsub	s15, s31, s22, s15
-    3328:	fcvtzs	w7, s31
-    332c:	fmadd	s24, s15, s23, s24
-    3330:	add	w7, w7, #0x7f
-    3334:	fmov	s31, w7
-    3338:	fmadd	s25, s15, s24, s25
-    333c:	fmadd	s26, s15, s25, s26
-    3340:	shl	v31.2s, v31.2s, #23
-    3344:	fmadd	s27, s15, s26, s27
-    3348:	fmadd	s27, s15, s27, s29
-    334c:	fmadd	s29, s15, s27, s29
-    3350:	fmul	s31, s29, s31
-    3354:	nop
-    3358:	nop
-    335c:	nop
-    3360:	fcmpe	s28, #0.0
-    3364:	fmul	s26, s12, s31
-    3368:	b.mi	357c <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x5dc>  // b.first
-    336c:	mov	w7, #0x3389                	// #13193
-    3370:	fmov	s31, #1.000000000000000000e+00
-    3374:	mov	w11, #0x466f                	// #18031
-    3378:	movk	w7, #0x3e6d, lsl #16
-    337c:	mov	w10, #0x1eea                	// #7914
-    3380:	fmov	s27, #-5.000000000000000000e-01
-    3384:	movk	w11, #0x3faa, lsl #16
-    3388:	movk	w10, #0xbfe9, lsl #16
-    338c:	fmov	s22, w7
-    3390:	mov	w9, #0x778                 	// #1912
-    3394:	mov	w8, #0x8f89                	// #36745
-    3398:	fmov	s21, w11
-    339c:	movk	w9, #0x3fe4, lsl #16
-    33a0:	movk	w8, #0xbeb6, lsl #16
-    33a4:	fmov	s23, w10
-    33a8:	mov	w7, #0x85fa                	// #34298
-    33ac:	fmov	s24, w9
-    33b0:	movk	w7, #0x3ea3, lsl #16
-    33b4:	fmov	s25, w8
-    33b8:	fmov	s29, w7
-    33bc:	fmul	s27, s28, s27
-    33c0:	fmadd	s22, s28, s22, s31
-    33c4:	fmul	s27, s27, s28
-    33c8:	fcmpe	s27, s14
-    33cc:	fdiv	s31, s31, s22
-    33d0:	fmadd	s23, s31, s21, s23
-    33d4:	fmadd	s24, s31, s23, s24
-    33d8:	fmadd	s25, s31, s24, s25
-    33dc:	fmadd	s29, s31, s25, s29
-    33e0:	fmul	s31, s31, s29
-    33e4:	b.mi	3680 <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x6e0>  // b.first
-    33e8:	mov	w7, #0x42b00000            	// #1118830592
-    33ec:	fmov	s29, w7
-    33f0:	fcmpe	s27, s29
-    33f4:	b.gt	34ec <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x54c>
-    33f8:	nop
-    33fc:	nop
-    3400:	mov	w7, #0xaa3b                	// #43579
-    3404:	movk	w7, #0x3fb8, lsl #16
-    3408:	fmov	s29, w7
-    340c:	fmul	s29, s27, s29
-    3410:	fcmpe	s29, #0.0
-    3414:	b.ge	3724 <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x784>  // b.tcont
-    3418:	fmov	s24, #5.000000000000000000e-01
-    341c:	mov	w7, #0x7218                	// #29208
-    3420:	mov	w11, #0xb61                 	// #2913
-    3424:	movk	w7, #0x3f31, lsl #16
-    3428:	mov	w9, #0x8889                	// #34953
-    342c:	fmov	s25, #1.000000000000000000e+00
-    3430:	movk	w11, #0x3ab6, lsl #16
-    3434:	movk	w9, #0x3c08, lsl #16
-    3438:	fmov	s18, w7
-    343c:	mov	w8, #0xaaab                	// #43691
-    3440:	mov	w7, #0xaaab                	// #43691
-    3444:	fsub	s29, s29, s24
-    3448:	movk	w8, #0x3d2a, lsl #16
-    344c:	movk	w7, #0x3e2a, lsl #16
-    3450:	fmov	s19, w11
-    3454:	mov	w10, #0x422a                	// #16938
-    3458:	fmov	s21, w9
-    345c:	movk	w10, #0x3ecc, lsl #16
-    3460:	fmov	s22, w8
-    3464:	fmov	s23, w7
-    3468:	fmov	s20, w10
-    346c:	fcvtzs	s29, s29
-    3470:	scvtf	s29, s29
-    3474:	fmsub	s27, s29, s18, s27
-    3478:	fcvtzs	w7, s29
-    347c:	fmadd	s21, s27, s19, s21
-    3480:	add	w7, w7, #0x7f
-    3484:	fmov	s29, w7
-    3488:	fmadd	s22, s27, s21, s22
-    348c:	fmadd	s23, s27, s22, s23
-    3490:	shl	v29.2s, v29.2s, #23
-    3494:	fmadd	s24, s27, s23, s24
-    3498:	fmadd	s24, s27, s24, s25
-    349c:	fmadd	s25, s27, s24, s25
-    34a0:	fmul	s29, s25, s29
-    34a4:	fmul	s29, s29, s20
-    34a8:	fcmpe	s28, #0.0
-    34ac:	fmul	s31, s31, s29
-    34b0:	b.mi	353c <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x59c>  // b.first
-    34b4:	fmov	s29, #1.000000000000000000e+00
-    34b8:	fsub	s31, s29, s31
-    34bc:	fmsub	s31, s26, s31, s30
-    34c0:	str	s31, [x5, x19, lsl #2]
-    34c4:	add	x19, x19, #0x1
-    34c8:	cmp	x19, x6
-    34cc:	b.ne	3000 <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x60>  // b.any
-    34d0:	ldr	x19, [sp, #16]
-    34d4:	ldp	d8, d9, [sp, #32]
-    34d8:	ldp	d10, d11, [sp, #48]
-    34dc:	ldp	d12, d13, [sp, #64]
-    34e0:	ldp	d14, d15, [sp, #80]
-    34e4:	ldp	x29, x30, [sp], #176
-    34e8:	ret
-    34ec:	mov	w7, #0x484f                	// #18511
-    34f0:	movk	w7, #0x7e46, lsl #16
-    34f4:	fmov	s29, w7
-    34f8:	fmul	s31, s31, s29
-    34fc:	fmov	s29, #1.000000000000000000e+00
-    3500:	fsub	s31, s29, s31
-    3504:	fmsub	s31, s26, s31, s30
-    3508:	str	s31, [x5, x19, lsl #2]
-    350c:	add	x19, x19, #0x1
-    3510:	cmp	x19, x6
-    3514:	b.ne	3000 <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x60>  // b.any
-    3518:	ldr	x19, [sp, #16]
-    351c:	ldp	d8, d9, [sp, #32]
-    3520:	ldp	d10, d11, [sp, #48]
-    3524:	ldp	d12, d13, [sp, #64]
-    3528:	ldp	d14, d15, [sp, #80]
-    352c:	ldp	x29, x30, [sp], #176
-    3530:	ret
-    3534:	movi	v29.2s, #0x0
-    3538:	fmul	s31, s31, s29
-    353c:	fmsub	s31, s26, s31, s30
-    3540:	str	s31, [x5, x19, lsl #2]
-    3544:	add	x19, x19, #0x1
-    3548:	cmp	x6, x19
-    354c:	b.ne	3000 <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x60>  // b.any
-    3550:	ldr	x19, [sp, #16]
-    3554:	ldp	d8, d9, [sp, #32]
-    3558:	ldp	d10, d11, [sp, #48]
-    355c:	ldp	d12, d13, [sp, #64]
-    3560:	ldp	d14, d15, [sp, #80]
-    3564:	ldp	x29, x30, [sp], #176
-    3568:	ret
-    356c:	fmov	s30, #5.000000000000000000e-01
-    3570:	sub	w8, w7, #0x7e
-    3574:	fmul	s31, s31, s30
-    3578:	b	308c <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0xec>
-    357c:	mov	w7, #0x3389                	// #13193
-    3580:	fmov	s29, #1.000000000000000000e+00
-    3584:	mov	w11, #0x466f                	// #18031
-    3588:	movk	w7, #0x3e6d, lsl #16
-    358c:	mov	w10, #0x1eea                	// #7914
-    3590:	fmov	s27, #5.000000000000000000e-01
-    3594:	movk	w11, #0x3faa, lsl #16
-    3598:	movk	w10, #0xbfe9, lsl #16
-    359c:	fmov	s22, w7
-    35a0:	mov	w9, #0x778                 	// #1912
-    35a4:	mov	w8, #0x8f89                	// #36745
-    35a8:	fmov	s21, w11
-    35ac:	movk	w9, #0x3fe4, lsl #16
-    35b0:	movk	w8, #0xbeb6, lsl #16
-    35b4:	fmov	s23, w10
-    35b8:	mov	w7, #0x85fa                	// #34298
-    35bc:	fmov	s24, w9
-    35c0:	movk	w7, #0x3ea3, lsl #16
-    35c4:	fmov	s25, w8
-    35c8:	fmov	s31, w7
-    35cc:	fmul	s27, s28, s27
-    35d0:	fmsub	s22, s28, s22, s29
-    35d4:	fnmul	s27, s28, s27
-    35d8:	fcmpe	s27, s14
-    35dc:	fdiv	s29, s29, s22
-    35e0:	fmadd	s23, s29, s21, s23
-    35e4:	fmadd	s24, s23, s29, s24
-    35e8:	fmadd	s25, s24, s29, s25
-    35ec:	fmadd	s31, s25, s29, s31
-    35f0:	fmul	s31, s29, s31
-    35f4:	b.mi	3534 <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x594>  // b.first
-    35f8:	b	3400 <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x460>
-    35fc:	mov	w7, #0x3389                	// #13193
-    3600:	mov	w11, #0x466f                	// #18031
-    3604:	fmul	s22, s31, s22
-    3608:	movk	w7, #0x3e6d, lsl #16
-    360c:	mov	w10, #0x1eea                	// #7914
-    3610:	movk	w11, #0x3faa, lsl #16
-    3614:	movk	w10, #0xbfe9, lsl #16
-    3618:	fmov	s30, w7
-    361c:	mov	w9, #0x778                 	// #1912
-    3620:	mov	w8, #0x8f89                	// #36745
-    3624:	fmov	s21, w11
-    3628:	movk	w9, #0x3fe4, lsl #16
-    362c:	movk	w8, #0xbeb6, lsl #16
-    3630:	fmov	s23, w10
-    3634:	mov	w7, #0x85fa                	// #34298
-    3638:	fmov	s25, w9
-    363c:	movk	w7, #0x3ea3, lsl #16
-    3640:	fmov	s26, w8
-    3644:	fmov	s27, w7
-    3648:	fnmul	s22, s31, s22
-    364c:	fmsub	s30, s31, s30, s29
-    3650:	fcmpe	s22, s14
-    3654:	fdiv	s30, s29, s30
-    3658:	fmadd	s29, s30, s21, s23
-    365c:	fmadd	s29, s30, s29, s25
-    3660:	fmadd	s29, s30, s29, s26
-    3664:	fmadd	s29, s30, s29, s27
-    3668:	fmul	s30, s30, s29
-    366c:	b.mi	3674 <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x6d4>  // b.first
-    3670:	b	31c8 <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x228>
-    3674:	movi	v31.2s, #0x0
-    3678:	fmul	s30, s30, s31
-    367c:	b	3298 <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x2f8>
-    3680:	movi	v29.2s, #0x0
-    3684:	b	34f8 <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x558>
-    3688:	movi	v31.2s, #0x0
-    368c:	b	328c <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x2ec>
-    3690:	mov	w7, #0x829c                	// #33436
-    3694:	movk	w7, #0x7ef8, lsl #16
-    3698:	fmov	s31, w7
-    369c:	b	3360 <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x3c0>
-    36a0:	fmov	s26, #5.000000000000000000e-01
-    36a4:	mov	w7, #0x7218                	// #29208
-    36a8:	mov	w10, #0xb61                 	// #2913
-    36ac:	movk	w7, #0x3f31, lsl #16
-    36b0:	mov	w9, #0x8889                	// #34953
-    36b4:	fmov	s29, #1.000000000000000000e+00
-    36b8:	movk	w10, #0x3ab6, lsl #16
-    36bc:	movk	w9, #0x3c08, lsl #16
-    36c0:	fmov	s27, w7
-    36c4:	mov	w8, #0xaaab                	// #43691
-    36c8:	mov	w7, #0xaaab                	// #43691
-    36cc:	fadd	s31, s31, s26
-    36d0:	movk	w8, #0x3d2a, lsl #16
-    36d4:	movk	w7, #0x3e2a, lsl #16
-    36d8:	fmov	s22, w10
-    36dc:	fmov	s23, w9
-    36e0:	fmov	s24, w8
-    36e4:	fmov	s25, w7
-    36e8:	fcvtzs	s31, s31
-    36ec:	scvtf	s31, s31
-    36f0:	fmsub	s27, s31, s27, s15
-    36f4:	fcvtzs	w7, s31
-    36f8:	fmadd	s23, s27, s22, s23
-    36fc:	add	w7, w7, #0x7f
-    3700:	fmov	s31, w7
-    3704:	fmadd	s24, s27, s23, s24
-    3708:	fmadd	s25, s27, s24, s25
-    370c:	shl	v31.2s, v31.2s, #23
-    3710:	fmadd	s26, s27, s25, s26
-    3714:	fmadd	s26, s27, s26, s29
-    3718:	fmadd	s29, s27, s26, s29
-    371c:	fmul	s31, s29, s31
-    3720:	b	3360 <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x3c0>
-    3724:	fmov	s23, #5.000000000000000000e-01
-    3728:	mov	w7, #0x7218                	// #29208
-    372c:	mov	w11, #0xb61                 	// #2913
-    3730:	movk	w7, #0x3f31, lsl #16
-    3734:	mov	w9, #0x8889                	// #34953
-    3738:	fmov	s25, #1.000000000000000000e+00
-    373c:	movk	w11, #0x3ab6, lsl #16
-    3740:	movk	w9, #0x3c08, lsl #16
-    3744:	fmov	s24, w7
-    3748:	mov	w8, #0xaaab                	// #43691
-    374c:	mov	w7, #0xaaab                	// #43691
-    3750:	fadd	s29, s29, s23
-    3754:	movk	w8, #0x3d2a, lsl #16
-    3758:	movk	w7, #0x3e2a, lsl #16
-    375c:	fmov	s18, w11
-    3760:	mov	w10, #0x422a                	// #16938
-    3764:	fmov	s20, w9
-    3768:	movk	w10, #0x3ecc, lsl #16
-    376c:	fmov	s21, w8
-    3770:	fmov	s22, w7
-    3774:	fmov	s19, w10
-    3778:	fcvtzs	s29, s29
-    377c:	scvtf	s29, s29
-    3780:	fmsub	s27, s29, s24, s27
-    3784:	fcvtzs	w7, s29
-    3788:	fmadd	s24, s27, s18, s20
-    378c:	add	w7, w7, #0x7f
-    3790:	fmov	s29, w7
-    3794:	fmadd	s24, s27, s24, s21
-    3798:	fmadd	s24, s27, s24, s22
-    379c:	shl	v29.2s, v29.2s, #23
-    37a0:	fmadd	s23, s27, s24, s23
-    37a4:	fmadd	s23, s27, s23, s25
-    37a8:	fmadd	s25, s27, s23, s25
-    37ac:	fmul	s29, s25, s29
-    37b0:	fmul	s29, s29, s19
-    37b4:	b	34a8 <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x508>
-    37b8:	fmov	s25, #5.000000000000000000e-01
-    37bc:	mov	w7, #0x7218                	// #29208
-    37c0:	mov	w10, #0xb61                 	// #2913
-    37c4:	movk	w7, #0x3f31, lsl #16
-    37c8:	mov	w9, #0x8889                	// #34953
-    37cc:	fmov	s27, #1.000000000000000000e+00
-    37d0:	movk	w10, #0x3ab6, lsl #16
-    37d4:	movk	w9, #0x3c08, lsl #16
-    37d8:	fmov	s26, w7
-    37dc:	mov	w8, #0xaaab                	// #43691
-    37e0:	mov	w7, #0xaaab                	// #43691
-    37e4:	fadd	s29, s29, s25
-    37e8:	movk	w8, #0x3d2a, lsl #16
-    37ec:	movk	w7, #0x3e2a, lsl #16
-    37f0:	fmov	s18, w10
-    37f4:	mov	w11, #0x422a                	// #16938
-    37f8:	fmov	s20, w9
-    37fc:	movk	w11, #0x3ecc, lsl #16
-    3800:	fmov	s21, w8
-    3804:	fmov	s23, w7
-    3808:	fmov	s19, w11
-    380c:	fcvtzs	s29, s29
-    3810:	scvtf	s29, s29
-    3814:	fmsub	s26, s29, s26, s22
-    3818:	fcvtzs	w7, s29
-    381c:	fmadd	s22, s26, s18, s20
-    3820:	add	w7, w7, #0x7f
-    3824:	fmov	s29, w7
-    3828:	fmadd	s22, s26, s22, s21
-    382c:	fmadd	s23, s26, s22, s23
-    3830:	shl	v29.2s, v29.2s, #23
-    3834:	fmadd	s25, s26, s23, s25
-    3838:	fmadd	s25, s26, s25, s27
-    383c:	fmadd	s27, s26, s25, s27
-    3840:	fmul	s29, s27, s29
-    3844:	fmul	s29, s29, s19
-    3848:	b	3270 <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x2d0>
-    384c:	ret
+    2fa0:	cbz	x6, 369c <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x6fc>
+    2fa4:	mov	w10, #0x4f3                 	// #1267
+    2fa8:	mov	w9, #0x21bb                	// #8635
+    2fac:	stp	x29, x30, [sp, #-144]!
+    2fb0:	movk	w10, #0x3fb5, lsl #16
+    2fb4:	movk	w9, #0x3d90, lsl #16
+    2fb8:	mov	x29, sp
+    2fbc:	mov	w15, #0x251a                	// #9498
+    2fc0:	mov	w14, #0x5d4f                	// #23887
+    2fc4:	mov	w13, #0xe9bf                	// #59839
+    2fc8:	stp	d14, d15, [sp, #80]
+    2fcc:	mov	w12, #0xae50                	// #44624
+    2fd0:	fmov	s15, w10
+    2fd4:	mov	w11, #0xceac                	// #52908
+    2fd8:	mov	w10, #0xfffc                	// #65532
+    2fdc:	movk	w15, #0x3def, lsl #16
+    2fe0:	fmov	s0, w9
+    2fe4:	movk	w14, #0xbdfe, lsl #16
+    2fe8:	movk	w13, #0x3e11, lsl #16
+    2fec:	stp	x19, x20, [sp, #16]
+    2ff0:	movk	w12, #0xbe2a, lsl #16
+    2ff4:	movk	w11, #0x3e4c, lsl #16
+    2ff8:	movk	w10, #0xbe7f, lsl #16
+    2ffc:	mov	w9, #0xaaaa                	// #43690
+    3000:	movk	w9, #0x3eaa, lsl #16
+    3004:	fmov	s2, w15
+    3008:	mov	w20, #0xaa3b                	// #43579
+    300c:	fmov	s3, w14
+    3010:	mov	w15, #0x3389                	// #13193
+    3014:	mov	w14, #0x466f                	// #18031
+    3018:	fmov	s4, w13
+    301c:	mov	w13, #0x1eea                	// #7914
+    3020:	movk	w20, #0x3fb8, lsl #16
+    3024:	fmov	s5, w12
+    3028:	mov	w12, #0x778                 	// #1912
+    302c:	movk	w15, #0x3e6d, lsl #16
+    3030:	stp	d8, d9, [sp, #32]
+    3034:	movk	w14, #0x3faa, lsl #16
+    3038:	movk	w13, #0xbfe9, lsl #16
+    303c:	fmov	s8, w11
+    3040:	mov	w11, #0x8f89                	// #36745
+    3044:	movk	w12, #0x3fe4, lsl #16
+    3048:	fmov	s9, w10
+    304c:	mov	w10, #0x85fa                	// #34298
+    3050:	movk	w11, #0xbeb6, lsl #16
+    3054:	movk	w10, #0x3ea3, lsl #16
+    3058:	stp	d10, d11, [sp, #48]
+    305c:	mov	w8, #0xd1b8                	// #53688
+    3060:	fmov	s10, w9
+    3064:	mov	w9, #0xc2b00000            	// #-1028653056
+    3068:	movk	w8, #0xbdeb, lsl #16
+    306c:	fmov	s11, w20
+    3070:	mov	w19, #0xb61                 	// #2913
+    3074:	mov	w30, #0x8889                	// #34953
+    3078:	fmov	s7, w15
+    307c:	mov	w18, #0xaaab                	// #43691
+    3080:	mov	w17, #0xaaab                	// #43691
+    3084:	fmov	s16, w14
+    3088:	mov	w16, #0x422a                	// #16938
+    308c:	movk	w19, #0x3ab6, lsl #16
+    3090:	fmov	s17, w13
+    3094:	movk	w30, #0x3c08, lsl #16
+    3098:	movk	w18, #0x3d2a, lsl #16
+    309c:	fmov	s18, w12
+    30a0:	movk	w17, #0x3e2a, lsl #16
+    30a4:	movk	w16, #0x3ecc, lsl #16
+    30a8:	fmov	s19, w11
+    30ac:	mov	x7, #0x0                   	// #0
+    30b0:	fmov	s20, w10
+    30b4:	fmov	s24, w9
+    30b8:	fmov	s1, w8
+    30bc:	mov	w8, #0x7218                	// #29208
+    30c0:	movk	w8, #0x3f31, lsl #16
+    30c4:	stp	d12, d13, [sp, #64]
+    30c8:	stp	w30, w18, [sp, #116]
+    30cc:	fmov	s6, w8
+    30d0:	mov	w8, #0x484f                	// #18511
+    30d4:	movk	w8, #0x7e46, lsl #16
+    30d8:	stp	w17, w16, [sp, #124]
+    30dc:	stp	w8, w19, [sp, #108]
+    30e0:	ldr	s26, [x0, x7, lsl #2]
+    30e4:	ldr	s25, [x1, x7, lsl #2]
+    30e8:	ldr	s27, [x2, x7, lsl #2]
+    30ec:	ldr	s29, [x4, x7, lsl #2]
+    30f0:	fdiv	s31, s26, s25
+    30f4:	ldr	s23, [x3, x7, lsl #2]
+    30f8:	fmul	s21, s29, s29
+    30fc:	fmov	w8, s31
+    3100:	dup	v31.2s, v27.s[0]
+    3104:	fsqrt	v31.2s, v31.2s
+    3108:	and	w9, w8, #0x7fffff
+    310c:	ubfx	x8, x8, #23, #8
+    3110:	orr	w9, w9, #0x3f800000
+    3114:	fmul	s29, s29, s31
+    3118:	fmov	s31, w9
+    311c:	fcmpe	s31, s15
+    3120:	b.ge	34fc <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x55c>  // b.tcont
+    3124:	sub	w8, w8, #0x7f
+    3128:	fmov	s30, #1.000000000000000000e+00
+    312c:	fmov	s28, #5.000000000000000000e-01
+    3130:	scvtf	s14, w8
+    3134:	fsub	s31, s31, s30
+    3138:	fmadd	s21, s21, s28, s23
+    313c:	fmadd	s22, s31, s0, s1
+    3140:	fmul	s12, s31, s31
+    3144:	fmadd	s22, s31, s22, s2
+    3148:	fmul	s13, s12, s28
+    314c:	fmadd	s22, s31, s22, s3
+    3150:	fmadd	s22, s31, s22, s4
+    3154:	fmadd	s22, s31, s22, s5
+    3158:	fmadd	s22, s31, s22, s8
+    315c:	fmadd	s22, s31, s22, s9
+    3160:	fmadd	s22, s31, s22, s10
+    3164:	fmul	s22, s22, s12
+    3168:	fnmsub	s13, s31, s22, s13
+    316c:	fadd	s31, s31, s13
+    3170:	fmadd	s31, s14, s6, s31
+    3174:	fmadd	s31, s27, s21, s31
+    3178:	fdiv	s31, s31, s29
+    317c:	fcmpe	s31, #0.0
+    3180:	fsub	s29, s31, s29
+    3184:	b.mi	3544 <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x5a4>  // b.first
+    3188:	fmadd	s22, s31, s7, s30
+    318c:	fmov	s28, #-5.000000000000000000e-01
+    3190:	fmul	s28, s31, s28
+    3194:	fdiv	s30, s30, s22
+    3198:	fmul	s28, s28, s31
+    319c:	fcmpe	s28, s24
+    31a0:	fmadd	s22, s30, s16, s17
+    31a4:	fmadd	s22, s30, s22, s18
+    31a8:	fmadd	s22, s30, s22, s19
+    31ac:	fmadd	s22, s30, s22, s20
+    31b0:	fmul	s30, s30, s22
+    31b4:	b.mi	3284 <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x2e4>  // b.first
+    31b8:	mov	w8, #0x42b00000            	// #1118830592
+    31bc:	ldr	s21, [sp, #108]
+    31c0:	fmov	s22, w8
+    31c4:	fcmpe	s28, s22
+    31c8:	b.gt	3288 <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x2e8>
+    31cc:	fmul	s22, s28, s11
+    31d0:	fcmpe	s22, #0.0
+    31d4:	b.ge	3640 <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x6a0>  // b.tcont
+    31d8:	fmov	s21, #5.000000000000000000e-01
+    31dc:	mov	w8, #0x7218                	// #29208
+    31e0:	mov	w12, #0xb61                 	// #2913
+    31e4:	movk	w8, #0x3f31, lsl #16
+    31e8:	mov	w11, #0x8889                	// #34953
+    31ec:	fmov	s12, #1.000000000000000000e+00
+    31f0:	movk	w12, #0x3ab6, lsl #16
+    31f4:	movk	w11, #0x3c08, lsl #16
+    31f8:	fmov	s13, w8
+    31fc:	mov	w8, #0x422a                	// #16938
+    3200:	mov	w10, #0xaaab                	// #43691
+    3204:	fsub	s22, s22, s21
+    3208:	movk	w8, #0x3ecc, lsl #16
+    320c:	movk	w10, #0x3d2a, lsl #16
+    3210:	mov	w9, #0xaaab                	// #43691
+    3214:	stp	w12, w11, [sp, #132]
+    3218:	str	w8, [sp, #140]
+    321c:	movk	w9, #0x3e2a, lsl #16
+    3220:	fmov	s14, w10
+    3224:	fmov	s21, w9
+    3228:	fcvtzs	s22, s22
+    322c:	scvtf	s22, s22
+    3230:	fmsub	s28, s22, s13, s28
+    3234:	fcvtzs	w8, s22
+    3238:	fmov	s13, w11
+    323c:	fmov	s22, w12
+    3240:	add	w8, w8, #0x7f
+    3244:	fmadd	s13, s28, s22, s13
+    3248:	fmov	s22, w8
+    324c:	fmadd	s14, s28, s13, s14
+    3250:	shl	v22.2s, v22.2s, #23
+    3254:	fmadd	s21, s28, s14, s21
+    3258:	fmov	s14, #5.000000000000000000e-01
+    325c:	fmadd	s21, s28, s21, s14
+    3260:	fmadd	s21, s28, s21, s12
+    3264:	fmadd	s28, s28, s21, s12
+    3268:	fmul	s28, s28, s22
+    326c:	ldr	s22, [sp, #140]
+    3270:	fmul	s28, s28, s22
+    3274:	fcmpe	s31, #0.0
+    3278:	fmul	s30, s30, s28
+    327c:	b.mi	3294 <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x2f4>  // b.first
+    3280:	b	328c <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x2ec>
+    3284:	movi	v21.2s, #0x0
+    3288:	fmul	s30, s30, s21
+    328c:	fmov	s31, #1.000000000000000000e+00
+    3290:	fsub	s30, s31, s30
+    3294:	fnmul	s27, s23, s27
+    3298:	fmul	s30, s26, s30
+    329c:	movi	v31.2s, #0x0
+    32a0:	fcmpe	s27, s24
+    32a4:	b.mi	3344 <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x3a4>  // b.first
+    32a8:	mov	w8, #0x42b00000            	// #1118830592
+    32ac:	fmov	s31, w8
+    32b0:	fcmpe	s27, s31
+    32b4:	b.gt	3580 <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x5e0>
+    32b8:	fmul	s28, s27, s11
+    32bc:	fcmpe	s28, #0.0
+    32c0:	b.ge	3590 <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x5f0>  // b.tcont
+    32c4:	fmov	s23, #5.000000000000000000e-01
+    32c8:	mov	w8, #0x7218                	// #29208
+    32cc:	mov	w11, #0xb61                 	// #2913
+    32d0:	movk	w8, #0x3f31, lsl #16
+    32d4:	mov	w10, #0x8889                	// #34953
+    32d8:	fmov	s31, #1.000000000000000000e+00
+    32dc:	movk	w11, #0x3ab6, lsl #16
+    32e0:	movk	w10, #0x3c08, lsl #16
+    32e4:	fmov	s26, w8
+    32e8:	mov	w9, #0xaaab                	// #43691
+    32ec:	mov	w8, #0xaaab                	// #43691
+    32f0:	fsub	s28, s28, s23
+    32f4:	movk	w9, #0x3d2a, lsl #16
+    32f8:	movk	w8, #0x3e2a, lsl #16
+    32fc:	fmov	s21, w11
+    3300:	fmov	s14, w10
+    3304:	fmov	s22, w9
+    3308:	fmov	s13, w8
+    330c:	fcvtzs	s28, s28
+    3310:	scvtf	s28, s28
+    3314:	fmsub	s26, s28, s26, s27
+    3318:	fcvtzs	w8, s28
+    331c:	fmadd	s14, s26, s21, s14
+    3320:	add	w8, w8, #0x7f
+    3324:	fmov	s28, w8
+    3328:	fmadd	s22, s26, s14, s22
+    332c:	fmadd	s13, s26, s22, s13
+    3330:	shl	v28.2s, v28.2s, #23
+    3334:	fmadd	s23, s26, s13, s23
+    3338:	fmadd	s23, s26, s23, s31
+    333c:	fmadd	s31, s26, s23, s31
+    3340:	fmul	s31, s31, s28
+    3344:	fcmpe	s29, #0.0
+    3348:	fmul	s27, s25, s31
+    334c:	b.mi	350c <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x56c>  // b.first
+    3350:	fmov	s31, #1.000000000000000000e+00
+    3354:	fmov	s28, #-5.000000000000000000e-01
+    3358:	fmadd	s26, s29, s7, s31
+    335c:	fmul	s28, s29, s28
+    3360:	fmul	s28, s28, s29
+    3364:	fdiv	s31, s31, s26
+    3368:	fcmpe	s28, s24
+    336c:	fmadd	s26, s31, s16, s17
+    3370:	fmadd	s26, s31, s26, s18
+    3374:	fmadd	s26, s31, s26, s19
+    3378:	fmadd	s26, s31, s26, s20
+    337c:	fmul	s31, s31, s26
+    3380:	b.mi	3484 <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x4e4>  // b.first
+    3384:	mov	w8, #0x42b00000            	// #1118830592
+    3388:	ldr	s25, [sp, #108]
+    338c:	fmov	s26, w8
+    3390:	fcmpe	s28, s26
+    3394:	b.gt	3488 <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x4e8>
+    3398:	nop
+    339c:	nop
+    33a0:	fmul	s26, s28, s11
+    33a4:	fcmpe	s26, #0.0
+    33a8:	b.ge	35e4 <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x644>  // b.tcont
+    33ac:	fmov	s23, #5.000000000000000000e-01
+    33b0:	mov	w8, #0x7218                	// #29208
+    33b4:	mov	w12, #0xb61                 	// #2913
+    33b8:	movk	w8, #0x3f31, lsl #16
+    33bc:	mov	w11, #0x8889                	// #34953
+    33c0:	fmov	s13, #1.000000000000000000e+00
+    33c4:	movk	w12, #0x3ab6, lsl #16
+    33c8:	movk	w11, #0x3c08, lsl #16
+    33cc:	fmov	s25, w8
+    33d0:	mov	w10, #0xaaab                	// #43691
+    33d4:	mov	w9, #0xaaab                	// #43691
+    33d8:	fsub	s26, s26, s23
+    33dc:	movk	w10, #0x3d2a, lsl #16
+    33e0:	movk	w9, #0x3e2a, lsl #16
+    33e4:	fmov	s12, w12
+    33e8:	mov	w8, #0x422a                	// #16938
+    33ec:	fmov	s14, w11
+    33f0:	movk	w8, #0x3ecc, lsl #16
+    33f4:	fmov	s21, w10
+    33f8:	fmov	s22, w9
+    33fc:	str	w8, [sp, #132]
+    3400:	fcvtzs	s26, s26
+    3404:	scvtf	s26, s26
+    3408:	fmsub	s25, s26, s25, s28
+    340c:	fcvtzs	w8, s26
+    3410:	fmadd	s14, s25, s12, s14
+    3414:	add	w8, w8, #0x7f
+    3418:	fmov	s28, w8
+    341c:	fmadd	s21, s25, s14, s21
+    3420:	fmadd	s22, s25, s21, s22
+    3424:	shl	v26.2s, v28.2s, #23
+    3428:	fmadd	s23, s25, s22, s23
+    342c:	fmadd	s23, s25, s23, s13
+    3430:	fmadd	s28, s25, s23, s13
+    3434:	fmul	s28, s28, s26
+    3438:	ldr	s26, [sp, #132]
+    343c:	fmul	s28, s28, s26
+    3440:	fcmpe	s29, #0.0
+    3444:	fmul	s31, s31, s28
+    3448:	b.mi	34cc <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x52c>  // b.first
+    344c:	fmov	s29, #1.000000000000000000e+00
+    3450:	fsub	s31, s29, s31
+    3454:	fmsub	s31, s27, s31, s30
+    3458:	str	s31, [x5, x7, lsl #2]
+    345c:	add	x7, x7, #0x1
+    3460:	cmp	x7, x6
+    3464:	b.ne	30e0 <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x140>  // b.any
+    3468:	ldp	d8, d9, [sp, #32]
+    346c:	ldp	x19, x20, [sp, #16]
+    3470:	ldp	d10, d11, [sp, #48]
+    3474:	ldp	d12, d13, [sp, #64]
+    3478:	ldp	d14, d15, [sp, #80]
+    347c:	ldp	x29, x30, [sp], #144
+    3480:	ret
+    3484:	movi	v25.2s, #0x0
+    3488:	fmul	s31, s31, s25
+    348c:	fmov	s29, #1.000000000000000000e+00
+    3490:	fsub	s31, s29, s31
+    3494:	fmsub	s31, s27, s31, s30
+    3498:	str	s31, [x5, x7, lsl #2]
+    349c:	add	x7, x7, #0x1
+    34a0:	cmp	x7, x6
+    34a4:	b.ne	30e0 <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x140>  // b.any
+    34a8:	ldp	d8, d9, [sp, #32]
+    34ac:	ldp	x19, x20, [sp, #16]
+    34b0:	ldp	d10, d11, [sp, #48]
+    34b4:	ldp	d12, d13, [sp, #64]
+    34b8:	ldp	d14, d15, [sp, #80]
+    34bc:	ldp	x29, x30, [sp], #144
+    34c0:	ret
+    34c4:	movi	v29.2s, #0x0
+    34c8:	fmul	s31, s31, s29
+    34cc:	fmsub	s31, s27, s31, s30
+    34d0:	str	s31, [x5, x7, lsl #2]
+    34d4:	add	x7, x7, #0x1
+    34d8:	cmp	x6, x7
+    34dc:	b.ne	30e0 <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x140>  // b.any
+    34e0:	ldp	d8, d9, [sp, #32]
+    34e4:	ldp	x19, x20, [sp, #16]
+    34e8:	ldp	d10, d11, [sp, #48]
+    34ec:	ldp	d12, d13, [sp, #64]
+    34f0:	ldp	d14, d15, [sp, #80]
+    34f4:	ldp	x29, x30, [sp], #144
+    34f8:	ret
+    34fc:	fmov	s30, #5.000000000000000000e-01
+    3500:	sub	w8, w8, #0x7e
+    3504:	fmul	s31, s31, s30
+    3508:	b	3128 <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x188>
+    350c:	fmov	s26, #1.000000000000000000e+00
+    3510:	fmov	s28, #5.000000000000000000e-01
+    3514:	fmsub	s31, s29, s7, s26
+    3518:	fmul	s28, s29, s28
+    351c:	fnmul	s28, s29, s28
+    3520:	fdiv	s26, s26, s31
+    3524:	fcmpe	s28, s24
+    3528:	fmadd	s31, s26, s16, s17
+    352c:	fmadd	s31, s31, s26, s18
+    3530:	fmadd	s31, s31, s26, s19
+    3534:	fmadd	s31, s31, s26, s20
+    3538:	fmul	s31, s31, s26
+    353c:	b.mi	34c4 <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x524>  // b.first
+    3540:	b	33a0 <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x400>
+    3544:	fmsub	s22, s31, s7, s30
+    3548:	fmul	s28, s31, s28
+    354c:	fnmul	s28, s31, s28
+    3550:	fdiv	s22, s30, s22
+    3554:	fcmpe	s28, s24
+    3558:	fmadd	s30, s22, s16, s17
+    355c:	fmadd	s30, s22, s30, s18
+    3560:	fmadd	s30, s22, s30, s19
+    3564:	fmadd	s30, s22, s30, s20
+    3568:	fmul	s30, s22, s30
+    356c:	b.mi	3574 <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x5d4>  // b.first
+    3570:	b	31cc <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x22c>
+    3574:	movi	v31.2s, #0x0
+    3578:	fmul	s30, s30, s31
+    357c:	b	3294 <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x2f4>
+    3580:	mov	w8, #0x829c                	// #33436
+    3584:	movk	w8, #0x7ef8, lsl #16
+    3588:	fmov	s31, w8
+    358c:	b	3344 <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x3a4>
+    3590:	fmov	s26, #5.000000000000000000e-01
+    3594:	ldr	s22, [sp, #120]
+    3598:	fmov	s31, #1.000000000000000000e+00
+    359c:	fadd	s28, s28, s26
+    35a0:	fcvtzs	s28, s28
+    35a4:	scvtf	s28, s28
+    35a8:	fmsub	s27, s28, s6, s27
+    35ac:	fcvtzs	w8, s28
+    35b0:	ldp	s23, s28, [sp, #112]
+    35b4:	fmadd	s28, s27, s23, s28
+    35b8:	add	w8, w8, #0x7f
+    35bc:	fmov	s23, w8
+    35c0:	fmadd	s28, s27, s28, s22
+    35c4:	ldr	s22, [sp, #124]
+    35c8:	fmadd	s28, s27, s28, s22
+    35cc:	shl	v23.2s, v23.2s, #23
+    35d0:	fmadd	s26, s27, s28, s26
+    35d4:	fmadd	s26, s27, s26, s31
+    35d8:	fmadd	s31, s27, s26, s31
+    35dc:	fmul	s31, s31, s23
+    35e0:	b	3344 <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x3a4>
+    35e4:	fmov	s23, #5.000000000000000000e-01
+    35e8:	ldr	s21, [sp, #120]
+    35ec:	fmov	s25, #1.000000000000000000e+00
+    35f0:	fadd	s26, s26, s23
+    35f4:	fcvtzs	s26, s26
+    35f8:	scvtf	s26, s26
+    35fc:	fmsub	s28, s26, s6, s28
+    3600:	fcvtzs	w8, s26
+    3604:	ldp	s22, s26, [sp, #112]
+    3608:	fmadd	s26, s28, s22, s26
+    360c:	add	w8, w8, #0x7f
+    3610:	fmov	s22, w8
+    3614:	fmadd	s26, s28, s26, s21
+    3618:	ldr	s21, [sp, #124]
+    361c:	fmadd	s26, s28, s26, s21
+    3620:	shl	v22.2s, v22.2s, #23
+    3624:	fmadd	s23, s28, s26, s23
+    3628:	ldr	s26, [sp, #128]
+    362c:	fmadd	s23, s28, s23, s25
+    3630:	fmadd	s28, s28, s23, s25
+    3634:	fmul	s28, s28, s22
+    3638:	fmul	s28, s28, s26
+    363c:	b	3440 <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x4a0>
+    3640:	fmov	s14, #5.000000000000000000e-01
+    3644:	ldr	s12, [sp, #120]
+    3648:	fmov	s21, #1.000000000000000000e+00
+    364c:	fadd	s22, s22, s14
+    3650:	fcvtzs	s22, s22
+    3654:	scvtf	s22, s22
+    3658:	fmsub	s28, s22, s6, s28
+    365c:	fcvtzs	w8, s22
+    3660:	ldp	s13, s22, [sp, #112]
+    3664:	fmadd	s13, s28, s13, s22
+    3668:	add	w8, w8, #0x7f
+    366c:	fmov	s22, w8
+    3670:	fmadd	s13, s28, s13, s12
+    3674:	ldr	s12, [sp, #124]
+    3678:	fmadd	s13, s28, s13, s12
+    367c:	shl	v22.2s, v22.2s, #23
+    3680:	fmadd	s14, s28, s13, s14
+    3684:	fmadd	s14, s28, s14, s21
+    3688:	fmadd	s28, s28, s14, s21
+    368c:	fmul	s28, s28, s22
+    3690:	ldr	s22, [sp, #128]
+    3694:	fmul	s28, s28, s22
+    3698:	b	3274 <price_scalar_poly(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x2d4>
+    369c:	ret
 
-0000000000003850 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)>:
-    3850:	stp	x29, x30, [sp, #-160]!
-    3854:	mov	x29, sp
-    3858:	stp	x19, x20, [sp, #16]
-    385c:	mov	x20, x0
-    3860:	stp	x21, x22, [sp, #32]
-    3864:	mov	x21, x1
-    3868:	mov	x22, x2
-    386c:	stp	x23, x24, [sp, #48]
-    3870:	mov	x24, x6
-    3874:	mov	x23, x3
-    3878:	stp	x25, x26, [sp, #64]
-    387c:	mov	x25, x4
-    3880:	mov	x26, x5
-    3884:	stp	d8, d9, [sp, #80]
-    3888:	stp	d10, d11, [sp, #96]
-    388c:	stp	d12, d13, [sp, #112]
-    3890:	stp	d14, d15, [sp, #128]
-    3894:	cmp	x6, #0x3
-    3898:	b.ls	4388 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0xb38>  // b.plast
-    389c:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x7b0>
-    38a0:	sub	x19, x6, #0x4
-    38a4:	and	x0, x19, #0xfffffffffffffffc
-    38a8:	mov	x7, #0x0                   	// #0
-    38ac:	ldr	q20, [x1, #2000]
-    38b0:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x7b0>
-    38b4:	mov	x8, #0x0                   	// #0
-    38b8:	add	x0, x0, #0x4
-    38bc:	ldr	q1, [x1, #2016]
-    38c0:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x7b0>
-    38c4:	ldr	q11, [x1, #2032]
-    38c8:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x7b0>
-    38cc:	ldr	q12, [x1, #2048]
-    38d0:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x7b0>
-    38d4:	ldr	q13, [x1, #2064]
-    38d8:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x7b0>
-    38dc:	ldr	q14, [x1, #2080]
-    38e0:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x7b0>
-    38e4:	ldr	q15, [x1, #2096]
-    38e8:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x7b0>
-    38ec:	ldr	q4, [x1, #2112]
-    38f0:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x7b0>
-    38f4:	ldr	q5, [x1, #2128]
-    38f8:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x7b0>
-    38fc:	ldr	q6, [x1, #2144]
-    3900:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x7b0>
-    3904:	ldr	q7, [x1, #2160]
-    3908:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x7b0>
-    390c:	ldr	q16, [x1, #2176]
-    3910:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x7b0>
-    3914:	ldr	q17, [x1, #2192]
-    3918:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x7b0>
-    391c:	ldr	q18, [x1, #2208]
-    3920:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x7b0>
-    3924:	movi	v26.4s, #0x7f, msl #16
-    3928:	fmov	v25.4s, #5.000000000000000000e-01
-    392c:	ldr	q9, [x21, x7]
-    3930:	movi	v23.4s, #0x7f
-    3934:	fmov	v31.4s, #-1.000000000000000000e+00
-    3938:	fmov	v29.4s, #1.000000000000000000e+00
-    393c:	fmov	v10.4s, #-5.000000000000000000e-01
-    3940:	add	x8, x8, #0x4
-    3944:	ldr	q30, [x20, x7]
-    3948:	mov	v0.16b, v25.16b
-    394c:	ldr	q19, [x1, #2224]
-    3950:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x7b0>
-    3954:	ldr	q24, [x1, #2240]
-    3958:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x7b0>
-    395c:	fdiv	v27.4s, v30.4s, v9.4s
-    3960:	ldr	q21, [x22, x7]
-    3964:	ldr	q22, [x23, x7]
-    3968:	and	v26.16b, v26.16b, v27.16b
-    396c:	sshr	v27.4s, v27.4s, #23
-    3970:	ldr	q30, [x25, x7]
-    3974:	orr	v26.16b, v26.16b, v24.16b
-    3978:	ldr	q24, [x1, #2256]
-    397c:	sub	v27.4s, v27.4s, v23.4s
-    3980:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x7b0>
-    3984:	fmul	v28.4s, v21.4s, v22.4s
-    3988:	fmul	v3.4s, v30.4s, v30.4s
-    398c:	fcmge	v8.4s, v26.4s, v24.4s
-    3990:	fmul	v24.4s, v25.4s, v26.4s
-    3994:	fneg	v28.4s, v28.4s
-    3998:	fmla	v22.4s, v25.4s, v3.4s
-    399c:	bit	v26.16b, v24.16b, v8.16b
-    39a0:	sub	v27.4s, v27.4s, v8.4s
-    39a4:	ldr	q8, [x1, #2272]
-    39a8:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x7b0>
-    39ac:	fmax	v28.4s, v28.4s, v4.4s
-    39b0:	ldr	q24, [x1, #2288]
-    39b4:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x7b0>
-    39b8:	fadd	v31.4s, v31.4s, v26.4s
-    39bc:	fsqrt	v26.4s, v21.4s
-    39c0:	scvtf	v27.4s, v27.4s
-    39c4:	fmin	v28.4s, v28.4s, v5.4s
-    39c8:	fmul	v30.4s, v30.4s, v26.4s
-    39cc:	fmla	v8.4s, v24.4s, v31.4s
-    39d0:	ldr	q24, [x1, #2304]
-    39d4:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x7b0>
-    39d8:	fmul	v26.4s, v28.4s, v6.4s
-    39dc:	fmla	v24.4s, v8.4s, v31.4s
-    39e0:	ldr	q8, [x1, #2320]
-    39e4:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x7b0>
-    39e8:	frintn	v26.4s, v26.4s
-    39ec:	fmla	v8.4s, v24.4s, v31.4s
-    39f0:	ldr	q24, [x1, #2336]
-    39f4:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x7b0>
-    39f8:	ldr	q3, [x1, #2352]
-    39fc:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x7b0>
-    3a00:	fmls	v28.4s, v26.4s, v20.4s
-    3a04:	fmla	v24.4s, v8.4s, v31.4s
-    3a08:	mov	v8.16b, v16.16b
-    3a0c:	fcvtzs	v26.4s, v26.4s
-    3a10:	fmla	v3.4s, v24.4s, v31.4s
-    3a14:	ldr	q24, [x1, #2368]
-    3a18:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x7b0>
-    3a1c:	fmla	v8.4s, v7.4s, v28.4s
-    3a20:	add	v26.4s, v26.4s, v23.4s
-    3a24:	fmla	v24.4s, v3.4s, v31.4s
-    3a28:	mov	v3.16b, v17.16b
-    3a2c:	shl	v26.4s, v26.4s, #23
-    3a30:	fmla	v3.4s, v8.4s, v28.4s
-    3a34:	ldr	q8, [x1, #2384]
-    3a38:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x7b0>
-    3a3c:	ldr	q2, [x1, #2400]
-    3a40:	fmla	v8.4s, v24.4s, v31.4s
-    3a44:	mov	v24.16b, v18.16b
-    3a48:	fmla	v2.4s, v8.4s, v31.4s
-    3a4c:	fmla	v24.4s, v3.4s, v28.4s
-    3a50:	mov	v3.16b, v29.16b
-    3a54:	fmul	v8.4s, v31.4s, v31.4s
-    3a58:	fmla	v0.4s, v24.4s, v28.4s
-    3a5c:	fmul	v24.4s, v31.4s, v8.4s
-    3a60:	fmla	v3.4s, v0.4s, v28.4s
-    3a64:	fmul	v24.4s, v24.4s, v2.4s
-    3a68:	mov	v2.16b, v29.16b
-    3a6c:	fmls	v24.4s, v8.4s, v25.4s
-    3a70:	mov	v8.16b, v12.16b
-    3a74:	fmla	v2.4s, v3.4s, v28.4s
-    3a78:	mov	v3.16b, v16.16b
-    3a7c:	fadd	v31.4s, v31.4s, v24.4s
-    3a80:	fmul	v26.4s, v2.4s, v26.4s
-    3a84:	mov	v2.16b, v18.16b
-    3a88:	fmla	v31.4s, v27.4s, v20.4s
-    3a8c:	fmul	v26.4s, v26.4s, v9.4s
-    3a90:	mov	v9.16b, v13.16b
-    3a94:	fmla	v31.4s, v22.4s, v21.4s
-    3a98:	mov	v21.16b, v29.16b
-    3a9c:	fdiv	v31.4s, v31.4s, v30.4s
-    3aa0:	fsub	v30.4s, v31.4s, v30.4s
-    3aa4:	fmul	v27.4s, v31.4s, v31.4s
-    3aa8:	fabs	v24.4s, v31.4s
-    3aac:	fcmlt	v31.4s, v31.4s, #0.0
-    3ab0:	fmul	v28.4s, v30.4s, v30.4s
-    3ab4:	fmul	v27.4s, v27.4s, v10.4s
-    3ab8:	fmla	v21.4s, v1.4s, v24.4s
-    3abc:	fabs	v22.4s, v30.4s
-    3ac0:	mov	v24.16b, v29.16b
-    3ac4:	fmul	v28.4s, v28.4s, v10.4s
-    3ac8:	fmax	v27.4s, v27.4s, v4.4s
-    3acc:	fcmlt	v30.4s, v30.4s, #0.0
-    3ad0:	fmla	v24.4s, v1.4s, v22.4s
-    3ad4:	fmax	v28.4s, v28.4s, v4.4s
-    3ad8:	fmin	v27.4s, v27.4s, v5.4s
-    3adc:	fdiv	v21.4s, v29.4s, v21.4s
-    3ae0:	fmin	v28.4s, v28.4s, v5.4s
-    3ae4:	fmul	v22.4s, v27.4s, v6.4s
-    3ae8:	fmla	v8.4s, v11.4s, v21.4s
-    3aec:	fdiv	v24.4s, v29.4s, v24.4s
-    3af0:	fmul	v10.4s, v28.4s, v6.4s
-    3af4:	frintn	v22.4s, v22.4s
-    3af8:	fmla	v9.4s, v8.4s, v21.4s
-    3afc:	mov	v8.16b, v14.16b
-    3b00:	frintn	v10.4s, v10.4s
-    3b04:	fmls	v27.4s, v22.4s, v20.4s
-    3b08:	fmla	v8.4s, v9.4s, v21.4s
-    3b0c:	mov	v9.16b, v15.16b
-    3b10:	fmls	v28.4s, v10.4s, v20.4s
-    3b14:	fcvtzs	v22.4s, v22.4s
-    3b18:	fcvtzs	v10.4s, v10.4s
-    3b1c:	fmla	v3.4s, v7.4s, v27.4s
-    3b20:	fmla	v9.4s, v8.4s, v21.4s
-    3b24:	mov	v8.16b, v17.16b
-    3b28:	add	v22.4s, v22.4s, v23.4s
-    3b2c:	add	v10.4s, v10.4s, v23.4s
-    3b30:	mov	v23.16b, v16.16b
-    3b34:	fmla	v8.4s, v3.4s, v27.4s
-    3b38:	mov	v3.16b, v18.16b
-    3b3c:	fmla	v23.4s, v7.4s, v28.4s
-    3b40:	shl	v22.4s, v22.4s, #23
-    3b44:	fmla	v3.4s, v8.4s, v27.4s
-    3b48:	mov	v8.16b, v17.16b
-    3b4c:	shl	v10.4s, v10.4s, #23
-    3b50:	fmul	v21.4s, v21.4s, v9.4s
-    3b54:	fmla	v8.4s, v23.4s, v28.4s
-    3b58:	mov	v23.16b, v25.16b
-    3b5c:	fmla	v23.4s, v3.4s, v27.4s
-    3b60:	mov	v3.16b, v29.16b
-    3b64:	fmla	v2.4s, v8.4s, v28.4s
-    3b68:	mov	v8.16b, v12.16b
-    3b6c:	fmla	v3.4s, v23.4s, v27.4s
-    3b70:	mov	v23.16b, v29.16b
-    3b74:	fmla	v25.4s, v2.4s, v28.4s
-    3b78:	fmla	v23.4s, v3.4s, v27.4s
-    3b7c:	mov	v3.16b, v29.16b
-    3b80:	mov	v27.16b, v29.16b
-    3b84:	fmla	v8.4s, v11.4s, v24.4s
-    3b88:	fmla	v3.4s, v25.4s, v28.4s
-    3b8c:	mov	v25.16b, v13.16b
-    3b90:	fmla	v25.4s, v8.4s, v24.4s
-    3b94:	fmla	v27.4s, v3.4s, v28.4s
-    3b98:	mov	v28.16b, v14.16b
-    3b9c:	fmla	v28.4s, v25.4s, v24.4s
-    3ba0:	fmul	v25.4s, v23.4s, v22.4s
-    3ba4:	mov	v23.16b, v15.16b
-    3ba8:	fmla	v23.4s, v28.4s, v24.4s
-    3bac:	fmul	v25.4s, v25.4s, v19.4s
-    3bb0:	fmul	v28.4s, v27.4s, v10.4s
-    3bb4:	fmul	v27.4s, v25.4s, v21.4s
-    3bb8:	fmul	v28.4s, v28.4s, v19.4s
-    3bbc:	fmul	v24.4s, v24.4s, v23.4s
-    3bc0:	fsub	v25.4s, v29.4s, v27.4s
-    3bc4:	fmul	v24.4s, v28.4s, v24.4s
-    3bc8:	ldr	q28, [x20, x7]
-    3bcc:	bsl	v31.16b, v27.16b, v25.16b
-    3bd0:	fsub	v29.4s, v29.4s, v24.4s
-    3bd4:	fmul	v31.4s, v28.4s, v31.4s
-    3bd8:	bsl	v30.16b, v24.16b, v29.16b
-    3bdc:	fmls	v31.4s, v26.4s, v30.4s
-    3be0:	str	q31, [x26, x7]
-    3be4:	add	x7, x7, #0x10
-    3be8:	cmp	x8, x0
-    3bec:	b.ne	3920 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0xd0>  // b.any
-    3bf0:	and	x19, x19, #0xfffffffffffffffc
-    3bf4:	add	x19, x19, #0x4
-    3bf8:	cmp	x24, x19
-    3bfc:	b.ls	4080 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x830>  // b.plast
-    3c00:	mov	w4, #0x3389                	// #13193
-    3c04:	mov	w3, #0x466f                	// #18031
-    3c08:	mov	w2, #0x1eea                	// #7914
-    3c0c:	mov	w1, #0x778                 	// #1912
-    3c10:	movk	w4, #0x3e6d, lsl #16
-    3c14:	movk	w3, #0x3faa, lsl #16
-    3c18:	movk	w2, #0xbfe9, lsl #16
-    3c1c:	movk	w1, #0x3fe4, lsl #16
-    3c20:	mov	w0, #0xc2b00000            	// #-1028653056
-    3c24:	fmov	s10, w4
-    3c28:	fmov	s11, w3
-    3c2c:	fmov	s12, w2
-    3c30:	fmov	s13, w1
-    3c34:	fmov	s14, w0
-    3c38:	ldr	s28, [x22, x19, lsl #2]
-    3c3c:	ldr	s15, [x25, x19, lsl #2]
-    3c40:	ldr	s26, [x20, x19, lsl #2]
-    3c44:	fcmp	s28, #0.0
-    3c48:	ldr	s8, [x21, x19, lsl #2]
-    3c4c:	ldr	s25, [x23, x19, lsl #2]
-    3c50:	fmul	s9, s15, s15
-    3c54:	b.pl	3db4 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x564>  // b.nfrst
-    3c58:	fmov	s0, s28
-    3c5c:	stp	s26, s28, [sp, #148]
-    3c60:	str	s25, [sp, #156]
-    3c64:	bl	ec0 <sqrtf@plt>
-    3c68:	ldr	s26, [sp, #148]
-    3c6c:	fmul	s15, s15, s0
-    3c70:	fdiv	s0, s26, s8
-    3c74:	bl	1020 <logf@plt>
-    3c78:	ldr	s25, [sp, #156]
-    3c7c:	fmov	s31, #5.000000000000000000e-01
-    3c80:	mov	w0, #0x3389                	// #13193
-    3c84:	movk	w0, #0x3e6d, lsl #16
-    3c88:	fmov	s27, #1.000000000000000000e+00
-    3c8c:	mov	w1, #0x466f                	// #18031
-    3c90:	ldp	s26, s28, [sp, #148]
-    3c94:	mov	w3, #0x1eea                	// #7914
-    3c98:	movk	w1, #0x3faa, lsl #16
-    3c9c:	fmov	s30, w0
-    3ca0:	movk	w3, #0xbfe9, lsl #16
-    3ca4:	mov	w2, #0x778                 	// #1912
-    3ca8:	fmov	s20, w1
-    3cac:	movk	w2, #0x3fe4, lsl #16
-    3cb0:	mov	w1, #0x8f89                	// #36745
-    3cb4:	fmov	s22, w3
-    3cb8:	movk	w1, #0xbeb6, lsl #16
-    3cbc:	mov	w0, #0x85fa                	// #34298
-    3cc0:	fmadd	s9, s9, s31, s25
-    3cc4:	movk	w0, #0x3ea3, lsl #16
-    3cc8:	mov	w7, #0xaa3b                	// #43579
-    3ccc:	fmov	s23, w2
-    3cd0:	fmov	s19, #-5.000000000000000000e-01
-    3cd4:	movk	w7, #0x3fb8, lsl #16
-    3cd8:	fmov	s24, w1
-    3cdc:	fmov	s31, w0
-    3ce0:	fmadd	s0, s28, s9, s0
-    3ce4:	fmov	s29, w7
-    3ce8:	fdiv	s0, s0, s15
-    3cec:	fmadd	s21, s0, s30, s27
-    3cf0:	fmul	s30, s0, s19
-    3cf4:	fsub	s15, s0, s15
-    3cf8:	fmul	s30, s30, s0
-    3cfc:	fdiv	s27, s27, s21
-    3d00:	fmul	s29, s30, s29
-    3d04:	fmadd	s22, s27, s20, s22
-    3d08:	fmadd	s23, s22, s27, s23
-    3d0c:	fmadd	s24, s23, s27, s24
-    3d10:	fmadd	s31, s24, s27, s31
-    3d14:	fmul	s31, s31, s27
-    3d18:	nop
-    3d1c:	nop
-    3d20:	fmov	s24, #5.000000000000000000e-01
-    3d24:	mov	w0, #0x7218                	// #29208
-    3d28:	mov	w3, #0xb61                 	// #2913
-    3d2c:	movk	w0, #0x3f31, lsl #16
-    3d30:	mov	w2, #0x8889                	// #34953
-    3d34:	fmov	s27, #1.000000000000000000e+00
-    3d38:	movk	w3, #0x3ab6, lsl #16
-    3d3c:	movk	w2, #0x3c08, lsl #16
-    3d40:	fmov	s18, w0
-    3d44:	mov	w1, #0xaaab                	// #43691
-    3d48:	mov	w0, #0xaaab                	// #43691
-    3d4c:	fsub	s29, s29, s24
-    3d50:	movk	w1, #0x3d2a, lsl #16
-    3d54:	movk	w0, #0x3e2a, lsl #16
-    3d58:	fmov	s21, w2
-    3d5c:	mov	w4, #0x422a                	// #16938
-    3d60:	fmov	s19, w3
-    3d64:	movk	w4, #0x3ecc, lsl #16
-    3d68:	fmov	s22, w1
-    3d6c:	fmov	s23, w0
-    3d70:	fmov	s20, w4
-    3d74:	fcvtzs	s29, s29
-    3d78:	scvtf	s29, s29
-    3d7c:	fmsub	s30, s29, s18, s30
-    3d80:	fcvtzs	w7, s29
-    3d84:	fmadd	s29, s30, s19, s21
-    3d88:	add	w7, w7, #0x7f
-    3d8c:	fmov	s21, w7
-    3d90:	fmadd	s29, s30, s29, s22
-    3d94:	fmadd	s29, s30, s29, s23
-    3d98:	shl	v21.2s, v21.2s, #23
-    3d9c:	fmadd	s24, s30, s29, s24
-    3da0:	fmadd	s24, s30, s24, s27
-    3da4:	fmadd	s30, s30, s24, s27
-    3da8:	fmul	s30, s30, s21
-    3dac:	fmul	s30, s30, s20
-    3db0:	b	42f4 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0xaa4>
-    3db4:	fsqrt	s29, s28
-    3db8:	stp	s26, s28, [sp, #148]
-    3dbc:	str	s25, [sp, #156]
-    3dc0:	fdiv	s0, s26, s8
-    3dc4:	fmul	s15, s15, s29
-    3dc8:	bl	1020 <logf@plt>
-    3dcc:	ldr	s25, [sp, #156]
-    3dd0:	fmov	s30, #5.000000000000000000e-01
-    3dd4:	ldp	s26, s28, [sp, #148]
-    3dd8:	fmadd	s9, s9, s30, s25
-    3ddc:	fmadd	s0, s28, s9, s0
-    3de0:	fdiv	s0, s0, s15
-    3de4:	fcmpe	s0, #0.0
-    3de8:	fsub	s15, s0, s15
-    3dec:	b.mi	4130 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x8e0>  // b.first
-    3df0:	fmov	s31, #1.000000000000000000e+00
-    3df4:	mov	w1, #0x8f89                	// #36745
-    3df8:	mov	w0, #0x85fa                	// #34298
-    3dfc:	movk	w1, #0xbeb6, lsl #16
-    3e00:	movk	w0, #0x3ea3, lsl #16
-    3e04:	fmov	s30, #-5.000000000000000000e-01
-    3e08:	fmov	s27, w1
-    3e0c:	fmadd	s24, s0, s10, s31
-    3e10:	fmov	s29, w0
-    3e14:	fmul	s30, s0, s30
-    3e18:	fmul	s30, s30, s0
-    3e1c:	fdiv	s31, s31, s24
-    3e20:	fcmpe	s30, s14
-    3e24:	fmadd	s24, s31, s11, s12
-    3e28:	fmadd	s24, s31, s24, s13
-    3e2c:	fmadd	s27, s31, s24, s27
-    3e30:	fmadd	s29, s31, s27, s29
-    3e34:	fmul	s31, s31, s29
-    3e38:	b.mi	41a0 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x950>  // b.first
-    3e3c:	mov	w0, #0x42b00000            	// #1118830592
-    3e40:	fmov	s29, w0
-    3e44:	fcmpe	s30, s29
-    3e48:	b.gt	3e68 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x618>
-    3e4c:	mov	w7, #0xaa3b                	// #43579
-    3e50:	movk	w7, #0x3fb8, lsl #16
-    3e54:	fmov	s29, w7
-    3e58:	fmul	s29, s30, s29
-    3e5c:	fcmpe	s29, #0.0
-    3e60:	b.ge	4264 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0xa14>  // b.tcont
-    3e64:	b	3d20 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x4d0>
-    3e68:	mov	w0, #0x484f                	// #18511
-    3e6c:	movk	w0, #0x7e46, lsl #16
-    3e70:	fmov	s30, w0
-    3e74:	fmul	s31, s31, s30
-    3e78:	fmov	s30, #1.000000000000000000e+00
-    3e7c:	fsub	s31, s30, s31
-    3e80:	fnmul	s29, s25, s28
-    3e84:	fmul	s31, s26, s31
-    3e88:	movi	v30.2s, #0x0
-    3e8c:	fcmpe	s29, s14
-    3e90:	b.mi	3f40 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x6f0>  // b.first
-    3e94:	mov	w0, #0x42b00000            	// #1118830592
-    3e98:	fmov	s30, w0
-    3e9c:	fcmpe	s29, s30
-    3ea0:	b.gt	41b4 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x964>
-    3ea4:	mov	w7, #0xaa3b                	// #43579
-    3ea8:	movk	w7, #0x3fb8, lsl #16
-    3eac:	fmov	s28, w7
-    3eb0:	fmul	s28, s29, s28
-    3eb4:	fcmpe	s28, #0.0
-    3eb8:	b.ge	4304 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0xab4>  // b.tcont
-    3ebc:	fmov	s27, #5.000000000000000000e-01
-    3ec0:	mov	w0, #0x7218                	// #29208
-    3ec4:	mov	w3, #0xb61                 	// #2913
-    3ec8:	movk	w0, #0x3f31, lsl #16
-    3ecc:	mov	w2, #0x8889                	// #34953
-    3ed0:	fmov	s30, #1.000000000000000000e+00
-    3ed4:	movk	w3, #0x3ab6, lsl #16
-    3ed8:	movk	w2, #0x3c08, lsl #16
-    3edc:	fmov	s22, w0
-    3ee0:	mov	w1, #0xaaab                	// #43691
-    3ee4:	mov	w0, #0xaaab                	// #43691
-    3ee8:	fsub	s28, s28, s27
-    3eec:	movk	w1, #0x3d2a, lsl #16
-    3ef0:	movk	w0, #0x3e2a, lsl #16
-    3ef4:	fmov	s24, w2
-    3ef8:	fmov	s23, w3
-    3efc:	fmov	s25, w1
-    3f00:	fmov	s26, w0
-    3f04:	fcvtzs	s28, s28
-    3f08:	scvtf	s28, s28
-    3f0c:	fmsub	s29, s28, s22, s29
-    3f10:	fcvtzs	w7, s28
-    3f14:	fmadd	s28, s29, s23, s24
-    3f18:	add	w7, w7, #0x7f
-    3f1c:	fmov	s24, w7
-    3f20:	fmadd	s28, s29, s28, s25
-    3f24:	fmadd	s28, s29, s28, s26
-    3f28:	shl	v24.2s, v24.2s, #23
-    3f2c:	fmadd	s27, s29, s28, s27
-    3f30:	fmadd	s27, s29, s27, s30
-    3f34:	fmadd	s30, s29, s27, s30
-    3f38:	fmul	s30, s30, s24
-    3f3c:	nop
-    3f40:	fcmpe	s15, #0.0
-    3f44:	fmul	s26, s8, s30
-    3f48:	b.mi	40a8 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x858>  // b.first
-    3f4c:	fmov	s30, #1.000000000000000000e+00
-    3f50:	mov	w1, #0x8f89                	// #36745
-    3f54:	mov	w0, #0x85fa                	// #34298
-    3f58:	movk	w1, #0xbeb6, lsl #16
-    3f5c:	movk	w0, #0x3ea3, lsl #16
-    3f60:	fmov	s28, #-5.000000000000000000e-01
-    3f64:	fmov	s27, w1
-    3f68:	fmadd	s25, s15, s10, s30
-    3f6c:	fmov	s29, w0
-    3f70:	fmul	s28, s15, s28
-    3f74:	fmul	s28, s28, s15
-    3f78:	fdiv	s30, s30, s25
-    3f7c:	fcmpe	s28, s14
-    3f80:	fmadd	s25, s30, s11, s12
-    3f84:	fmadd	s25, s30, s25, s13
-    3f88:	fmadd	s27, s30, s25, s27
-    3f8c:	fmadd	s29, s30, s27, s29
-    3f90:	fmul	s30, s30, s29
-    3f94:	b.mi	41ac <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x95c>  // b.first
-    3f98:	mov	w0, #0x42b00000            	// #1118830592
-    3f9c:	fmov	s29, w0
-    3fa0:	fcmpe	s28, s29
-    3fa4:	b.gt	4054 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x804>
-    3fa8:	mov	w7, #0xaa3b                	// #43579
-    3fac:	movk	w7, #0x3fb8, lsl #16
-    3fb0:	fmov	s29, w7
-    3fb4:	fmul	s29, s28, s29
-    3fb8:	fcmpe	s29, #0.0
-    3fbc:	b.ge	41c4 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x974>  // b.tcont
-    3fc0:	fmov	s25, #5.000000000000000000e-01
-    3fc4:	mov	w0, #0x7218                	// #29208
-    3fc8:	mov	w4, #0xb61                 	// #2913
-    3fcc:	movk	w0, #0x3f31, lsl #16
-    3fd0:	mov	w2, #0x8889                	// #34953
-    3fd4:	fmov	s27, #1.000000000000000000e+00
-    3fd8:	movk	w4, #0x3ab6, lsl #16
-    3fdc:	movk	w2, #0x3c08, lsl #16
-    3fe0:	fmov	s19, w0
-    3fe4:	mov	w1, #0xaaab                	// #43691
-    3fe8:	mov	w0, #0xaaab                	// #43691
-    3fec:	fsub	s29, s29, s25
-    3ff0:	movk	w1, #0x3d2a, lsl #16
-    3ff4:	movk	w0, #0x3e2a, lsl #16
-    3ff8:	fmov	s22, w2
-    3ffc:	mov	w3, #0x422a                	// #16938
-    4000:	fmov	s20, w4
-    4004:	movk	w3, #0x3ecc, lsl #16
-    4008:	fmov	s23, w1
-    400c:	fmov	s24, w0
-    4010:	fmov	s21, w3
-    4014:	fcvtzs	s29, s29
-    4018:	scvtf	s29, s29
-    401c:	fmsub	s28, s29, s19, s28
-    4020:	fcvtzs	w7, s29
-    4024:	fmadd	s29, s28, s20, s22
-    4028:	add	w7, w7, #0x7f
-    402c:	fmov	s22, w7
-    4030:	fmadd	s29, s28, s29, s23
-    4034:	fmadd	s29, s28, s29, s24
-    4038:	shl	v22.2s, v22.2s, #23
-    403c:	fmadd	s25, s28, s29, s25
-    4040:	fmadd	s25, s28, s25, s27
-    4044:	fmadd	s29, s28, s25, s27
-    4048:	fmul	s29, s29, s22
-    404c:	fmul	s29, s29, s21
-    4050:	b	4254 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0xa04>
-    4054:	mov	w0, #0x484f                	// #18511
-    4058:	movk	w0, #0x7e46, lsl #16
-    405c:	fmov	s29, w0
-    4060:	fmul	s30, s30, s29
-    4064:	fmov	s29, #1.000000000000000000e+00
-    4068:	fsub	s29, s29, s30
-    406c:	fmsub	s31, s26, s29, s31
-    4070:	str	s31, [x26, x19, lsl #2]
-    4074:	add	x19, x19, #0x1
-    4078:	cmp	x19, x24
-    407c:	b.ne	3c38 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x3e8>  // b.any
-    4080:	ldp	d8, d9, [sp, #80]
-    4084:	ldp	x19, x20, [sp, #16]
-    4088:	ldp	x21, x22, [sp, #32]
-    408c:	ldp	x23, x24, [sp, #48]
-    4090:	ldp	x25, x26, [sp, #64]
-    4094:	ldp	d10, d11, [sp, #96]
-    4098:	ldp	d12, d13, [sp, #112]
-    409c:	ldp	d14, d15, [sp, #128]
-    40a0:	ldp	x29, x30, [sp], #160
-    40a4:	ret
-    40a8:	fmov	s29, #1.000000000000000000e+00
-    40ac:	mov	w1, #0x8f89                	// #36745
-    40b0:	mov	w0, #0x85fa                	// #34298
-    40b4:	movk	w1, #0xbeb6, lsl #16
-    40b8:	movk	w0, #0x3ea3, lsl #16
-    40bc:	fmov	s28, #5.000000000000000000e-01
-    40c0:	fmov	s27, w1
-    40c4:	fmsub	s25, s15, s10, s29
-    40c8:	fmov	s30, w0
-    40cc:	fmul	s28, s15, s28
-    40d0:	fnmul	s28, s15, s28
-    40d4:	fdiv	s29, s29, s25
-    40d8:	fcmpe	s28, s14
-    40dc:	fmadd	s25, s29, s11, s12
-    40e0:	fmadd	s25, s29, s25, s13
-    40e4:	fmadd	s27, s29, s25, s27
-    40e8:	fmadd	s30, s29, s27, s30
-    40ec:	fmul	s30, s29, s30
-    40f0:	b.mi	4110 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x8c0>  // b.first
-    40f4:	mov	w7, #0xaa3b                	// #43579
-    40f8:	movk	w7, #0x3fb8, lsl #16
-    40fc:	fmov	s29, w7
-    4100:	fmul	s29, s28, s29
-    4104:	fcmpe	s29, #0.0
-    4108:	b.ge	41c4 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x974>  // b.tcont
-    410c:	b	3fc0 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x770>
-    4110:	movi	v29.2s, #0x0
-    4114:	fmul	s30, s30, s29
-    4118:	fmsub	s30, s26, s30, s31
-    411c:	str	s30, [x26, x19, lsl #2]
-    4120:	add	x19, x19, #0x1
-    4124:	cmp	x24, x19
-    4128:	b.ne	3c38 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x3e8>  // b.any
-    412c:	b	4080 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x830>
-    4130:	fmov	s31, #1.000000000000000000e+00
-    4134:	mov	w1, #0x8f89                	// #36745
-    4138:	mov	w0, #0x85fa                	// #34298
-    413c:	movk	w1, #0xbeb6, lsl #16
-    4140:	movk	w0, #0x3ea3, lsl #16
-    4144:	fmul	s30, s0, s30
-    4148:	fmov	s27, w1
-    414c:	fmsub	s24, s0, s10, s31
-    4150:	fmov	s29, w0
-    4154:	fnmul	s30, s0, s30
-    4158:	fcmpe	s30, s14
-    415c:	fdiv	s31, s31, s24
-    4160:	fmadd	s24, s31, s11, s12
-    4164:	fmadd	s24, s31, s24, s13
-    4168:	fmadd	s27, s31, s24, s27
-    416c:	fmadd	s29, s31, s27, s29
-    4170:	fmul	s31, s31, s29
-    4174:	b.mi	4194 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x944>  // b.first
-    4178:	mov	w7, #0xaa3b                	// #43579
-    417c:	movk	w7, #0x3fb8, lsl #16
-    4180:	fmov	s29, w7
-    4184:	fmul	s29, s30, s29
-    4188:	fcmpe	s29, #0.0
-    418c:	b.ge	4264 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0xa14>  // b.tcont
-    4190:	b	3d20 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x4d0>
-    4194:	movi	v30.2s, #0x0
-    4198:	fmul	s31, s31, s30
-    419c:	b	3e80 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x630>
-    41a0:	movi	v30.2s, #0x0
-    41a4:	fmul	s31, s31, s30
-    41a8:	b	3e78 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x628>
-    41ac:	movi	v29.2s, #0x0
-    41b0:	b	4060 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x810>
-    41b4:	mov	w7, #0x829c                	// #33436
-    41b8:	movk	w7, #0x7ef8, lsl #16
-    41bc:	fmov	s30, w7
-    41c0:	b	3f40 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x6f0>
-    41c4:	fmov	s24, #5.000000000000000000e-01
-    41c8:	mov	w0, #0x7218                	// #29208
-    41cc:	mov	w4, #0xb61                 	// #2913
-    41d0:	movk	w0, #0x3f31, lsl #16
-    41d4:	mov	w2, #0x8889                	// #34953
-    41d8:	fmov	s27, #1.000000000000000000e+00
-    41dc:	movk	w4, #0x3ab6, lsl #16
-    41e0:	movk	w2, #0x3c08, lsl #16
-    41e4:	fmov	s25, w0
-    41e8:	mov	w1, #0xaaab                	// #43691
-    41ec:	mov	w0, #0xaaab                	// #43691
-    41f0:	fadd	s29, s29, s24
-    41f4:	movk	w1, #0x3d2a, lsl #16
-    41f8:	movk	w0, #0x3e2a, lsl #16
-    41fc:	fmov	s19, w4
-    4200:	mov	w3, #0x422a                	// #16938
-    4204:	fmov	s21, w2
-    4208:	movk	w3, #0x3ecc, lsl #16
-    420c:	fmov	s22, w1
-    4210:	fmov	s23, w0
-    4214:	fmov	s20, w3
-    4218:	fcvtzs	s29, s29
-    421c:	scvtf	s29, s29
-    4220:	fmsub	s28, s29, s25, s28
-    4224:	fcvtzs	w7, s29
-    4228:	fmadd	s29, s28, s19, s21
-    422c:	add	w7, w7, #0x7f
-    4230:	fmov	s25, w7
-    4234:	fmadd	s29, s28, s29, s22
-    4238:	fmadd	s29, s28, s29, s23
-    423c:	shl	v25.2s, v25.2s, #23
-    4240:	fmadd	s24, s28, s29, s24
-    4244:	fmadd	s24, s28, s24, s27
-    4248:	fmadd	s29, s28, s24, s27
-    424c:	fmul	s29, s29, s25
-    4250:	fmul	s29, s29, s20
-    4254:	fcmpe	s15, #0.0
-    4258:	fmul	s30, s30, s29
-    425c:	b.mi	4118 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x8c8>  // b.first
-    4260:	b	4064 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x814>
-    4264:	fmov	s23, #5.000000000000000000e-01
-    4268:	mov	w0, #0x7218                	// #29208
-    426c:	mov	w3, #0xb61                 	// #2913
-    4270:	movk	w0, #0x3f31, lsl #16
-    4274:	mov	w2, #0x8889                	// #34953
-    4278:	fmov	s27, #1.000000000000000000e+00
-    427c:	movk	w3, #0x3ab6, lsl #16
-    4280:	movk	w2, #0x3c08, lsl #16
-    4284:	fmov	s24, w0
-    4288:	mov	w1, #0xaaab                	// #43691
-    428c:	mov	w0, #0xaaab                	// #43691
-    4290:	fadd	s29, s29, s23
-    4294:	movk	w1, #0x3d2a, lsl #16
-    4298:	movk	w0, #0x3e2a, lsl #16
-    429c:	fmov	s18, w3
-    42a0:	mov	w4, #0x422a                	// #16938
-    42a4:	fmov	s20, w2
-    42a8:	movk	w4, #0x3ecc, lsl #16
-    42ac:	fmov	s21, w1
-    42b0:	fmov	s22, w0
-    42b4:	fmov	s19, w4
-    42b8:	fcvtzs	s29, s29
-    42bc:	scvtf	s29, s29
-    42c0:	fmsub	s30, s29, s24, s30
-    42c4:	fcvtzs	w7, s29
-    42c8:	fmadd	s29, s30, s18, s20
-    42cc:	add	w7, w7, #0x7f
-    42d0:	fmov	s24, w7
-    42d4:	fmadd	s29, s30, s29, s21
-    42d8:	fmadd	s29, s30, s29, s22
-    42dc:	shl	v24.2s, v24.2s, #23
-    42e0:	fmadd	s23, s30, s29, s23
-    42e4:	fmadd	s23, s30, s23, s27
-    42e8:	fmadd	s30, s30, s23, s27
-    42ec:	fmul	s30, s30, s24
-    42f0:	fmul	s30, s30, s19
-    42f4:	fcmpe	s0, #0.0
-    42f8:	fmul	s31, s31, s30
-    42fc:	b.mi	3e80 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x630>  // b.first
-    4300:	b	3e78 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x628>
-    4304:	fmov	s26, #5.000000000000000000e-01
-    4308:	mov	w0, #0x7218                	// #29208
-    430c:	mov	w3, #0xb61                 	// #2913
-    4310:	movk	w0, #0x3f31, lsl #16
-    4314:	mov	w2, #0x8889                	// #34953
-    4318:	fmov	s30, #1.000000000000000000e+00
-    431c:	movk	w3, #0x3ab6, lsl #16
-    4320:	movk	w2, #0x3c08, lsl #16
-    4324:	fmov	s27, w0
-    4328:	mov	w1, #0xaaab                	// #43691
-    432c:	mov	w0, #0xaaab                	// #43691
-    4330:	fadd	s28, s28, s26
-    4334:	movk	w1, #0x3d2a, lsl #16
-    4338:	movk	w0, #0x3e2a, lsl #16
-    433c:	fmov	s22, w3
-    4340:	fmov	s23, w2
-    4344:	fmov	s24, w1
-    4348:	fmov	s25, w0
-    434c:	fcvtzs	s28, s28
-    4350:	scvtf	s28, s28
-    4354:	fmsub	s29, s28, s27, s29
-    4358:	fcvtzs	w7, s28
-    435c:	fmadd	s28, s29, s22, s23
-    4360:	add	w7, w7, #0x7f
-    4364:	fmov	s27, w7
-    4368:	fmadd	s28, s29, s28, s24
-    436c:	fmadd	s28, s29, s28, s25
-    4370:	shl	v27.2s, v27.2s, #23
-    4374:	fmadd	s26, s29, s28, s26
-    4378:	fmadd	s26, s29, s26, s30
-    437c:	fmadd	s30, s29, s26, s30
-    4380:	fmul	s30, s30, s27
-    4384:	b	3f40 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x6f0>
-    4388:	mov	x19, #0x0                   	// #0
-    438c:	b	3bf8 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x3a8>
-    4390:	nop
-    4394:	nop
-    4398:	nop
-    439c:	nop
+00000000000036a0 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)>:
+    36a0:	stp	x29, x30, [sp, #-160]!
+    36a4:	mov	x29, sp
+    36a8:	stp	x19, x20, [sp, #16]
+    36ac:	mov	x20, x0
+    36b0:	stp	x21, x22, [sp, #32]
+    36b4:	mov	x21, x1
+    36b8:	mov	x22, x2
+    36bc:	stp	x23, x24, [sp, #48]
+    36c0:	mov	x24, x6
+    36c4:	mov	x23, x3
+    36c8:	stp	x25, x26, [sp, #64]
+    36cc:	mov	x25, x4
+    36d0:	mov	x26, x5
+    36d4:	stp	d8, d9, [sp, #80]
+    36d8:	stp	d10, d11, [sp, #96]
+    36dc:	stp	d12, d13, [sp, #112]
+    36e0:	stp	d14, d15, [sp, #128]
+    36e4:	cmp	x6, #0x3
+    36e8:	b.ls	41cc <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0xb2c>  // b.plast
+    36ec:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x960>
+    36f0:	sub	x19, x6, #0x4
+    36f4:	and	x0, x19, #0xfffffffffffffffc
+    36f8:	mov	x7, #0x0                   	// #0
+    36fc:	ldr	q20, [x1, #1552]
+    3700:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x960>
+    3704:	mov	x8, #0x0                   	// #0
+    3708:	add	x0, x0, #0x4
+    370c:	ldr	q1, [x1, #1568]
+    3710:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x960>
+    3714:	ldr	q11, [x1, #1584]
+    3718:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x960>
+    371c:	ldr	q12, [x1, #1600]
+    3720:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x960>
+    3724:	ldr	q13, [x1, #1616]
+    3728:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x960>
+    372c:	ldr	q14, [x1, #1632]
+    3730:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x960>
+    3734:	ldr	q15, [x1, #1648]
+    3738:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x960>
+    373c:	ldr	q4, [x1, #1664]
+    3740:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x960>
+    3744:	ldr	q5, [x1, #1680]
+    3748:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x960>
+    374c:	ldr	q6, [x1, #1696]
+    3750:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x960>
+    3754:	ldr	q7, [x1, #1712]
+    3758:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x960>
+    375c:	ldr	q16, [x1, #1728]
+    3760:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x960>
+    3764:	ldr	q17, [x1, #1744]
+    3768:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x960>
+    376c:	ldr	q18, [x1, #1760]
+    3770:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x960>
+    3774:	movi	v26.4s, #0x7f, msl #16
+    3778:	fmov	v25.4s, #5.000000000000000000e-01
+    377c:	ldr	q9, [x21, x7]
+    3780:	movi	v23.4s, #0x7f
+    3784:	fmov	v31.4s, #-1.000000000000000000e+00
+    3788:	fmov	v29.4s, #1.000000000000000000e+00
+    378c:	fmov	v10.4s, #-5.000000000000000000e-01
+    3790:	add	x8, x8, #0x4
+    3794:	ldr	q30, [x20, x7]
+    3798:	mov	v0.16b, v25.16b
+    379c:	ldr	q19, [x1, #1776]
+    37a0:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x960>
+    37a4:	ldr	q24, [x1, #1792]
+    37a8:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x960>
+    37ac:	fdiv	v27.4s, v30.4s, v9.4s
+    37b0:	ldr	q21, [x22, x7]
+    37b4:	ldr	q22, [x23, x7]
+    37b8:	and	v26.16b, v26.16b, v27.16b
+    37bc:	sshr	v27.4s, v27.4s, #23
+    37c0:	ldr	q30, [x25, x7]
+    37c4:	orr	v26.16b, v26.16b, v24.16b
+    37c8:	ldr	q24, [x1, #1808]
+    37cc:	sub	v27.4s, v27.4s, v23.4s
+    37d0:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x960>
+    37d4:	fmul	v28.4s, v21.4s, v22.4s
+    37d8:	fmul	v3.4s, v30.4s, v30.4s
+    37dc:	fcmge	v8.4s, v26.4s, v24.4s
+    37e0:	fmul	v24.4s, v25.4s, v26.4s
+    37e4:	fneg	v28.4s, v28.4s
+    37e8:	fmla	v22.4s, v25.4s, v3.4s
+    37ec:	bit	v26.16b, v24.16b, v8.16b
+    37f0:	sub	v27.4s, v27.4s, v8.4s
+    37f4:	ldr	q8, [x1, #1824]
+    37f8:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x960>
+    37fc:	fmax	v28.4s, v28.4s, v4.4s
+    3800:	ldr	q24, [x1, #1840]
+    3804:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x960>
+    3808:	fadd	v31.4s, v31.4s, v26.4s
+    380c:	fsqrt	v26.4s, v21.4s
+    3810:	scvtf	v27.4s, v27.4s
+    3814:	fmin	v28.4s, v28.4s, v5.4s
+    3818:	fmul	v30.4s, v30.4s, v26.4s
+    381c:	fmla	v8.4s, v24.4s, v31.4s
+    3820:	ldr	q24, [x1, #1856]
+    3824:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x960>
+    3828:	fmul	v26.4s, v28.4s, v6.4s
+    382c:	fmla	v24.4s, v8.4s, v31.4s
+    3830:	ldr	q8, [x1, #1872]
+    3834:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x960>
+    3838:	frintn	v26.4s, v26.4s
+    383c:	fmla	v8.4s, v24.4s, v31.4s
+    3840:	ldr	q24, [x1, #1888]
+    3844:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x960>
+    3848:	ldr	q3, [x1, #1904]
+    384c:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x960>
+    3850:	fmls	v28.4s, v26.4s, v20.4s
+    3854:	fmla	v24.4s, v8.4s, v31.4s
+    3858:	mov	v8.16b, v16.16b
+    385c:	fcvtzs	v26.4s, v26.4s
+    3860:	fmla	v3.4s, v24.4s, v31.4s
+    3864:	ldr	q24, [x1, #1920]
+    3868:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x960>
+    386c:	fmla	v8.4s, v7.4s, v28.4s
+    3870:	add	v26.4s, v26.4s, v23.4s
+    3874:	fmla	v24.4s, v3.4s, v31.4s
+    3878:	mov	v3.16b, v17.16b
+    387c:	shl	v26.4s, v26.4s, #23
+    3880:	fmla	v3.4s, v8.4s, v28.4s
+    3884:	ldr	q8, [x1, #1936]
+    3888:	adrp	x1, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x960>
+    388c:	ldr	q2, [x1, #1952]
+    3890:	fmla	v8.4s, v24.4s, v31.4s
+    3894:	mov	v24.16b, v18.16b
+    3898:	fmla	v2.4s, v8.4s, v31.4s
+    389c:	fmla	v24.4s, v3.4s, v28.4s
+    38a0:	mov	v3.16b, v29.16b
+    38a4:	fmul	v8.4s, v31.4s, v31.4s
+    38a8:	fmla	v0.4s, v24.4s, v28.4s
+    38ac:	fmul	v24.4s, v31.4s, v8.4s
+    38b0:	fmla	v3.4s, v0.4s, v28.4s
+    38b4:	fmul	v24.4s, v24.4s, v2.4s
+    38b8:	mov	v2.16b, v29.16b
+    38bc:	fmls	v24.4s, v8.4s, v25.4s
+    38c0:	mov	v8.16b, v12.16b
+    38c4:	fmla	v2.4s, v3.4s, v28.4s
+    38c8:	mov	v3.16b, v16.16b
+    38cc:	fadd	v31.4s, v31.4s, v24.4s
+    38d0:	fmul	v26.4s, v2.4s, v26.4s
+    38d4:	mov	v2.16b, v18.16b
+    38d8:	fmla	v31.4s, v27.4s, v20.4s
+    38dc:	fmul	v26.4s, v26.4s, v9.4s
+    38e0:	mov	v9.16b, v13.16b
+    38e4:	fmla	v31.4s, v22.4s, v21.4s
+    38e8:	mov	v21.16b, v29.16b
+    38ec:	fdiv	v31.4s, v31.4s, v30.4s
+    38f0:	fsub	v30.4s, v31.4s, v30.4s
+    38f4:	fmul	v27.4s, v31.4s, v31.4s
+    38f8:	fabs	v24.4s, v31.4s
+    38fc:	fcmlt	v31.4s, v31.4s, #0.0
+    3900:	fmul	v28.4s, v30.4s, v30.4s
+    3904:	fmul	v27.4s, v27.4s, v10.4s
+    3908:	fmla	v21.4s, v1.4s, v24.4s
+    390c:	fabs	v22.4s, v30.4s
+    3910:	mov	v24.16b, v29.16b
+    3914:	fmul	v28.4s, v28.4s, v10.4s
+    3918:	fmax	v27.4s, v27.4s, v4.4s
+    391c:	fcmlt	v30.4s, v30.4s, #0.0
+    3920:	fmla	v24.4s, v1.4s, v22.4s
+    3924:	fmax	v28.4s, v28.4s, v4.4s
+    3928:	fmin	v27.4s, v27.4s, v5.4s
+    392c:	fdiv	v21.4s, v29.4s, v21.4s
+    3930:	fmin	v28.4s, v28.4s, v5.4s
+    3934:	fmul	v22.4s, v27.4s, v6.4s
+    3938:	fmla	v8.4s, v11.4s, v21.4s
+    393c:	fdiv	v24.4s, v29.4s, v24.4s
+    3940:	fmul	v10.4s, v28.4s, v6.4s
+    3944:	frintn	v22.4s, v22.4s
+    3948:	fmla	v9.4s, v8.4s, v21.4s
+    394c:	mov	v8.16b, v14.16b
+    3950:	frintn	v10.4s, v10.4s
+    3954:	fmls	v27.4s, v22.4s, v20.4s
+    3958:	fmla	v8.4s, v9.4s, v21.4s
+    395c:	mov	v9.16b, v15.16b
+    3960:	fmls	v28.4s, v10.4s, v20.4s
+    3964:	fcvtzs	v22.4s, v22.4s
+    3968:	fcvtzs	v10.4s, v10.4s
+    396c:	fmla	v3.4s, v7.4s, v27.4s
+    3970:	fmla	v9.4s, v8.4s, v21.4s
+    3974:	mov	v8.16b, v17.16b
+    3978:	add	v22.4s, v22.4s, v23.4s
+    397c:	add	v10.4s, v10.4s, v23.4s
+    3980:	mov	v23.16b, v16.16b
+    3984:	fmla	v8.4s, v3.4s, v27.4s
+    3988:	mov	v3.16b, v18.16b
+    398c:	fmla	v23.4s, v7.4s, v28.4s
+    3990:	shl	v22.4s, v22.4s, #23
+    3994:	fmla	v3.4s, v8.4s, v27.4s
+    3998:	mov	v8.16b, v17.16b
+    399c:	shl	v10.4s, v10.4s, #23
+    39a0:	fmul	v21.4s, v21.4s, v9.4s
+    39a4:	fmla	v8.4s, v23.4s, v28.4s
+    39a8:	mov	v23.16b, v25.16b
+    39ac:	fmla	v23.4s, v3.4s, v27.4s
+    39b0:	mov	v3.16b, v29.16b
+    39b4:	fmla	v2.4s, v8.4s, v28.4s
+    39b8:	mov	v8.16b, v12.16b
+    39bc:	fmla	v3.4s, v23.4s, v27.4s
+    39c0:	mov	v23.16b, v29.16b
+    39c4:	fmla	v25.4s, v2.4s, v28.4s
+    39c8:	fmla	v23.4s, v3.4s, v27.4s
+    39cc:	mov	v3.16b, v29.16b
+    39d0:	mov	v27.16b, v29.16b
+    39d4:	fmla	v8.4s, v11.4s, v24.4s
+    39d8:	fmla	v3.4s, v25.4s, v28.4s
+    39dc:	mov	v25.16b, v13.16b
+    39e0:	fmla	v25.4s, v8.4s, v24.4s
+    39e4:	fmla	v27.4s, v3.4s, v28.4s
+    39e8:	mov	v28.16b, v14.16b
+    39ec:	fmla	v28.4s, v25.4s, v24.4s
+    39f0:	fmul	v25.4s, v23.4s, v22.4s
+    39f4:	mov	v23.16b, v15.16b
+    39f8:	fmla	v23.4s, v28.4s, v24.4s
+    39fc:	fmul	v25.4s, v25.4s, v19.4s
+    3a00:	fmul	v28.4s, v27.4s, v10.4s
+    3a04:	fmul	v27.4s, v25.4s, v21.4s
+    3a08:	fmul	v28.4s, v28.4s, v19.4s
+    3a0c:	fmul	v24.4s, v24.4s, v23.4s
+    3a10:	fsub	v25.4s, v29.4s, v27.4s
+    3a14:	fmul	v24.4s, v28.4s, v24.4s
+    3a18:	ldr	q28, [x20, x7]
+    3a1c:	bsl	v31.16b, v27.16b, v25.16b
+    3a20:	fsub	v29.4s, v29.4s, v24.4s
+    3a24:	fmul	v31.4s, v28.4s, v31.4s
+    3a28:	bsl	v30.16b, v24.16b, v29.16b
+    3a2c:	fmls	v31.4s, v26.4s, v30.4s
+    3a30:	str	q31, [x26, x7]
+    3a34:	add	x7, x7, #0x10
+    3a38:	cmp	x8, x0
+    3a3c:	b.ne	3770 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0xd0>  // b.any
+    3a40:	and	x19, x19, #0xfffffffffffffffc
+    3a44:	add	x19, x19, #0x4
+    3a48:	cmp	x24, x19
+    3a4c:	b.ls	3ec4 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x824>  // b.plast
+    3a50:	mov	w4, #0x3389                	// #13193
+    3a54:	mov	w3, #0x466f                	// #18031
+    3a58:	mov	w2, #0x1eea                	// #7914
+    3a5c:	mov	w1, #0x778                 	// #1912
+    3a60:	movk	w4, #0x3e6d, lsl #16
+    3a64:	movk	w3, #0x3faa, lsl #16
+    3a68:	movk	w2, #0xbfe9, lsl #16
+    3a6c:	movk	w1, #0x3fe4, lsl #16
+    3a70:	mov	w0, #0xc2b00000            	// #-1028653056
+    3a74:	fmov	s10, w4
+    3a78:	fmov	s11, w3
+    3a7c:	fmov	s12, w2
+    3a80:	fmov	s13, w1
+    3a84:	fmov	s14, w0
+    3a88:	ldr	s28, [x22, x19, lsl #2]
+    3a8c:	ldr	s15, [x25, x19, lsl #2]
+    3a90:	ldr	s26, [x20, x19, lsl #2]
+    3a94:	fcmp	s28, #0.0
+    3a98:	ldr	s8, [x21, x19, lsl #2]
+    3a9c:	ldr	s25, [x23, x19, lsl #2]
+    3aa0:	fmul	s9, s15, s15
+    3aa4:	b.pl	3bfc <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x55c>  // b.nfrst
+    3aa8:	fmov	s0, s28
+    3aac:	stp	s26, s28, [sp, #148]
+    3ab0:	str	s25, [sp, #156]
+    3ab4:	bl	ec0 <sqrtf@plt>
+    3ab8:	ldr	s26, [sp, #148]
+    3abc:	fmul	s15, s15, s0
+    3ac0:	fdiv	s0, s26, s8
+    3ac4:	bl	1020 <logf@plt>
+    3ac8:	ldr	s25, [sp, #156]
+    3acc:	fmov	s31, #5.000000000000000000e-01
+    3ad0:	mov	w0, #0x3389                	// #13193
+    3ad4:	movk	w0, #0x3e6d, lsl #16
+    3ad8:	fmov	s27, #1.000000000000000000e+00
+    3adc:	mov	w1, #0x466f                	// #18031
+    3ae0:	ldp	s26, s28, [sp, #148]
+    3ae4:	mov	w3, #0x1eea                	// #7914
+    3ae8:	movk	w1, #0x3faa, lsl #16
+    3aec:	fmov	s30, w0
+    3af0:	movk	w3, #0xbfe9, lsl #16
+    3af4:	mov	w2, #0x778                 	// #1912
+    3af8:	fmov	s20, w1
+    3afc:	movk	w2, #0x3fe4, lsl #16
+    3b00:	mov	w1, #0x8f89                	// #36745
+    3b04:	fmov	s22, w3
+    3b08:	movk	w1, #0xbeb6, lsl #16
+    3b0c:	mov	w0, #0x85fa                	// #34298
+    3b10:	fmadd	s9, s9, s31, s25
+    3b14:	movk	w0, #0x3ea3, lsl #16
+    3b18:	mov	w7, #0xaa3b                	// #43579
+    3b1c:	fmov	s23, w2
+    3b20:	fmov	s19, #-5.000000000000000000e-01
+    3b24:	movk	w7, #0x3fb8, lsl #16
+    3b28:	fmov	s24, w1
+    3b2c:	fmov	s31, w0
+    3b30:	fmadd	s0, s28, s9, s0
+    3b34:	fmov	s29, w7
+    3b38:	fdiv	s0, s0, s15
+    3b3c:	fmadd	s21, s0, s30, s27
+    3b40:	fmul	s30, s0, s19
+    3b44:	fsub	s15, s0, s15
+    3b48:	fmul	s30, s30, s0
+    3b4c:	fdiv	s27, s27, s21
+    3b50:	fmul	s29, s30, s29
+    3b54:	fmadd	s22, s27, s20, s22
+    3b58:	fmadd	s23, s22, s27, s23
+    3b5c:	fmadd	s24, s23, s27, s24
+    3b60:	fmadd	s31, s24, s27, s31
+    3b64:	fmul	s31, s31, s27
+    3b68:	fmov	s24, #5.000000000000000000e-01
+    3b6c:	mov	w0, #0x7218                	// #29208
+    3b70:	mov	w3, #0xb61                 	// #2913
+    3b74:	movk	w0, #0x3f31, lsl #16
+    3b78:	mov	w2, #0x8889                	// #34953
+    3b7c:	fmov	s27, #1.000000000000000000e+00
+    3b80:	movk	w3, #0x3ab6, lsl #16
+    3b84:	movk	w2, #0x3c08, lsl #16
+    3b88:	fmov	s18, w0
+    3b8c:	mov	w1, #0xaaab                	// #43691
+    3b90:	mov	w0, #0xaaab                	// #43691
+    3b94:	fsub	s29, s29, s24
+    3b98:	movk	w1, #0x3d2a, lsl #16
+    3b9c:	movk	w0, #0x3e2a, lsl #16
+    3ba0:	fmov	s21, w2
+    3ba4:	mov	w4, #0x422a                	// #16938
+    3ba8:	fmov	s19, w3
+    3bac:	movk	w4, #0x3ecc, lsl #16
+    3bb0:	fmov	s22, w1
+    3bb4:	fmov	s23, w0
+    3bb8:	fmov	s20, w4
+    3bbc:	fcvtzs	s29, s29
+    3bc0:	scvtf	s29, s29
+    3bc4:	fmsub	s30, s29, s18, s30
+    3bc8:	fcvtzs	w7, s29
+    3bcc:	fmadd	s29, s30, s19, s21
+    3bd0:	add	w7, w7, #0x7f
+    3bd4:	fmov	s21, w7
+    3bd8:	fmadd	s29, s30, s29, s22
+    3bdc:	fmadd	s29, s30, s29, s23
+    3be0:	shl	v21.2s, v21.2s, #23
+    3be4:	fmadd	s24, s30, s29, s24
+    3be8:	fmadd	s24, s30, s24, s27
+    3bec:	fmadd	s30, s30, s24, s27
+    3bf0:	fmul	s30, s30, s21
+    3bf4:	fmul	s30, s30, s20
+    3bf8:	b	4138 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0xa98>
+    3bfc:	fsqrt	s29, s28
+    3c00:	stp	s26, s28, [sp, #148]
+    3c04:	str	s25, [sp, #156]
+    3c08:	fdiv	s0, s26, s8
+    3c0c:	fmul	s15, s15, s29
+    3c10:	bl	1020 <logf@plt>
+    3c14:	ldr	s25, [sp, #156]
+    3c18:	fmov	s30, #5.000000000000000000e-01
+    3c1c:	ldp	s26, s28, [sp, #148]
+    3c20:	fmadd	s9, s9, s30, s25
+    3c24:	fmadd	s0, s28, s9, s0
+    3c28:	fdiv	s0, s0, s15
+    3c2c:	fcmpe	s0, #0.0
+    3c30:	fsub	s15, s0, s15
+    3c34:	b.mi	3f74 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x8d4>  // b.first
+    3c38:	fmov	s31, #1.000000000000000000e+00
+    3c3c:	mov	w1, #0x8f89                	// #36745
+    3c40:	mov	w0, #0x85fa                	// #34298
+    3c44:	movk	w1, #0xbeb6, lsl #16
+    3c48:	movk	w0, #0x3ea3, lsl #16
+    3c4c:	fmov	s30, #-5.000000000000000000e-01
+    3c50:	fmov	s27, w1
+    3c54:	fmadd	s24, s0, s10, s31
+    3c58:	fmov	s29, w0
+    3c5c:	fmul	s30, s0, s30
+    3c60:	fmul	s30, s30, s0
+    3c64:	fdiv	s31, s31, s24
+    3c68:	fcmpe	s30, s14
+    3c6c:	fmadd	s24, s31, s11, s12
+    3c70:	fmadd	s24, s31, s24, s13
+    3c74:	fmadd	s27, s31, s24, s27
+    3c78:	fmadd	s29, s31, s27, s29
+    3c7c:	fmul	s31, s31, s29
+    3c80:	b.mi	3fe4 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x944>  // b.first
+    3c84:	mov	w0, #0x42b00000            	// #1118830592
+    3c88:	fmov	s29, w0
+    3c8c:	fcmpe	s30, s29
+    3c90:	b.gt	3cb0 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x610>
+    3c94:	mov	w7, #0xaa3b                	// #43579
+    3c98:	movk	w7, #0x3fb8, lsl #16
+    3c9c:	fmov	s29, w7
+    3ca0:	fmul	s29, s30, s29
+    3ca4:	fcmpe	s29, #0.0
+    3ca8:	b.ge	40a8 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0xa08>  // b.tcont
+    3cac:	b	3b68 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x4c8>
+    3cb0:	mov	w0, #0x484f                	// #18511
+    3cb4:	movk	w0, #0x7e46, lsl #16
+    3cb8:	fmov	s30, w0
+    3cbc:	fmul	s31, s31, s30
+    3cc0:	fmov	s30, #1.000000000000000000e+00
+    3cc4:	fsub	s31, s30, s31
+    3cc8:	fnmul	s29, s25, s28
+    3ccc:	fmul	s31, s26, s31
+    3cd0:	movi	v30.2s, #0x0
+    3cd4:	fcmpe	s29, s14
+    3cd8:	b.mi	3d84 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x6e4>  // b.first
+    3cdc:	mov	w0, #0x42b00000            	// #1118830592
+    3ce0:	fmov	s30, w0
+    3ce4:	fcmpe	s29, s30
+    3ce8:	b.gt	3ff8 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x958>
+    3cec:	mov	w7, #0xaa3b                	// #43579
+    3cf0:	movk	w7, #0x3fb8, lsl #16
+    3cf4:	fmov	s28, w7
+    3cf8:	fmul	s28, s29, s28
+    3cfc:	fcmpe	s28, #0.0
+    3d00:	b.ge	4148 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0xaa8>  // b.tcont
+    3d04:	fmov	s27, #5.000000000000000000e-01
+    3d08:	mov	w0, #0x7218                	// #29208
+    3d0c:	mov	w3, #0xb61                 	// #2913
+    3d10:	movk	w0, #0x3f31, lsl #16
+    3d14:	mov	w2, #0x8889                	// #34953
+    3d18:	fmov	s30, #1.000000000000000000e+00
+    3d1c:	movk	w3, #0x3ab6, lsl #16
+    3d20:	movk	w2, #0x3c08, lsl #16
+    3d24:	fmov	s22, w0
+    3d28:	mov	w1, #0xaaab                	// #43691
+    3d2c:	mov	w0, #0xaaab                	// #43691
+    3d30:	fsub	s28, s28, s27
+    3d34:	movk	w1, #0x3d2a, lsl #16
+    3d38:	movk	w0, #0x3e2a, lsl #16
+    3d3c:	fmov	s24, w2
+    3d40:	fmov	s23, w3
+    3d44:	fmov	s25, w1
+    3d48:	fmov	s26, w0
+    3d4c:	fcvtzs	s28, s28
+    3d50:	scvtf	s28, s28
+    3d54:	fmsub	s29, s28, s22, s29
+    3d58:	fcvtzs	w7, s28
+    3d5c:	fmadd	s28, s29, s23, s24
+    3d60:	add	w7, w7, #0x7f
+    3d64:	fmov	s24, w7
+    3d68:	fmadd	s28, s29, s28, s25
+    3d6c:	fmadd	s28, s29, s28, s26
+    3d70:	shl	v24.2s, v24.2s, #23
+    3d74:	fmadd	s27, s29, s28, s27
+    3d78:	fmadd	s27, s29, s27, s30
+    3d7c:	fmadd	s30, s29, s27, s30
+    3d80:	fmul	s30, s30, s24
+    3d84:	fcmpe	s15, #0.0
+    3d88:	fmul	s26, s8, s30
+    3d8c:	b.mi	3eec <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x84c>  // b.first
+    3d90:	fmov	s30, #1.000000000000000000e+00
+    3d94:	mov	w1, #0x8f89                	// #36745
+    3d98:	mov	w0, #0x85fa                	// #34298
+    3d9c:	movk	w1, #0xbeb6, lsl #16
+    3da0:	movk	w0, #0x3ea3, lsl #16
+    3da4:	fmov	s28, #-5.000000000000000000e-01
+    3da8:	fmov	s27, w1
+    3dac:	fmadd	s25, s15, s10, s30
+    3db0:	fmov	s29, w0
+    3db4:	fmul	s28, s15, s28
+    3db8:	fmul	s28, s28, s15
+    3dbc:	fdiv	s30, s30, s25
+    3dc0:	fcmpe	s28, s14
+    3dc4:	fmadd	s25, s30, s11, s12
+    3dc8:	fmadd	s25, s30, s25, s13
+    3dcc:	fmadd	s27, s30, s25, s27
+    3dd0:	fmadd	s29, s30, s27, s29
+    3dd4:	fmul	s30, s30, s29
+    3dd8:	b.mi	3ff0 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x950>  // b.first
+    3ddc:	mov	w0, #0x42b00000            	// #1118830592
+    3de0:	fmov	s29, w0
+    3de4:	fcmpe	s28, s29
+    3de8:	b.gt	3e98 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x7f8>
+    3dec:	mov	w7, #0xaa3b                	// #43579
+    3df0:	movk	w7, #0x3fb8, lsl #16
+    3df4:	fmov	s29, w7
+    3df8:	fmul	s29, s28, s29
+    3dfc:	fcmpe	s29, #0.0
+    3e00:	b.ge	4008 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x968>  // b.tcont
+    3e04:	fmov	s25, #5.000000000000000000e-01
+    3e08:	mov	w0, #0x7218                	// #29208
+    3e0c:	mov	w4, #0xb61                 	// #2913
+    3e10:	movk	w0, #0x3f31, lsl #16
+    3e14:	mov	w2, #0x8889                	// #34953
+    3e18:	fmov	s27, #1.000000000000000000e+00
+    3e1c:	movk	w4, #0x3ab6, lsl #16
+    3e20:	movk	w2, #0x3c08, lsl #16
+    3e24:	fmov	s19, w0
+    3e28:	mov	w1, #0xaaab                	// #43691
+    3e2c:	mov	w0, #0xaaab                	// #43691
+    3e30:	fsub	s29, s29, s25
+    3e34:	movk	w1, #0x3d2a, lsl #16
+    3e38:	movk	w0, #0x3e2a, lsl #16
+    3e3c:	fmov	s22, w2
+    3e40:	mov	w3, #0x422a                	// #16938
+    3e44:	fmov	s20, w4
+    3e48:	movk	w3, #0x3ecc, lsl #16
+    3e4c:	fmov	s23, w1
+    3e50:	fmov	s24, w0
+    3e54:	fmov	s21, w3
+    3e58:	fcvtzs	s29, s29
+    3e5c:	scvtf	s29, s29
+    3e60:	fmsub	s28, s29, s19, s28
+    3e64:	fcvtzs	w7, s29
+    3e68:	fmadd	s29, s28, s20, s22
+    3e6c:	add	w7, w7, #0x7f
+    3e70:	fmov	s22, w7
+    3e74:	fmadd	s29, s28, s29, s23
+    3e78:	fmadd	s29, s28, s29, s24
+    3e7c:	shl	v22.2s, v22.2s, #23
+    3e80:	fmadd	s25, s28, s29, s25
+    3e84:	fmadd	s25, s28, s25, s27
+    3e88:	fmadd	s29, s28, s25, s27
+    3e8c:	fmul	s29, s29, s22
+    3e90:	fmul	s29, s29, s21
+    3e94:	b	4098 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x9f8>
+    3e98:	mov	w0, #0x484f                	// #18511
+    3e9c:	movk	w0, #0x7e46, lsl #16
+    3ea0:	fmov	s29, w0
+    3ea4:	fmul	s30, s30, s29
+    3ea8:	fmov	s29, #1.000000000000000000e+00
+    3eac:	fsub	s29, s29, s30
+    3eb0:	fmsub	s31, s26, s29, s31
+    3eb4:	str	s31, [x26, x19, lsl #2]
+    3eb8:	add	x19, x19, #0x1
+    3ebc:	cmp	x19, x24
+    3ec0:	b.ne	3a88 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x3e8>  // b.any
+    3ec4:	ldp	d8, d9, [sp, #80]
+    3ec8:	ldp	x19, x20, [sp, #16]
+    3ecc:	ldp	x21, x22, [sp, #32]
+    3ed0:	ldp	x23, x24, [sp, #48]
+    3ed4:	ldp	x25, x26, [sp, #64]
+    3ed8:	ldp	d10, d11, [sp, #96]
+    3edc:	ldp	d12, d13, [sp, #112]
+    3ee0:	ldp	d14, d15, [sp, #128]
+    3ee4:	ldp	x29, x30, [sp], #160
+    3ee8:	ret
+    3eec:	fmov	s29, #1.000000000000000000e+00
+    3ef0:	mov	w1, #0x8f89                	// #36745
+    3ef4:	mov	w0, #0x85fa                	// #34298
+    3ef8:	movk	w1, #0xbeb6, lsl #16
+    3efc:	movk	w0, #0x3ea3, lsl #16
+    3f00:	fmov	s28, #5.000000000000000000e-01
+    3f04:	fmov	s27, w1
+    3f08:	fmsub	s25, s15, s10, s29
+    3f0c:	fmov	s30, w0
+    3f10:	fmul	s28, s15, s28
+    3f14:	fnmul	s28, s15, s28
+    3f18:	fdiv	s29, s29, s25
+    3f1c:	fcmpe	s28, s14
+    3f20:	fmadd	s25, s29, s11, s12
+    3f24:	fmadd	s25, s29, s25, s13
+    3f28:	fmadd	s27, s29, s25, s27
+    3f2c:	fmadd	s30, s29, s27, s30
+    3f30:	fmul	s30, s29, s30
+    3f34:	b.mi	3f54 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x8b4>  // b.first
+    3f38:	mov	w7, #0xaa3b                	// #43579
+    3f3c:	movk	w7, #0x3fb8, lsl #16
+    3f40:	fmov	s29, w7
+    3f44:	fmul	s29, s28, s29
+    3f48:	fcmpe	s29, #0.0
+    3f4c:	b.ge	4008 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x968>  // b.tcont
+    3f50:	b	3e04 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x764>
+    3f54:	movi	v29.2s, #0x0
+    3f58:	fmul	s30, s30, s29
+    3f5c:	fmsub	s30, s26, s30, s31
+    3f60:	str	s30, [x26, x19, lsl #2]
+    3f64:	add	x19, x19, #0x1
+    3f68:	cmp	x24, x19
+    3f6c:	b.ne	3a88 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x3e8>  // b.any
+    3f70:	b	3ec4 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x824>
+    3f74:	fmov	s31, #1.000000000000000000e+00
+    3f78:	mov	w1, #0x8f89                	// #36745
+    3f7c:	mov	w0, #0x85fa                	// #34298
+    3f80:	movk	w1, #0xbeb6, lsl #16
+    3f84:	movk	w0, #0x3ea3, lsl #16
+    3f88:	fmul	s30, s0, s30
+    3f8c:	fmov	s27, w1
+    3f90:	fmsub	s24, s0, s10, s31
+    3f94:	fmov	s29, w0
+    3f98:	fnmul	s30, s0, s30
+    3f9c:	fcmpe	s30, s14
+    3fa0:	fdiv	s31, s31, s24
+    3fa4:	fmadd	s24, s31, s11, s12
+    3fa8:	fmadd	s24, s31, s24, s13
+    3fac:	fmadd	s27, s31, s24, s27
+    3fb0:	fmadd	s29, s31, s27, s29
+    3fb4:	fmul	s31, s31, s29
+    3fb8:	b.mi	3fd8 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x938>  // b.first
+    3fbc:	mov	w7, #0xaa3b                	// #43579
+    3fc0:	movk	w7, #0x3fb8, lsl #16
+    3fc4:	fmov	s29, w7
+    3fc8:	fmul	s29, s30, s29
+    3fcc:	fcmpe	s29, #0.0
+    3fd0:	b.ge	40a8 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0xa08>  // b.tcont
+    3fd4:	b	3b68 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x4c8>
+    3fd8:	movi	v30.2s, #0x0
+    3fdc:	fmul	s31, s31, s30
+    3fe0:	b	3cc8 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x628>
+    3fe4:	movi	v30.2s, #0x0
+    3fe8:	fmul	s31, s31, s30
+    3fec:	b	3cc0 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x620>
+    3ff0:	movi	v29.2s, #0x0
+    3ff4:	b	3ea4 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x804>
+    3ff8:	mov	w7, #0x829c                	// #33436
+    3ffc:	movk	w7, #0x7ef8, lsl #16
+    4000:	fmov	s30, w7
+    4004:	b	3d84 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x6e4>
+    4008:	fmov	s24, #5.000000000000000000e-01
+    400c:	mov	w0, #0x7218                	// #29208
+    4010:	mov	w4, #0xb61                 	// #2913
+    4014:	movk	w0, #0x3f31, lsl #16
+    4018:	mov	w2, #0x8889                	// #34953
+    401c:	fmov	s27, #1.000000000000000000e+00
+    4020:	movk	w4, #0x3ab6, lsl #16
+    4024:	movk	w2, #0x3c08, lsl #16
+    4028:	fmov	s25, w0
+    402c:	mov	w1, #0xaaab                	// #43691
+    4030:	mov	w0, #0xaaab                	// #43691
+    4034:	fadd	s29, s29, s24
+    4038:	movk	w1, #0x3d2a, lsl #16
+    403c:	movk	w0, #0x3e2a, lsl #16
+    4040:	fmov	s19, w4
+    4044:	mov	w3, #0x422a                	// #16938
+    4048:	fmov	s21, w2
+    404c:	movk	w3, #0x3ecc, lsl #16
+    4050:	fmov	s22, w1
+    4054:	fmov	s23, w0
+    4058:	fmov	s20, w3
+    405c:	fcvtzs	s29, s29
+    4060:	scvtf	s29, s29
+    4064:	fmsub	s28, s29, s25, s28
+    4068:	fcvtzs	w7, s29
+    406c:	fmadd	s29, s28, s19, s21
+    4070:	add	w7, w7, #0x7f
+    4074:	fmov	s25, w7
+    4078:	fmadd	s29, s28, s29, s22
+    407c:	fmadd	s29, s28, s29, s23
+    4080:	shl	v25.2s, v25.2s, #23
+    4084:	fmadd	s24, s28, s29, s24
+    4088:	fmadd	s24, s28, s24, s27
+    408c:	fmadd	s29, s28, s24, s27
+    4090:	fmul	s29, s29, s25
+    4094:	fmul	s29, s29, s20
+    4098:	fcmpe	s15, #0.0
+    409c:	fmul	s30, s30, s29
+    40a0:	b.mi	3f5c <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x8bc>  // b.first
+    40a4:	b	3ea8 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x808>
+    40a8:	fmov	s23, #5.000000000000000000e-01
+    40ac:	mov	w0, #0x7218                	// #29208
+    40b0:	mov	w3, #0xb61                 	// #2913
+    40b4:	movk	w0, #0x3f31, lsl #16
+    40b8:	mov	w2, #0x8889                	// #34953
+    40bc:	fmov	s27, #1.000000000000000000e+00
+    40c0:	movk	w3, #0x3ab6, lsl #16
+    40c4:	movk	w2, #0x3c08, lsl #16
+    40c8:	fmov	s24, w0
+    40cc:	mov	w1, #0xaaab                	// #43691
+    40d0:	mov	w0, #0xaaab                	// #43691
+    40d4:	fadd	s29, s29, s23
+    40d8:	movk	w1, #0x3d2a, lsl #16
+    40dc:	movk	w0, #0x3e2a, lsl #16
+    40e0:	fmov	s18, w3
+    40e4:	mov	w4, #0x422a                	// #16938
+    40e8:	fmov	s20, w2
+    40ec:	movk	w4, #0x3ecc, lsl #16
+    40f0:	fmov	s21, w1
+    40f4:	fmov	s22, w0
+    40f8:	fmov	s19, w4
+    40fc:	fcvtzs	s29, s29
+    4100:	scvtf	s29, s29
+    4104:	fmsub	s30, s29, s24, s30
+    4108:	fcvtzs	w7, s29
+    410c:	fmadd	s29, s30, s18, s20
+    4110:	add	w7, w7, #0x7f
+    4114:	fmov	s24, w7
+    4118:	fmadd	s29, s30, s29, s21
+    411c:	fmadd	s29, s30, s29, s22
+    4120:	shl	v24.2s, v24.2s, #23
+    4124:	fmadd	s23, s30, s29, s23
+    4128:	fmadd	s23, s30, s23, s27
+    412c:	fmadd	s30, s30, s23, s27
+    4130:	fmul	s30, s30, s24
+    4134:	fmul	s30, s30, s19
+    4138:	fcmpe	s0, #0.0
+    413c:	fmul	s31, s31, s30
+    4140:	b.mi	3cc8 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x628>  // b.first
+    4144:	b	3cc0 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x620>
+    4148:	fmov	s26, #5.000000000000000000e-01
+    414c:	mov	w0, #0x7218                	// #29208
+    4150:	mov	w3, #0xb61                 	// #2913
+    4154:	movk	w0, #0x3f31, lsl #16
+    4158:	mov	w2, #0x8889                	// #34953
+    415c:	fmov	s30, #1.000000000000000000e+00
+    4160:	movk	w3, #0x3ab6, lsl #16
+    4164:	movk	w2, #0x3c08, lsl #16
+    4168:	fmov	s27, w0
+    416c:	mov	w1, #0xaaab                	// #43691
+    4170:	mov	w0, #0xaaab                	// #43691
+    4174:	fadd	s28, s28, s26
+    4178:	movk	w1, #0x3d2a, lsl #16
+    417c:	movk	w0, #0x3e2a, lsl #16
+    4180:	fmov	s22, w3
+    4184:	fmov	s23, w2
+    4188:	fmov	s24, w1
+    418c:	fmov	s25, w0
+    4190:	fcvtzs	s28, s28
+    4194:	scvtf	s28, s28
+    4198:	fmsub	s29, s28, s27, s29
+    419c:	fcvtzs	w7, s28
+    41a0:	fmadd	s28, s29, s22, s23
+    41a4:	add	w7, w7, #0x7f
+    41a8:	fmov	s27, w7
+    41ac:	fmadd	s28, s29, s28, s24
+    41b0:	fmadd	s28, s29, s28, s25
+    41b4:	shl	v27.2s, v27.2s, #23
+    41b8:	fmadd	s26, s29, s28, s26
+    41bc:	fmadd	s26, s29, s26, s30
+    41c0:	fmadd	s30, s29, s26, s30
+    41c4:	fmul	s30, s30, s27
+    41c8:	b	3d84 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x6e4>
+    41cc:	mov	x19, #0x0                   	// #0
+    41d0:	b	3a48 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x3a8>
+    41d4:	nop
+    41d8:	nop
+    41dc:	nop
 
-00000000000043a0 <std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::basic_string<std::allocator<char> >(char const*, std::allocator<char> const&)>:
-    43a0:	stp	x29, x30, [sp, #-64]!
-    43a4:	mov	x29, sp
-    43a8:	stp	x21, x22, [sp, #32]
-    43ac:	add	x22, x0, #0x10
-    43b0:	stp	x19, x20, [sp, #16]
-    43b4:	str	x22, [x0]
-    43b8:	cbz	x1, 4470 <std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::basic_string<std::allocator<char> >(char const*, std::allocator<char> const&)+0xd0>
-    43bc:	mov	x20, x0
-    43c0:	mov	x0, x1
-    43c4:	mov	x21, x1
-    43c8:	bl	e80 <strlen@plt>
-    43cc:	str	x0, [sp, #56]
-    43d0:	mov	x19, x0
-    43d4:	cmp	x0, #0xf
-    43d8:	b.hi	4420 <std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::basic_string<std::allocator<char> >(char const*, std::allocator<char> const&)+0x80>  // b.pmore
-    43dc:	cmp	x0, #0x1
-    43e0:	b.ne	4404 <std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::basic_string<std::allocator<char> >(char const*, std::allocator<char> const&)+0x64>  // b.any
-    43e4:	ldrb	w0, [x21]
-    43e8:	str	x19, [x20, #8]
-    43ec:	strb	w0, [x20, #16]
-    43f0:	strb	wzr, [x22, x19]
-    43f4:	ldp	x19, x20, [sp, #16]
-    43f8:	ldp	x21, x22, [sp, #32]
-    43fc:	ldp	x29, x30, [sp], #64
-    4400:	ret
-    4404:	cbnz	x0, 4440 <std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::basic_string<std::allocator<char> >(char const*, std::allocator<char> const&)+0xa0>
-    4408:	str	x19, [x20, #8]
-    440c:	strb	wzr, [x22, x19]
-    4410:	ldp	x19, x20, [sp, #16]
-    4414:	ldp	x21, x22, [sp, #32]
-    4418:	ldp	x29, x30, [sp], #64
-    441c:	ret
-    4420:	add	x1, sp, #0x38
-    4424:	mov	x2, #0x0                   	// #0
-    4428:	mov	x0, x20
-    442c:	bl	1010 <std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::_M_create(unsigned long&, unsigned long)@plt>
-    4430:	ldr	x1, [sp, #56]
-    4434:	mov	x22, x0
-    4438:	str	x0, [x20]
-    443c:	str	x1, [x20, #16]
-    4440:	mov	x2, x19
-    4444:	mov	x1, x21
-    4448:	mov	x0, x22
-    444c:	bl	e70 <memcpy@plt>
-    4450:	ldr	x19, [sp, #56]
-    4454:	ldr	x22, [x20]
-    4458:	str	x19, [x20, #8]
-    445c:	strb	wzr, [x22, x19]
-    4460:	ldp	x19, x20, [sp, #16]
-    4464:	ldp	x21, x22, [sp, #32]
-    4468:	ldp	x29, x30, [sp], #64
-    446c:	ret
-    4470:	adrp	x0, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x7b0>
-    4474:	add	x0, x0, #0x798
-    4478:	bl	f00 <std::__throw_logic_error(char const*)@plt>
-    447c:	nop
+00000000000041e0 <std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::basic_string<std::allocator<char> >(char const*, std::allocator<char> const&)>:
+    41e0:	stp	x29, x30, [sp, #-64]!
+    41e4:	mov	x29, sp
+    41e8:	stp	x21, x22, [sp, #32]
+    41ec:	add	x22, x0, #0x10
+    41f0:	stp	x19, x20, [sp, #16]
+    41f4:	str	x22, [x0]
+    41f8:	cbz	x1, 42b0 <std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::basic_string<std::allocator<char> >(char const*, std::allocator<char> const&)+0xd0>
+    41fc:	mov	x20, x0
+    4200:	mov	x0, x1
+    4204:	mov	x21, x1
+    4208:	bl	e80 <strlen@plt>
+    420c:	str	x0, [sp, #56]
+    4210:	mov	x19, x0
+    4214:	cmp	x0, #0xf
+    4218:	b.hi	4260 <std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::basic_string<std::allocator<char> >(char const*, std::allocator<char> const&)+0x80>  // b.pmore
+    421c:	cmp	x0, #0x1
+    4220:	b.ne	4244 <std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::basic_string<std::allocator<char> >(char const*, std::allocator<char> const&)+0x64>  // b.any
+    4224:	ldrb	w0, [x21]
+    4228:	str	x19, [x20, #8]
+    422c:	strb	w0, [x20, #16]
+    4230:	strb	wzr, [x22, x19]
+    4234:	ldp	x19, x20, [sp, #16]
+    4238:	ldp	x21, x22, [sp, #32]
+    423c:	ldp	x29, x30, [sp], #64
+    4240:	ret
+    4244:	cbnz	x0, 4280 <std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::basic_string<std::allocator<char> >(char const*, std::allocator<char> const&)+0xa0>
+    4248:	str	x19, [x20, #8]
+    424c:	strb	wzr, [x22, x19]
+    4250:	ldp	x19, x20, [sp, #16]
+    4254:	ldp	x21, x22, [sp, #32]
+    4258:	ldp	x29, x30, [sp], #64
+    425c:	ret
+    4260:	add	x1, sp, #0x38
+    4264:	mov	x2, #0x0                   	// #0
+    4268:	mov	x0, x20
+    426c:	bl	1010 <std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::_M_create(unsigned long&, unsigned long)@plt>
+    4270:	ldr	x1, [sp, #56]
+    4274:	mov	x22, x0
+    4278:	str	x0, [x20]
+    427c:	str	x1, [x20, #16]
+    4280:	mov	x2, x19
+    4284:	mov	x1, x21
+    4288:	mov	x0, x22
+    428c:	bl	e70 <memcpy@plt>
+    4290:	ldr	x19, [sp, #56]
+    4294:	ldr	x22, [x20]
+    4298:	str	x19, [x20, #8]
+    429c:	strb	wzr, [x22, x19]
+    42a0:	ldp	x19, x20, [sp, #16]
+    42a4:	ldp	x21, x22, [sp, #32]
+    42a8:	ldp	x29, x30, [sp], #64
+    42ac:	ret
+    42b0:	adrp	x0, 4000 <price_neon(float const*, float const*, float const*, float const*, float const*, float*, unsigned long)+0x960>
+    42b4:	add	x0, x0, #0x5d8
+    42b8:	bl	f00 <std::__throw_logic_error(char const*)@plt>
+    42bc:	nop
 
-0000000000004480 <bool std::operator==<char, std::char_traits<char>, std::allocator<char> >(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, char const*)>:
-    4480:	stp	x29, x30, [sp, #-48]!
-    4484:	mov	x29, sp
-    4488:	stp	x19, x20, [sp, #16]
-    448c:	mov	x20, x0
-    4490:	mov	x0, x1
-    4494:	mov	x19, x1
-    4498:	str	x21, [sp, #32]
-    449c:	ldr	x21, [x20, #8]
-    44a0:	bl	e80 <strlen@plt>
-    44a4:	cmp	x21, x0
-    44a8:	b.eq	44c0 <bool std::operator==<char, std::char_traits<char>, std::allocator<char> >(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, char const*)+0x40>  // b.none
-    44ac:	mov	w0, #0x0                   	// #0
-    44b0:	ldr	x21, [sp, #32]
-    44b4:	ldp	x19, x20, [sp, #16]
-    44b8:	ldp	x29, x30, [sp], #48
-    44bc:	ret
-    44c0:	mov	w0, #0x1                   	// #1
-    44c4:	cbz	x21, 44b0 <bool std::operator==<char, std::char_traits<char>, std::allocator<char> >(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, char const*)+0x30>
-    44c8:	ldr	x0, [x20]
-    44cc:	mov	x2, x21
-    44d0:	mov	x1, x19
-    44d4:	bl	ea0 <memcmp@plt>
-    44d8:	ldr	x21, [sp, #32]
-    44dc:	cmp	w0, #0x0
-    44e0:	cset	w0, eq	// eq = none
-    44e4:	ldp	x19, x20, [sp, #16]
-    44e8:	ldp	x29, x30, [sp], #48
-    44ec:	ret
-    44f0:	nop
-    44f4:	nop
-    44f8:	nop
-    44fc:	nop
+00000000000042c0 <bool std::operator==<char, std::char_traits<char>, std::allocator<char> >(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, char const*)>:
+    42c0:	stp	x29, x30, [sp, #-48]!
+    42c4:	mov	x29, sp
+    42c8:	stp	x19, x20, [sp, #16]
+    42cc:	mov	x20, x0
+    42d0:	mov	x0, x1
+    42d4:	mov	x19, x1
+    42d8:	str	x21, [sp, #32]
+    42dc:	ldr	x21, [x20, #8]
+    42e0:	bl	e80 <strlen@plt>
+    42e4:	cmp	x21, x0
+    42e8:	b.eq	4300 <bool std::operator==<char, std::char_traits<char>, std::allocator<char> >(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, char const*)+0x40>  // b.none
+    42ec:	mov	w0, #0x0                   	// #0
+    42f0:	ldr	x21, [sp, #32]
+    42f4:	ldp	x19, x20, [sp, #16]
+    42f8:	ldp	x29, x30, [sp], #48
+    42fc:	ret
+    4300:	mov	w0, #0x1                   	// #1
+    4304:	cbz	x21, 42f0 <bool std::operator==<char, std::char_traits<char>, std::allocator<char> >(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, char const*)+0x30>
+    4308:	ldr	x0, [x20]
+    430c:	mov	x2, x21
+    4310:	mov	x1, x19
+    4314:	bl	ea0 <memcmp@plt>
+    4318:	ldr	x21, [sp, #32]
+    431c:	cmp	w0, #0x0
+    4320:	cset	w0, eq	// eq = none
+    4324:	ldp	x19, x20, [sp, #16]
+    4328:	ldp	x29, x30, [sp], #48
+    432c:	ret
+    4330:	nop
+    4334:	nop
+    4338:	nop
+    433c:	nop
 
-0000000000004500 <std::mersenne_twister_engine<unsigned long, 32ul, 624ul, 397ul, 31ul, 2567483615ul, 11ul, 4294967295ul, 7ul, 2636928640ul, 15ul, 4022730752ul, 18ul, 1812433253ul>::_M_gen_rand()>:
-    4500:	ldr	x5, [x0]
-    4504:	mov	w8, #0xb0df                	// #45279
-    4508:	mov	x2, x0
-    450c:	movk	w8, #0x9908, lsl #16
-    4510:	add	x7, x0, #0x718
-    4514:	mov	x3, x0
-    4518:	nop
-    451c:	nop
-    4520:	and	x4, x5, #0xffffffff80000000
-    4524:	ldr	x5, [x3, #8]
-    4528:	ldr	x6, [x3, #3176]
-    452c:	and	x1, x5, #0x7fffffff
-    4530:	orr	x1, x1, x4
-    4534:	and	x4, x1, #0x1
-    4538:	eor	x1, x6, x1, lsr #1
-    453c:	umull	x4, w4, w8
-    4540:	eor	x1, x1, x4
-    4544:	str	x1, [x3], #8
-    4548:	cmp	x3, x7
-    454c:	b.ne	4520 <std::mersenne_twister_engine<unsigned long, 32ul, 624ul, 397ul, 31ul, 2567483615ul, 11ul, 4294967295ul, 7ul, 2636928640ul, 15ul, 4022730752ul, 18ul, 1812433253ul>::_M_gen_rand()+0x20>  // b.any
-    4550:	ldr	x4, [x0, #1816]
-    4554:	mov	w6, #0xb0df                	// #45279
-    4558:	add	x7, x0, #0xc60
-    455c:	movk	w6, #0x9908, lsl #16
-    4560:	and	x3, x4, #0xffffffff80000000
-    4564:	ldr	x4, [x2, #1824]
-    4568:	add	x2, x2, #0x8
-    456c:	ldur	x5, [x2, #-8]
-    4570:	and	x1, x4, #0x7fffffff
-    4574:	orr	x1, x1, x3
-    4578:	and	x3, x1, #0x1
-    457c:	eor	x1, x5, x1, lsr #1
-    4580:	umull	x3, w3, w6
-    4584:	eor	x1, x1, x3
-    4588:	str	x1, [x2, #1808]
-    458c:	cmp	x2, x7
-    4590:	b.ne	4560 <std::mersenne_twister_engine<unsigned long, 32ul, 624ul, 397ul, 31ul, 2567483615ul, 11ul, 4294967295ul, 7ul, 2636928640ul, 15ul, 4022730752ul, 18ul, 1812433253ul>::_M_gen_rand()+0x60>  // b.any
-    4594:	ldr	x2, [x0]
-    4598:	str	xzr, [x0, #4992]
-    459c:	ldr	x1, [x0, #4984]
-    45a0:	ldr	x3, [x0, #3168]
-    45a4:	bfxil	x1, x2, #0, #31
-    45a8:	and	x2, x1, #0x1
-    45ac:	eor	x1, x3, x1, lsr #1
-    45b0:	umull	x2, w2, w6
-    45b4:	eor	x1, x1, x2
-    45b8:	str	x1, [x0, #4984]
-    45bc:	ret
+0000000000004340 <std::mersenne_twister_engine<unsigned long, 32ul, 624ul, 397ul, 31ul, 2567483615ul, 11ul, 4294967295ul, 7ul, 2636928640ul, 15ul, 4022730752ul, 18ul, 1812433253ul>::_M_gen_rand()>:
+    4340:	ldr	x5, [x0]
+    4344:	mov	w8, #0xb0df                	// #45279
+    4348:	mov	x2, x0
+    434c:	movk	w8, #0x9908, lsl #16
+    4350:	add	x7, x0, #0x718
+    4354:	mov	x3, x0
+    4358:	nop
+    435c:	nop
+    4360:	and	x4, x5, #0xffffffff80000000
+    4364:	ldr	x5, [x3, #8]
+    4368:	ldr	x6, [x3, #3176]
+    436c:	and	x1, x5, #0x7fffffff
+    4370:	orr	x1, x1, x4
+    4374:	and	x4, x1, #0x1
+    4378:	eor	x1, x6, x1, lsr #1
+    437c:	umull	x4, w4, w8
+    4380:	eor	x1, x1, x4
+    4384:	str	x1, [x3], #8
+    4388:	cmp	x3, x7
+    438c:	b.ne	4360 <std::mersenne_twister_engine<unsigned long, 32ul, 624ul, 397ul, 31ul, 2567483615ul, 11ul, 4294967295ul, 7ul, 2636928640ul, 15ul, 4022730752ul, 18ul, 1812433253ul>::_M_gen_rand()+0x20>  // b.any
+    4390:	ldr	x4, [x0, #1816]
+    4394:	mov	w6, #0xb0df                	// #45279
+    4398:	add	x7, x0, #0xc60
+    439c:	movk	w6, #0x9908, lsl #16
+    43a0:	and	x3, x4, #0xffffffff80000000
+    43a4:	ldr	x4, [x2, #1824]
+    43a8:	add	x2, x2, #0x8
+    43ac:	ldur	x5, [x2, #-8]
+    43b0:	and	x1, x4, #0x7fffffff
+    43b4:	orr	x1, x1, x3
+    43b8:	and	x3, x1, #0x1
+    43bc:	eor	x1, x5, x1, lsr #1
+    43c0:	umull	x3, w3, w6
+    43c4:	eor	x1, x1, x3
+    43c8:	str	x1, [x2, #1808]
+    43cc:	cmp	x2, x7
+    43d0:	b.ne	43a0 <std::mersenne_twister_engine<unsigned long, 32ul, 624ul, 397ul, 31ul, 2567483615ul, 11ul, 4294967295ul, 7ul, 2636928640ul, 15ul, 4022730752ul, 18ul, 1812433253ul>::_M_gen_rand()+0x60>  // b.any
+    43d4:	ldr	x2, [x0]
+    43d8:	str	xzr, [x0, #4992]
+    43dc:	ldr	x1, [x0, #4984]
+    43e0:	ldr	x3, [x0, #3168]
+    43e4:	bfxil	x1, x2, #0, #31
+    43e8:	and	x2, x1, #0x1
+    43ec:	eor	x1, x3, x1, lsr #1
+    43f0:	umull	x2, w2, w6
+    43f4:	eor	x1, x1, x2
+    43f8:	str	x1, [x0, #4984]
+    43fc:	ret
 
 Disassembly of section .fini:
 
-00000000000045c0 <_fini>:
-    45c0:	paciasp
-    45c4:	stp	x29, x30, [sp, #-16]!
-    45c8:	mov	x29, sp
-    45cc:	ldp	x29, x30, [sp], #16
-    45d0:	autiasp
-    45d4:	ret
+0000000000004400 <_fini>:
+    4400:	paciasp
+    4404:	stp	x29, x30, [sp, #-16]!
+    4408:	mov	x29, sp
+    440c:	ldp	x29, x30, [sp], #16
+    4410:	autiasp
+    4414:	ret
