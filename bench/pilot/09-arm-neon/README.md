@@ -18,7 +18,35 @@ cmake --build build
 The post-build step runs `dump_asm.sh` and writes `asm/price_neon.s` and
 `asm/price_scalar.s`.
 
-## Run lines
+## Automated pilot runner
+
+`run_pilot.sh` executes all five go/no-go tasks in sequence with validation at each step.
+Run it on the Pi 5 rig:
+
+```bash
+cd bench/pilot/09-arm-neon
+
+./run_pilot.sh          # expects a pre-built binary in build/
+./run_pilot.sh --build  # cmake build + run
+```
+
+The script runs tasks in this order: **A5 → A1 → A2/A3 → A4**.
+A5 (codegen check) comes first because a vectorisation failure in the scalar baseline
+would make the A2/A3 ratios meaningless — the script aborts early if that guard fails.
+
+| Task | What it checks | Outcome |
+|------|---------------|---------|
+| A5 | NEON ops present in `asm/price_neon.s`; none in `asm/price_scalar.s` | **FAIL → abort** |
+| A1 | All 5 `perf stat` counters available (no `<not supported>`) | **REFRAME** if any missing |
+| A2 | NEON-over-scalar ratio at N=16k (compute-bound) | ≥3.5× **GO** · 2.5–3.5× **WARN** · <2.5× **STOP** |
+| A3 | Hand-NEON advantage % at N=16k (decides Framing A) | >15% **GO** · ≤10% **COLLAPSE** (fine) |
+| A4 | 8-min thermal soak on core 3; polls temp + throttle every 2s | Any throttle bit **STOP** · temp ≥80°C **WARN** |
+
+Run output and the A4 soak poll log are saved to `pilot_logs/`.
+
+---
+
+## Manual run lines
 
 ### A2/A3 — NEON-over-scalar ratio at two N
 
