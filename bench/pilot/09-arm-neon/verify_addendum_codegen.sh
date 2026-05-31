@@ -1,15 +1,19 @@
 #!/usr/bin/env bash
-# verify_addendum_codegen.sh — Demo 09 addendum task 1b: codegen checks for price_scalar_poly.
+# verify_addendum_codegen.sh — Demo 09 baseline-correction: codegen checks for price_scalar_poly.
 #
 # Builds the pilot binary (pass --build, or auto-builds if the binary is missing),
-# dumps the disassembly, then verifies three acceptance criteria from the addendum brief:
+# dumps the disassembly, then verifies three acceptance criteria from the
+# baseline-correction brief (INVERTED from the prior addendum brief):
 #
-#   1. No logf / expf / sqrtf PLT calls in price_scalar_poly.
+#   1. logf@plt IS PRESENT — libm log is retained, matching demo-3 spec.
+#      expf@plt and erff@plt ABSENT — exp and N(x) are the inline polynomials.
+#      (Prior addendum required ALL to be absent; that produced a different
+#      denominator that diverges from demo 3.  This brief corrects that.)
 #   2. Zero .4s float-vector ops  (no accidental autovectorisation).
 #   3. Loop back-edge increments by 1 element (#0x1 stride, not #0x4).
 #
-# Prints the full price_scalar_poly disassembly at the end so you can post it to the
-# thread before running run_addendum.sh for timing captures.
+# Prints the full price_scalar_poly disassembly at the end so you can post it
+# to the thread before running run_addendum.sh for timing captures.
 #
 # Usage:
 #   ./verify_addendum_codegen.sh          # expects pre-built binary in build/
@@ -57,23 +61,44 @@ fi
 pass "ASM file: $ASM_FILE"
 
 # ─── Codegen checks ───────────────────────────────────────────────────────────
-header "Codegen checks — price_scalar_poly"
+header "Codegen checks — price_scalar_poly (demo-3 spec)"
+info "Criteria: logf@plt PRESENT; expf@plt + erff@plt ABSENT; no .4s; stride=1"
 ALL_PASS=1
 
-# 1. No libm PLT calls (logf, expf, sqrtf)
-PLT_HITS=$(grep -cE 'bl[[:space:]]+.*(logf|expf|sqrtf)(@plt)?' "$ASM_FILE" || true)
-if [[ "$PLT_HITS" -eq 0 ]]; then
-    pass "No logf/expf/sqrtf PLT calls — hot loop is call-free"
+# 1a. logf@plt MUST be present — libm log is retained (demo-3 spec)
+LOGF_PLT=$(grep -cE 'bl[[:space:]]+.*(logf)(@plt)?' "$ASM_FILE" || true)
+if [[ "$LOGF_PLT" -gt 0 ]]; then
+    pass "logf@plt present ($LOGF_PLT call(s)) — libm log retained, matches demo-3 spec"
 else
-    fail "Found $PLT_HITS libm PLT call(s)"
-    grep -E 'bl[[:space:]]+.*(logf|expf|sqrtf)(@plt)?' "$ASM_FILE" | sed 's/^/    /' >&2
-    if grep -qE 'bl[[:space:]]+.*sqrtf(@plt)?' "$ASM_FILE"; then
-        fail "  sqrtf@plt: GCC branches to libm for negative inputs to preserve errno."
-        fail "  Fix: replace __builtin_sqrtf with vsqrt_f32 NEON scalar intrinsic in poly_neon.h."
-    fi
-    if grep -qE 'bl[[:space:]]+.*(logf|expf)(@plt)?' "$ASM_FILE"; then
-        fail "  logf/expf@plt: polynomial not fully inlined — check fast_logf/fast_expf usage."
-    fi
+    fail "logf@plt ABSENT — price_scalar_poly must call libm log"
+    fail "  Check: bs_call_poly uses std::log, not fast_logf."
+    fail "  If the full-poly variant (scalar_fullpoly) is being checked instead, rebuild."
+    ALL_PASS=0
+fi
+
+# 1b. sqrtf@plt — note presence (std::sqrt; acceptable per spec)
+SQRTF_PLT=$(grep -cE 'bl[[:space:]]+.*sqrtf(@plt)?' "$ASM_FILE" || true)
+if [[ "$SQRTF_PLT" -gt 0 ]]; then
+    info "sqrtf@plt present ($SQRTF_PLT call(s)) — std::sqrt backed by libm (expected)"
+else
+    info "sqrtf@plt absent — std::sqrt inlined to fsqrt by this toolchain (acceptable)"
+fi
+
+# 1c. expf@plt MUST be absent — exp is inline fast_expf polynomial
+if ! grep -qE 'bl[[:space:]]+.*expf(@plt)?' "$ASM_FILE"; then
+    pass "expf@plt absent — exp is the inline fast_expf polynomial"
+else
+    fail "expf@plt PRESENT — exp must be inline fast_expf, not libm"
+    grep -E 'bl[[:space:]]+.*expf(@plt)?' "$ASM_FILE" | sed 's/^/    /' >&2
+    ALL_PASS=0
+fi
+
+# 1d. erff@plt MUST be absent — N(x) is inline ncdf_poly polynomial
+if ! grep -qE 'bl[[:space:]]+.*erff?(@plt)?' "$ASM_FILE"; then
+    pass "erff@plt absent — N(x) is the inline ncdf_poly polynomial"
+else
+    fail "erff@plt PRESENT — N(x) must be inline ncdf_poly, not libm erfc"
+    grep -E 'bl[[:space:]]+.*erff?(@plt)?' "$ASM_FILE" | sed 's/^/    /' >&2
     ALL_PASS=0
 fi
 
@@ -97,8 +122,6 @@ if [[ "$STRIDE4_HITS" -gt 0 ]]; then
 elif [[ "$STRIDE1_HITS" -gt 0 ]]; then
     pass "Loop back-edge increments by #0x1 — stride is one element"
 else
-    # Compiler may use pointer arithmetic rather than an index register; check for
-    # a #0x4 address advance on the output pointer (4 bytes per float)
     warn "No explicit #0x1 index increment found — compiler may use pointer arithmetic"
     warn "  Verify loop structure manually in the disassembly below"
     warn "  Expected: ldr / str at successive addresses, no v*.4s loads"
@@ -112,10 +135,9 @@ cat "$ASM_FILE"
 # ─── Summary ──────────────────────────────────────────────────────────────────
 header "Summary"
 if [[ $ALL_PASS -eq 1 ]]; then
-    pass "All codegen checks passed"
+    pass "All codegen checks passed — price_scalar_poly matches demo-3 spec"
     info "Post the disassembly above, then run: ./run_addendum.sh"
 else
     fail "One or more codegen checks FAILED — do not proceed to timing captures"
-    fail "See addendum brief open items (§residual-libm, §accidental-autovec)"
     exit 1
 fi
