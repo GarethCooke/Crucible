@@ -1,9 +1,9 @@
 FPCR FZ bit: SET (fpcr=0x0000000001000000)
 correctness OK: max_abs_error=2.670e-05 (threshold 1e-4)
 variant=scalar_poly  N=16384
-run 1:   70.073 ns/op   1.427e+07 ops/sec
-run 2:   68.034 ns/op   1.470e+07 ops/sec
-run 3:   67.949 ns/op   1.472e+07 ops/sec
-run 4:   67.907 ns/op   1.473e+07 ops/sec
-run 5:   68.125 ns/op   1.468e+07 ops/sec
-median:    68.034 ns/op   1.470e+07 ops/sec
+run 1:   68.271 ns/op   1.465e+07 ops/sec
+run 2:   69.060 ns/op   1.448e+07 ops/sec
+run 3:   67.726 ns/op   1.477e+07 ops/sec
+run 4:   67.673 ns/op   1.478e+07 ops/sec
+run 5:   67.829 ns/op   1.474e+07 ops/sec
+median:    67.829 ns/op   1.474e+07 ops/sec
