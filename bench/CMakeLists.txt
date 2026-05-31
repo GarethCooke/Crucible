@@ -46,6 +46,12 @@ add_subdirectory(demos/06-aos-vs-soa)
 add_subdirectory(demos/07-no-crossover)
 add_subdirectory(demos/08-sorting-shootout)
 
+# Demo 09 targets AArch64 Linux (Raspberry Pi 5 / BCM2712 / Cortex-A76).
+# -mcpu=cortex-a76 and <arm_neon.h> are not available on x86.
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
+    add_subdirectory(demos/09-arm-neon)
+endif()
+
 option(CRUCIBLE_BUILD_PILOTS "Build throwaway pilot benches under bench/pilots/" OFF)
 if(CRUCIBLE_BUILD_PILOTS)
 

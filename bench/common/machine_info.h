@@ -163,6 +163,12 @@ inline std::string machine_info_json() {
     // lscpu --extended: makes CCX topology visible; condensed to one line via \n escaping
     const auto lscpu_ext = shell_multiline("lscpu --extended 2>/dev/null");
 
+    // arch: ISA family (e.g. "x86_64", "aarch64") — distinguishes the two rigs.
+    const auto arch = shell("uname -m");
+    // soc: SoC/board model from device-tree (Pi: "Raspberry Pi 5 Model B Rev 1.0").
+    // Absent on x86 (no device-tree); 2>/dev/null + tr strip the NUL terminator.
+    const auto soc  = shell("tr -d '\\0' < /proc/device-tree/model 2>/dev/null");
+
     const bool smt_on   = (smt_raw != "1");
 
     std::string turbo_field;
@@ -186,7 +192,9 @@ inline std::string machine_info_json() {
         + (iso_effective.empty() ? "" : "\"isolated_cpus_effective\":\"" + iso_effective + "\",")
         + "\"isolated_cpus_source\":\""     + iso_source    + "\","
         "\"cpu_affinity\":\""               + cpu_affinity  + "\","
-        "\"lscpu_extended\":\""             + lscpu_ext     + "\"";
+        "\"lscpu_extended\":\""             + lscpu_ext     + "\","
+        "\"arch\":\""                       + arch          + "\","
+        "\"soc\":"                          + (soc.empty() ? "null" : "\"" + soc + "\"");
 }
 
 } // namespace crucible

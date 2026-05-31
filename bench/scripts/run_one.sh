@@ -47,6 +47,15 @@ trap cleanup EXIT
 
 sudo -v  # refresh sudo cache — cset/perf calls throughout this script need it
 
+# On AArch64 (Pi rig): skip x86 cpupower turbo check and lib.sh env asserts.
+# Pi uses isolcpus + clock pinning instead of Intel CPB; pi-preflight.sh is the
+# Pi-specific env guard and runs inside each Pi demo block below.
+if [[ "$(uname -m)" == "aarch64" ]]; then
+    export CRUCIBLE_TURBO="${CRUCIBLE_TURBO:-off}"
+    SKIP_ENV_CHECKS=1
+    echo "AArch64 rig detected — CRUCIBLE_TURBO=${CRUCIBLE_TURBO}, env checks delegated to pi-preflight.sh" >&2
+fi
+
 # Verify turbo state and export for machine_info.h to consume.
 # Caller can pre-set CRUCIBLE_TURBO=on|off to override (e.g. on systems
 # without cpupower); otherwise we derive it from cpupower output.
@@ -538,6 +547,62 @@ if [[ "${SLUG}" == "08-sorting-shootout" ]]; then
         "${TMPFILE}" "${CAPTURED_AT}" "${MACHINE_JSON}" "${OUT_JSON}"
 
     echo "==> Done: ${OUT_JSON}"
+    exit 0
+fi
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ─── Demo 09: ARM NEON Black-Scholes — Pi 5 rig (AArch64 / BCM2712 / Cortex-A76) ──
+# Capture environment (§7):
+#   isolcpus=2,3, taskset -c 3, pi-preflight.sh green before AND after.
+# No cset shield — Pi uses kernel isolcpus + taskset for isolation.
+# pi-preflight.sh checks: governor=performance, clock pinned 2400 MHz, throttle=0x0,
+# perf_event_paranoid<=1.  The after-check is mandatory given the thin thermal margin
+# (~1.5°C below soft-throttle at the end of the pilot soak window).
+if [[ "${SLUG}" == "09-arm-neon" ]]; then
+    VERIFY_BIN="${BENCH_ROOT}/build/demos/09-arm-neon/verify_09_arm_neon"
+    BS_BINARY="${BENCH_ROOT}/build/demos/09-arm-neon/bench_09_arm_neon"
+    PREFLIGHT="${BENCH_ROOT}/scripts/pi-preflight.sh"
+
+    if [[ "$(uname -m)" != "aarch64" ]]; then
+        echo "ERROR: 09-arm-neon must be captured on the AArch64 Pi rig (got: $(uname -m))." >&2
+        exit 1
+    fi
+
+    for bin in "${VERIFY_BIN}" "${BS_BINARY}"; do
+        if [[ ! -x "${bin}" ]]; then
+            echo "ERROR: binary not found: ${bin}" >&2; exit 1
+        fi
+    done
+
+    echo "==> Running pi-preflight.sh (before capture)..."
+    bash "${PREFLIGHT}"
+
+    echo "==> Running correctness check..."
+    taskset -c 3 "${VERIFY_BIN}"
+
+    echo "==> Collecting machine info..."
+    MACHINE_JSON=$(taskset -c 3 "${BS_BINARY}" --machine-info \
+        | tr -d '\000-\010\013-\037\177')
+
+    TMPFILE=$(mktemp /tmp/crucible_bench_XXXXXX.json)
+
+    echo "==> Running benchmarks (20 repetitions per variant×size)..."
+    taskset -c 3 "${BS_BINARY}" \
+        --benchmark_format=json \
+        --benchmark_repetitions=20 \
+        --benchmark_report_aggregates_only=false \
+        > "${TMPFILE}"
+
+    echo "==> Running pi-preflight.sh (after capture — thermal guard)..."
+    bash "${PREFLIGHT}"
+
+    echo "==> Assembling output JSON..."
+    CAPTURED_AT=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    python3 "${BENCH_ROOT}/scripts/assemble_results_09.py" \
+        "${TMPFILE}" "${SLUG}" "${CAPTURED_AT}" "${MACHINE_JSON}" \
+        "${REPO_ROOT}/site/src/data/perf/09-arm-neon.json"
+
+    echo "==> Done: ${REPO_ROOT}/site/src/data/perf/09-arm-neon.json"
     exit 0
 fi
 # ─────────────────────────────────────────────────────────────────────────────
