@@ -95,6 +95,19 @@ static inline float32x4_t vec_logf_neon(float32x4_t x) {
     return res;
 }
 
+// ─── Scalar twin of the NEON kernel (for scalar_poly variant) ────────────────
+// Mirrors the NEON body one-to-one: fast_logf/fast_expf/ncdf_poly, __builtin_sqrtf.
+// Width-isolating baseline: scalar_poly → neon ratio reflects lane count only.
+// __builtin_sqrtf emits fsqrt on AArch64 unconditionally — no logf/sqrtf@plt.
+static inline float bs_call_scalar_poly(float S, float K, float T, float r, float sigma) {
+    float sig2      = sigma * sigma;
+    float sqrtT     = __builtin_sqrtf(T);
+    float sig_sqrtT = sigma * sqrtT;
+    float d1 = (fast_logf(S / K) + (r + 0.5f * sig2) * T) / sig_sqrtT;
+    float d2 = d1 - sig_sqrtT;
+    return S * ncdf_poly(d1) - K * fast_expf(-r * T) * ncdf_poly(d2);
+}
+
 // ─── 4-wide ncdf_poly (NEON, A&S §26.2.17 NCDF_* coefficients) ───────────────
 // Width-port of scalar ncdf_poly from poly.h.  Uses hardware vdivq_f32.
 static inline float32x4_t vec_ncdf_neon(float32x4_t x) {

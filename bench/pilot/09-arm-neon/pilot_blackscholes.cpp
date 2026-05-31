@@ -48,6 +48,21 @@ void price_autovec(
         C[i] = bs_call_poly(S[i], K[i], T[i], r[i], sigma[i]);
 }
 
+// ─── price_scalar_poly ───────────────────────────────────────────────────────
+// Scalar loop using bs_call_scalar_poly: same inline poly as price_neon
+// (fast_logf, fast_expf, ncdf_poly), one lane per iteration.
+// No-vectorize guard mirrors price_scalar; no-tree-vectorize prevents GCC
+// from widening the loop so the ratio measures width, not autovec behavior.
+__attribute__((noinline, optimize("no-tree-vectorize")))
+void price_scalar_poly(
+    const float* __restrict__ S, const float* __restrict__ K,
+    const float* __restrict__ T, const float* __restrict__ r,
+    const float* __restrict__ sigma, float* __restrict__ C, size_t n)
+{
+    for (size_t i = 0; i < n; ++i)
+        C[i] = bs_call_scalar_poly(S[i], K[i], T[i], r[i], sigma[i]);
+}
+
 // ─── price_neon ───────────────────────────────────────────────────────────────
 // 4-wide hand-vectorised path.  vec_expf/logf/ncdf_neon (poly_neon.h) inline
 // here.  Scalar tail handles n % 4 remainder via bs_call_poly.
@@ -117,8 +132,8 @@ int main(int argc, char* argv[]) {
         else if (std::strcmp(argv[i], "--n") == 0 && i + 1 < argc)
             N = std::stoul(argv[++i]);
     }
-    if (variant != "scalar" && variant != "neon" && variant != "autovec") {
-        fprintf(stderr, "Usage: %s --variant {scalar|neon|autovec} [--n N]\n", argv[0]);
+    if (variant != "scalar" && variant != "neon" && variant != "autovec" && variant != "scalar_poly") {
+        fprintf(stderr, "Usage: %s --variant {scalar|neon|autovec|scalar_poly} [--n N]\n", argv[0]);
         return 1;
     }
 
@@ -169,11 +184,13 @@ int main(int argc, char* argv[]) {
             oracle[i] = bs_call_libm(S[i], K[i], T[i], r[i], sig[i]);
 
         if (variant == "scalar")
-            price_scalar  (S, K, T, r, sig, C, ORACLE_N);
+            price_scalar      (S, K, T, r, sig, C, ORACLE_N);
         else if (variant == "autovec")
-            price_autovec (S, K, T, r, sig, C, ORACLE_N);
+            price_autovec     (S, K, T, r, sig, C, ORACLE_N);
+        else if (variant == "scalar_poly")
+            price_scalar_poly (S, K, T, r, sig, C, ORACLE_N);
         else
-            price_neon    (S, K, T, r, sig, C, ORACLE_N);
+            price_neon        (S, K, T, r, sig, C, ORACLE_N);
 
         float max_err = 0.0f;
         for (size_t i = 0; i < ORACLE_N; ++i) {
@@ -196,11 +213,13 @@ int main(int argc, char* argv[]) {
     for (int run = 0; run < 5; ++run) {
         auto t0 = std::chrono::steady_clock::now();
         if (variant == "scalar")
-            price_scalar  (S, K, T, r, sig, C, N);
+            price_scalar      (S, K, T, r, sig, C, N);
         else if (variant == "autovec")
-            price_autovec (S, K, T, r, sig, C, N);
+            price_autovec     (S, K, T, r, sig, C, N);
+        else if (variant == "scalar_poly")
+            price_scalar_poly (S, K, T, r, sig, C, N);
         else
-            price_neon    (S, K, T, r, sig, C, N);
+            price_neon        (S, K, T, r, sig, C, N);
         auto t1 = std::chrono::steady_clock::now();
 
         // Volatile sink — prevents the compiler eliminating the output array

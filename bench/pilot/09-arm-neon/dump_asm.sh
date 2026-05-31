@@ -39,10 +39,13 @@ extract_fn() {
 }
 
 echo "==> Extracting asm sections..."
-extract_fn "price_neon"     "${ASM_DIR}/price_neon.s"
-extract_fn "price_scalar"   "${ASM_DIR}/price_scalar.s"
-extract_fn "price_autovec"  "${ASM_DIR}/price_autovec.s"
+extract_fn "price_neon"        "${ASM_DIR}/price_neon.s"
+extract_fn "price_scalar_poly" "${ASM_DIR}/price_scalar_poly.s"
+extract_fn "price_scalar("     "${ASM_DIR}/price_scalar.s"      # "(" avoids matching price_scalar_poly
+extract_fn "price_autovec"     "${ASM_DIR}/price_autovec.s"
 echo "==> Done.  Acceptance checks:"
-echo "    grep -cE 'fmla|v[0-9]+\\.4s' ${ASM_DIR}/price_neon.s     (expect > 0)"
-echo "    grep -cE 'fmla|v[0-9]+\\.4s' ${ASM_DIR}/price_scalar.s   (expect = 0)"
-echo "    grep -cE 'fmla|v[0-9]+\\.4s' ${ASM_DIR}/price_autovec.s  (expect > 0 — GCC autovec)"
+echo "    grep -cE 'fmla|v[0-9]+\\.4s' ${ASM_DIR}/price_neon.s          (expect > 0)"
+echo "    grep -cE 'fmla|v[0-9]+\\.4s' ${ASM_DIR}/price_scalar.s        (expect = 0)"
+echo "    grep -cE 'fmla|v[0-9]+\\.4s' ${ASM_DIR}/price_autovec.s       (expect > 0 — GCC autovec)"
+echo "    grep -cE 'bl.*(logf|expf|sqrtf)' ${ASM_DIR}/price_scalar_poly.s  (expect = 0)"
+echo "    grep -cE '\\.4s' ${ASM_DIR}/price_scalar_poly.s                (expect = 0)"
