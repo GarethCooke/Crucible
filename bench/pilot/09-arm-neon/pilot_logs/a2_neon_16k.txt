@@ -1,0 +1,9 @@
+FPCR FZ bit: SET (fpcr=0x0000000001000000)
+correctness OK: max_abs_error=2.670e-05 (threshold 1e-4)
+variant=neon  N=16384
+run 1:   13.758 ns/op   7.269e+07 ops/sec
+run 2:   13.395 ns/op   7.466e+07 ops/sec
+run 3:   13.389 ns/op   7.469e+07 ops/sec
+run 4:   13.390 ns/op   7.468e+07 ops/sec
+run 5:   13.393 ns/op   7.467e+07 ops/sec
+median:    13.393 ns/op   7.467e+07 ops/sec
