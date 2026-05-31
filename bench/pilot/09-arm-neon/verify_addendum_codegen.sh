@@ -62,8 +62,15 @@ PLT_HITS=$(grep -cE 'bl[[:space:]]+.*(logf|expf|sqrtf)(@plt)?' "$ASM_FILE" || tr
 if [[ "$PLT_HITS" -eq 0 ]]; then
     pass "No logf/expf/sqrtf PLT calls — hot loop is call-free"
 else
-    fail "Found $PLT_HITS libm PLT call(s) — poly port is incomplete (addendum §open-item-3)"
+    fail "Found $PLT_HITS libm PLT call(s)"
     grep -E 'bl[[:space:]]+.*(logf|expf|sqrtf)(@plt)?' "$ASM_FILE" | sed 's/^/    /' >&2
+    if grep -qE 'bl[[:space:]]+.*sqrtf(@plt)?' "$ASM_FILE"; then
+        fail "  sqrtf@plt: GCC branches to libm for negative inputs to preserve errno."
+        fail "  Fix: replace __builtin_sqrtf with vsqrt_f32 NEON scalar intrinsic in poly_neon.h."
+    fi
+    if grep -qE 'bl[[:space:]]+.*(logf|expf)(@plt)?' "$ASM_FILE"; then
+        fail "  logf/expf@plt: polynomial not fully inlined — check fast_logf/fast_expf usage."
+    fi
     ALL_PASS=0
 fi
 
