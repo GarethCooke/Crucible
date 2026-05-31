@@ -1,0 +1,32 @@
+---
+title: "NEON on ARM: vector width is not a given"
+date: "2026-06-01"
+status: "in-progress"
+expectedAt: "June 2026"
+summary: "The demo 3 Black-Scholes kernel, ported to AArch64 NEON on a Raspberry Pi 5 (Cortex-A76). Same kernel, different ISA — and a vector unit with no wider gear to shift into. A within-machine look at where SIMD tops out when the silicon caps you at four-wide."
+---
+
+<InProgressNotice expectedAt="June 2026" />
+
+## The thesis
+
+[Demo 3](/posts/03-simd-blackscholes) showed SIMD pays off on Zen 2, and climbed from 4-wide SSE up to AVX2. This post takes the same Black-Scholes call-pricing kernel and ports it to a different instruction set entirely — AArch64 NEON, on a Raspberry Pi 5 (Cortex-A76).
+
+The Cortex-A76 is NEON-only: 128-bit registers, four-wide `float32`, and no SVE to reach for. So the architectural expectation is that the kernel tops out near the four-wide ceiling and stays there — where the Zen 2 box had a wider unit to shift into, this core doesn't. Vector width is a property of the silicon, not an assumption you get to make.
+
+This is the first Crucible demo on a second reference machine. That changes one rule: absolute nanoseconds-per-op are never compared across the two rigs — different clocks, cores, and memory make that meaningless. The only portable quantity is the within-machine speedup ratio, and that is what the post will measure.
+
+## What the post will cover
+
+The demo 3 Black-Scholes kernel, on the Pi 5, across two variants:
+
+1. **Scalar baseline** — guarded against autovectorisation, so the comparison is honest. On AArch64, NEON is on by default at `-O3`, which makes this guard load-bearing in a way it isn't on x86.
+2. **Hand-written NEON** — the kernel expressed in `float32x4_t` intrinsics.
+
+An N-sweep across cache-resident sizes, with the headline view contrasting the NEON-over-scalar ratio against demo 3's x86 curve — ratio against ratio, never absolute time against absolute time. The post may also look at how hand-written NEON compares to what GCC's autovectoriser produces on its own, since on ARM that's the default rather than an opt-in.
+
+## What makes the post interesting
+
+The interesting result isn't that SIMD works on ARM — demo 3 already proved vectorisation pays. It's the ceiling. The kernel that kept climbing on Zen 2 has nowhere to climb here, because the hardware caps it at four-wide and there's no wider unit to ask for. It's a clean, on-the-record demonstration that the headroom you got last time was a property of that machine — and that the measurement methodology travels across ISA and microarchitecture intact.
+
+Expected to land in June 2026.
