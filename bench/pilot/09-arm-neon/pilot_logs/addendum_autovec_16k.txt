@@ -1,9 +1,9 @@
 FPCR FZ bit: SET (fpcr=0x0000000001000000)
 correctness OK: max_abs_error=2.670e-05 (threshold 1e-4)
 variant=autovec  N=16384
-run 1:   60.579 ns/op   1.651e+07 ops/sec
-run 2:   59.826 ns/op   1.672e+07 ops/sec
-run 3:   60.744 ns/op   1.646e+07 ops/sec
-run 4:   59.830 ns/op   1.671e+07 ops/sec
-run 5:   59.823 ns/op   1.672e+07 ops/sec
-median:    59.830 ns/op   1.671e+07 ops/sec
+run 1:   60.235 ns/op   1.660e+07 ops/sec
+run 2:   60.795 ns/op   1.645e+07 ops/sec
+run 3:   59.829 ns/op   1.671e+07 ops/sec
+run 4:   59.825 ns/op   1.672e+07 ops/sec
+run 5:   59.815 ns/op   1.672e+07 ops/sec
+median:    59.829 ns/op   1.671e+07 ops/sec
