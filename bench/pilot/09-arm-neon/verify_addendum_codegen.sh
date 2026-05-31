@@ -35,19 +35,22 @@ header() { printf "\n${BOLD}${CYAN}━━━ %s ━━━${RESET}\n" "$*"; }
 die()    { printf "${RED}[ABORT]${RESET} %s\n"    "$*" >&2; exit 1; }
 
 # ─── Build ────────────────────────────────────────────────────────────────────
+REBUILT=0
 header "Build"
 if [[ "${1:-}" == "--build" ]] || [[ ! -x "$BIN" ]]; then
     info "Running cmake build..."
     cmake -S "$SCRIPT_DIR" -B "$BUILD_DIR" -DCMAKE_BUILD_TYPE=Release
     cmake --build "$BUILD_DIR"
+    REBUILT=1
 fi
 [[ -x "$BIN" ]] || die "Binary not found: $BIN — run with --build or cmake manually"
 pass "Binary: $BIN"
 
 # ─── ASM dump ─────────────────────────────────────────────────────────────────
+# Always re-dump after a rebuild so stale .s files don't mask a codegen change.
 header "ASM dump"
-if [[ ! -f "$ASM_FILE" ]]; then
-    info "price_scalar_poly.s not found — running dump_asm.sh..."
+if [[ "$REBUILT" -eq 1 || ! -f "$ASM_FILE" ]]; then
+    info "Dumping asm (rebuilt=$REBUILT)..."
     bash "$SCRIPT_DIR/dump_asm.sh" "$BIN" "$ASM_DIR"
 fi
 [[ -f "$ASM_FILE" ]] || die "price_scalar_poly.s still missing after dump — check dump_asm.sh"
