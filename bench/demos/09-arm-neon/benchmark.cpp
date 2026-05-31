@@ -20,6 +20,11 @@ extern void price_options_autovec(
 extern void price_options_neon(
     const float*, const float*, const float*, const float*, const float*, float*, int64_t);
 
+// ─── Variant index mapping ────────────────────────────────────────────────────
+// TODO(post-ship): check_alignment, run_bm, sizes, and PriceFn are also in
+// demo 03's benchmark.cpp — extract to bench/common/bs_bench_harness.h.
+enum Variant : int { kScalarLibm = 0, kScalarPoly = 1, kAutovec = 2, kNeon = 3, kVariantCount = 4 };
+
 // ─── Input / output arrays ────────────────────────────────────────────────────
 // alignas(16): NEON vld1q_f32 requires 16-byte alignment minimum.
 // Using 32 for consistency with demo 03 harness convention.
@@ -33,7 +38,7 @@ alignas(32) static float gSigma[MAX_N];
 alignas(32) static float gC    [MAX_N];
 
 // Per-variant max absolute error against scalar_libm (computed once at start).
-static float g_max_abs_err[4] = {};
+static float g_max_abs_err[kVariantCount] = {};
 
 // ─── Alignment check ─────────────────────────────────────────────────────────
 [[noreturn]] static void abort_misaligned(const char* name, const void* ptr) {
@@ -68,16 +73,16 @@ static void compute_errors() {
         return e;
     };
 
-    g_max_abs_err[0] = 0.0f; // scalar_libm vs itself
+    g_max_abs_err[kScalarLibm] = 0.0f; // scalar_libm vs itself
 
     price_options_scalar_poly(gS, gK, gT, gR, gSigma, gC, MAX_N);
-    g_max_abs_err[1] = max_err(gC);
+    g_max_abs_err[kScalarPoly] = max_err(gC);
 
     price_options_autovec(gS, gK, gT, gR, gSigma, gC, MAX_N);
-    g_max_abs_err[2] = max_err(gC);
+    g_max_abs_err[kAutovec] = max_err(gC);
 
     price_options_neon(gS, gK, gT, gR, gSigma, gC, MAX_N);
-    g_max_abs_err[3] = max_err(gC);
+    g_max_abs_err[kNeon] = max_err(gC);
 }
 
 // ─── Benchmark helper ─────────────────────────────────────────────────────────
@@ -104,10 +109,10 @@ static void run_bm(benchmark::State& state, PriceFn fn, int var_idx) {
 }
 
 // ─── Benchmark registrations ──────────────────────────────────────────────────
-static void BM_ScalarLibm(benchmark::State& s) { run_bm(s, price_options_scalar_libm, 0); }
-static void BM_ScalarPoly(benchmark::State& s) { run_bm(s, price_options_scalar_poly, 1); }
-static void BM_Autovec   (benchmark::State& s) { run_bm(s, price_options_autovec,     2); }
-static void BM_Neon      (benchmark::State& s) { run_bm(s, price_options_neon,        3); }
+static void BM_ScalarLibm(benchmark::State& s) { run_bm(s, price_options_scalar_libm, kScalarLibm); }
+static void BM_ScalarPoly(benchmark::State& s) { run_bm(s, price_options_scalar_poly, kScalarPoly); }
+static void BM_Autovec   (benchmark::State& s) { run_bm(s, price_options_autovec,     kAutovec);    }
+static void BM_Neon      (benchmark::State& s) { run_bm(s, price_options_neon,        kNeon);       }
 
 static void sizes(benchmark::internal::Benchmark* b) {
     for (int64_t n : {1024LL, 16384LL, 262144LL, 1048576LL})

@@ -1,6 +1,6 @@
 // Variant 3: autovec — natural libm kernel, no anti-autovec guard.
-// Same body as scalar_libm with the __attribute__(optimize("no-tree-vectorize"))
-// guard removed.  GCC is free to autovectorise at -O3 -mcpu=cortex-a76.
+// Same loop body as scalar_libm.cpp; only the function name and the
+// optimize("no-tree-vectorize") attribute differ.  GCC is free to autovectorise.
 // Compiled with: -O3 -mcpu=cortex-a76
 //
 // Pilot finding (and §2 acceptance criterion): GCC cannot cross the logf@plt
@@ -11,6 +11,7 @@
 // table; the compiler cannot collect it automatically.
 // Acceptance: zero .4s parallel-float compute ops in the hot loop.
 
+#include "inputs.h"
 #include <cmath>
 #include <cstdint>
 
@@ -24,14 +25,13 @@ void price_options_autovec(
     float*       __restrict__ C,
     int64_t n)
 {
-    static constexpr float M_SQRT1_2F = 0.70710678118654752f; // 1/√2
     for (int64_t i = 0; i < n; ++i) {
         float s = S[i], k = K[i], t = T[i], rv = r[i], sig = sigma[i];
         float sig_sqrtT = sig * std::sqrt(t);
         float d1 = (std::log(s / k) + (rv + 0.5f * sig * sig) * t) / sig_sqrtT;
         float d2 = d1 - sig_sqrtT;
-        float Nd1 = 0.5f * std::erfc(-d1 * M_SQRT1_2F);
-        float Nd2 = 0.5f * std::erfc(-d2 * M_SQRT1_2F);
+        float Nd1 = 0.5f * std::erfc(-d1 * BS_SQRT1_2F);
+        float Nd2 = 0.5f * std::erfc(-d2 * BS_SQRT1_2F);
         C[i] = s * Nd1 - k * std::exp(-rv * t) * Nd2;
     }
 }

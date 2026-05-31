@@ -10,26 +10,12 @@
 // per the brief.  Do not silently fork a third copy.
 //
 // Exports (all static inline, intended to be inlined into neon_intrinsics.cpp):
-//   set_fpcr_ftz()      — set FPCR FZ bit (AArch64 equivalent of x86 FTZ)
 //   vec_expf_neon()     — 4-wide fast_expf
 //   vec_logf_neon()     — 4-wide fast_logf (Cephes LOG_P coefficients)
 //   vec_ncdf_neon()     — 4-wide ncdf_poly (A&S §26.2.17)
 
 #include "../03-simd-blackscholes/poly.h"
 #include <arm_neon.h>
-#include <cstdint>
-
-// ─── FPCR flush-to-zero ───────────────────────────────────────────────────────
-// AArch64 FPCR bit 24 (FZ): flushes input and output denormals to zero.
-// ARM equivalent of x86 _MM_SET_FLUSH_ZERO_MODE(_MM_FLUSH_ZERO_ON).
-// Deep-OTM Black-Scholes tails produce subnormals; without FZ these cost 50+
-// extra cycles on the A76, contaminating timing.
-inline void set_fpcr_ftz() {
-    uint64_t fpcr;
-    __asm__ volatile("mrs %0, fpcr" : "=r"(fpcr));
-    fpcr |= (1ULL << 24);
-    __asm__ volatile("msr fpcr, %0" :: "r"(fpcr));
-}
 
 // ─── 4-wide fast_expf (NEON) ──────────────────────────────────────────────────
 // Width-port of scalar fast_expf from poly.h.  Same EXP_C* Taylor coefficients.

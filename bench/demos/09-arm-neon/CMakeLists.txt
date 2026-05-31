@@ -21,6 +21,11 @@ target_compile_options(bs09_scalar_libm PRIVATE
     -O3 -mcpu=cortex-a76 -fno-tree-vectorize)
 target_include_directories(bs09_scalar_libm PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
+# Note: scalar_poly.cpp and poly_neon.h both include ../03-simd-blackscholes/poly.h
+# via cross-demo relative path.  CMake does not model this dependency; if demo 03
+# is moved or removed, demo 09 breaks at compile time.
+# Tracked post-ship fix: move poly.h to bench/common/ — see demo-09 plan §4.
+
 # ─── Variant 2: scalar_poly ──────────────────────────────────────────────────
 add_library(bs09_scalar_poly OBJECT scalar_poly.cpp)
 target_compile_options(bs09_scalar_poly PRIVATE

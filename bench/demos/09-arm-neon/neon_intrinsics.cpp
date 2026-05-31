@@ -16,9 +16,9 @@
 
 // ─── 4-wide Black-Scholes call price ─────────────────────────────────────────
 static inline void price4(
-    const float* S, const float* K,
-    const float* T, const float* r, const float* sigma,
-    float* C)
+    const float* __restrict__ S, const float* __restrict__ K,
+    const float* __restrict__ T, const float* __restrict__ r,
+    const float* __restrict__ sigma, float* __restrict__ C)
 {
     float32x4_t vS   = vld1q_f32(S);
     float32x4_t vK   = vld1q_f32(K);

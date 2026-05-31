@@ -5,8 +5,9 @@
 // prices them with all four variants, and reports max|C_variant - C_libm|.
 // Exits 0 if all variants meet the 1e-4 threshold; exits 1 otherwise.
 
+// TODO(post-ship): max_abs_err and main structure also in demo 03's verify.cpp —
+// extract to bench/common/bs_bench_harness.h.
 #include "inputs.h"
-#include "../03-simd-blackscholes/poly.h"
 
 #include <algorithm>
 #include <cmath>
@@ -31,7 +32,7 @@ alignas(32) static float gK    [N];
 alignas(32) static float gT    [N];
 alignas(32) static float gR    [N];
 alignas(32) static float gSigma[N];
-alignas(32) static float gRef  [N];
+alignas(32) static float gC_ref  [N];
 alignas(32) static float gOut  [N];
 
 static float max_abs_err(const float* a, const float* b, int64_t n) {
@@ -52,7 +53,7 @@ int main() {
 #endif
 
     gen_inputs(gS, gK, gT, gR, gSigma, N);
-    price_options_scalar_libm(gS, gK, gT, gR, gSigma, gRef, N);
+    price_options_scalar_libm(gS, gK, gT, gR, gSigma, gC_ref, N);
 
     static constexpr float THRESHOLD = 1e-4f;
     bool all_pass = true;
@@ -65,7 +66,7 @@ int main() {
 
     for (auto& v : variants) {
         v.fn(gS, gK, gT, gR, gSigma, gOut, N);
-        float err = max_abs_err(gRef, gOut, N);
+        float err = max_abs_err(gC_ref, gOut, N);
         bool pass = (err < THRESHOLD);
         std::printf("%-14s  max_abs_error = %.2e  %s\n",
             v.name, static_cast<double>(err), pass ? "PASS" : "FAIL");

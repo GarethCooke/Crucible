@@ -2,6 +2,8 @@
 
 Tracking doc for demo 9 (ARM NEON cross-arch: Black-Scholes call pricing on the Raspberry Pi 5, the cross-arch companion to demo 3's SIMD shootout on Zen 2). The teaser stub ships to `main` first (§0); substantive work proceeds on a feature branch. This is the first demo on a **second reference machine** (Pi 5, BCM2712, Cortex-A76, AArch64), so it carries a rig bring-up step (§1) that earlier demos didn't need.
 
+All demo 9 briefs referenced in this plan live in `docs/briefs/09/`; filenames below are given bare and resolve to that folder.
+
 This plan applies the lessons from demos 5–8:
 
 1. **Preflight calibration is a task, and the pilot may reframe the thesis.** Demo 9's headline is pilot-contingent: it depends on the NEON-over-scalar ratio landing near the 4-wide ceiling (~4×) at a cache-resident N, and on whether hand-written NEON beats the autovectoriser. The pilot (§2) confirms both before the brief commits, and decides whether the post is one story (the width ceiling alone) or two.
@@ -64,7 +66,7 @@ Not "SIMD also works on ARM" — demo 3 already proved vectorisation. The reason
 - **Teaser timing (§0).** Demo 8 shipped the teaser first. For demo 9 the pilot can still kill or reframe the post, so the safer default is to hold §0 until §2 returns GO. Editorial — but flagged because shipping an in-progress pill for a demo that then reframes is a worse look than a slightly later teaser.
 - **Machine-block schema for a second machine.** How the Pi is represented in the JSON `machine` block, and whether a field needs adding. §4 decision; flag during §2 if the `perf`/`machine_info` probing surfaces something the schema can't express.
 - **Algorithm-win line.** Demo 3 had a libm-vs-poly variant isolating the algorithmic win before SIMD. Whether demo 9 repeats it or stays a pure width story is editorial — default to pure width unless §2 suggests the algorithm win reads differently on ARM.
-- **Shared `poly.h`.** The pilot lifts demo 3's polynomial math by copy. If a `bench/common/poly.h` is the right home, that's a §4 decision (it touches demo 3) — deliberately deferred out of the pilot.
+- **Shared `poly.h`.** §4 resolved to a cross-demo include (`demo 9 → ../03-simd-blackscholes/poly.h`), matching the pilot; not forked. The coupling is made visible by a one-line comment in demo 3's `poly.h`, landed via `demo-03-batched-edit-brief.md` (batched with the arch backfill and the §8 forward-link). The clean decoupling — splitting the shared transcendental polynomials into `bench/common/poly.h` while per-demo flop-accounting stays local — is a tracked **post-ship** refactor with a CC brief already written and filed at `docs/briefs/09/bench-common-polyh-split-stub.md`, gated on asm-identity for both demos' variant binaries, to run after §11 (demo 3 is a live dependency of in-flight demo 9 work until then).
 
 ## Stop condition
 
