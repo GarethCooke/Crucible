@@ -2,6 +2,7 @@
 // Shared polynomial coefficients and scalar inline implementations.
 // Used by scalar_poly.cpp, sse2_intrinsics.cpp, avx2_fma_intrinsics.cpp.
 // scalar_libm.cpp does NOT include this — it uses <cmath> directly.
+// Also consumed by bench/demos/09-arm-neon (cross-demo include). See demo-09 plan; a bench/common/ split is the tracked post-ship fix.
 //
 // ─── Flop count per Black-Scholes call price ─────────────────────────────────
 //
