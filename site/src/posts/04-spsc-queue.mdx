@@ -231,13 +231,17 @@ worth labelling separately.
 
 `boost::lockfree::spsc_queue` is a production-quality implementation with the same
 structural properties as the hand-rolled version: power-of-2 capacity, `acquire`/`release`
-atomics, cache-line-aware layout. Under 1 MHz paced load, the hand-rolled
-implementation comes in at 132 ns p50 vs Boost's 122 ns — within 8%. The p99.9
-gap is wider — 172 ns vs 148 ns, about 16% — but both are still orders of
-magnitude inside the mutex variant's tail. That's the credibility check:
-the hand-rolled version isn't leaving anything obvious on the table relative to a
-battle-tested production library, and conversely Boost isn't doing anything clever
-in its hot path that the 50-line version misses.
+atomics, cache-line-aware layout. Under 1 MHz paced load — the queue stays effectively empty, so latency is
+dominated by per-op cost rather than drain rate — the hand-rolled implementation
+comes in at 132 ns p50 against Boost's 140 ns, and 164 ns vs 172 ns at p99. At
+p99.9 the two are identical at 172 ns. These percentiles are quantised to the
+histogram's log-spaced buckets (~5 ns wide in this range), so the p50 and p99
+gaps are about one bucket each — a small, consistent edge to the hand-rolled
+version, not a decisive one, and below what the load-sweep chart can resolve on a
+log axis. That's the credibility check: at this load the 50-line hand-rolled
+queue matches a battle-tested production library across the distribution, edging
+it at the median and tying it in the tail. Neither leaves anything obvious on the
+table, and neither is doing anything clever in its hot path that the other misses.
 
 ## What this doesn't show
 
