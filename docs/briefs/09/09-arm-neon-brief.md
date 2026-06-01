@@ -8,14 +8,15 @@ Format follows demo 7/8's implementation briefs. Bench work is on the feature br
 
 The pilot resolved the four open contingencies the plan flagged for §3:
 
-- **Headline is the width ceiling, ~4.5×.** Hand-NEON over the demo-3-matched scalar baseline measured **4.47× at 16k, 4.78× at 1M** (pilot, throwaway bench). This is against `scalar_poly` built to demo 3's exact construction, so it is directly comparable to demo 3's `sse2/scalar_poly` (3.79× / 4.12×).
-- **Two stories, not one — autovec is the second axis, and it's a null-that-isn't.** GCC's autovectoriser produced output **byte-identical to the scalar baseline** (asm-identical after address normalisation; timing within 0.1%). It cannot cross the libm `logf` call or the data-dependent edge branch. On AArch64, where NEON is on by default at `-O3`, "baseline" does not mean "free": reaching the ceiling requires hand-written branchless intrinsics. That is a genuine finding and ships as a charted line.
+- **Headline is the width ceiling, ≈4.3×.** Formal calibration (2026-06-01) over `scalar_poly` yields **4.32× at 16k, 4.74× at 1M** (pilot was 4.47× / 4.78× — formal supersedes). This is against `scalar_poly` built to demo 3's exact construction, so it is directly comparable to demo 3's `sse2/scalar_poly` (3.79× / 4.12×). The ceiling range ≈4.3–4.8× across N: the residual above 4× is reduced loop overhead as N grows, not a wider unit.
+- **Two stories, not one — autovec is the second axis, and it's a null-that-isn't.** GCC's autovectoriser produced output **byte-identical to `scalar_libm`** (asm-identical after address normalisation; timing within 0.01% of `scalar_libm` at every N). It cannot cross the libm `logf` call or the data-dependent edge branch. On AArch64, where NEON is on by default at `-O3`, "baseline" does not mean "free": reaching the ceiling requires hand-written branchless intrinsics. That is a genuine finding and ships as a charted line.
 - **Counters populate (A1 pass).** cycles, instructions, branch-misses, cache-misses/refs all read on the A76 PMU. The `<CounterOverlay>` panel stays in.
 - **Thermal pass, thin margin (A4).** `throttled=0x0` for the full soak; peak 78.5°C, ~1.5°C under the soft-throttle point, still drifting up at the end of the window. Capture is trustworthy but the before/after `get_throttled` guard is load-bearing — see §Capture environment.
 
 Two cross-arch nuggets the pilot surfaced, both relevant to framing:
 
-- The demo-3-spec `scalar_poly` (libm log + poly exp/N(x)) is **dead-equal to all-libm `scalar_libm`** on the A76 (within 0.05%), where the same poly swap is +11% on x86. The poly exp/N(x) advantage does not travel to ARM. Useful consequence: the baseline choice does not change the ratio, so the demo-3-matched baseline and the simplest all-libm baseline measure the same — no caveat to carry about which we picked.
+- `scalar_poly` runs 6–7% faster than `scalar_libm` (7.0% at 16k narrowing to 6.3% at 1M). The gap is the algorithm, not the harness: `scalar_libm` pays libm `exp` and two `erfc` calls per option, which `scalar_poly` inlines as polynomial approximations (verified in the committed asm — `scalar_libm` emits `bl expf` + `bl erfcf`×2 in the hot path, `scalar_poly` emits neither).
+- The baseline choice changes both the number and the meaning. `neon` and `scalar_poly` share the same polynomial kernel (identical `max_abs_error`, 5.722e-05) — `neon` is its 4-lane form — so `neon`/`scalar_poly` is the pure vector-width speedup: ≈4.3× at 16k, rising to ≈4.7–4.8× at 262k–1M as fixed per-call overhead amortises. `neon`/`scalar_libm` is larger (≈4.65× at 16k → ≈5.05× at 1M) only because it folds the 6–7% algorithm win into the ratio. **A vector-width claim must use `scalar_poly` as the denominator**: a 4-wide unit cannot deliver a width speedup above 4×, so the >5× figure against `scalar_libm` would silently smuggle the algorithm win into "width" and read as beating the very ceiling this post is about.
 - An all-poly scalar (poly log too) is ~12% _slower_ than libm on the A76 — the reverse of x86. This is **not isolated** (log change bundled with the exp/N(x) change) and does **not** ship; recorded in pilot notes only. Do not state a "poly log is slower on ARM" claim in the post.
 
 The thesis does not rest on the exact first-step ratio. It rests on the contrast: Zen 2 takes the SSE step (~4×) **and then a second AVX2 step** (1.99× at 16k, 2.25× at 1M); the A76 has **no second step**, because 128-bit NEON is the widest unit on the BCM2712 — no SVE. That presence-vs-absence is the spine and no baseline choice touches it.
@@ -53,6 +54,10 @@ Sweep `{1024, 16384, 262144, 1048576}`, matching demo 3. **Headline N = 16384** 
 
 Output to `site/src/data/perf/09-arm-neon.json`, validating against the locked schema. The **second-machine schema question** is now live: add an `arch` (and/or `soc`) field to the `machine` block to represent the Pi (AArch64 / BCM2712 / Cortex-A76) distinctly from the Zen 2 rig. If adding the field requires touching demo 1–8 JSON or the schema in a way that affects shipped demos, **stop and report** before editing — that is a cross-demo decision, not a unilateral §4 change.
 
+**Variant key convention (resolved):** JSON keys use the no-underscore form (`"scalarlibm"`, `"scalarpoly"`) matching demo 3's existing pattern. `<ThroughputBars>` and `<TimeVsN>` components have no hardcoded variant name expectations — they read `r.variant` from the JSON directly. When MDX chart components are added, use `variantLabels={{ scalarlibm: 'scalar_libm', scalarpoly: 'scalar_poly' }}` for display-name mapping. Prose and headings continue to use the underscore form (`scalar_libm`, `scalar_poly`). Do not rename the JSON keys.
+
+**`machine.cores_physical` (resolved):** The probe returned `0` for the BCM2712. Hard-set to `4` (Cortex-A76 quad-core) with a comment in the bench output code.
+
 ### 5. Counter capture [CC bench, user run]
 
 `<CounterOverlay>` panel stays (A1 passed). Capture cycles, instructions, branch-misses, cache-misses/refs for the headline variants. Record any raw-event fallback used for the A76 PMU mapping.
@@ -65,7 +70,7 @@ Pinned:
 - `<ThroughputBars>` — the width ratio, `neon` over `scalar_poly`, with `scalar_libm` and `autovec` shown coincident to make the "autovec = scalar" point visible.
 - `<CounterOverlay>` — IPC and cache behaviour, headline N.
 - `<CodeCompare>` — scalar inner body vs the `float32x4_t` NEON body (branchless edge handling is the visible contrast).
-- **Cross-arch ratio ladder** — the §6 composition. A ratio-only view (never absolute ns/op) showing both arches' steps: Zen 2 `scalar → SSE (~4×) → AVX2 (+2×)` and Pi `scalar → NEON (~4.5×) → [no rung]`, the A76's wider-than-128-bit slot explicitly empty and labelled (no SVE). **Compose from `<ThroughputBars>`; do not fork a bespoke component.**
+- **Cross-arch ratio ladder** — the §6 composition. A ratio-only view (never absolute ns/op) showing both arches' steps: Zen 2 `scalar → SSE (~4×) → AVX2 (+2×)` and Pi `scalar → NEON (~4.3–4.8×) → [no rung]`, the A76's wider-than-128-bit slot explicitly empty and labelled (no SVE). **Compose from `<ThroughputBars>`; do not fork a bespoke component.**
 
 ### 7. Capture environment [user — §7]
 
@@ -95,9 +100,9 @@ Stated, not assumed:
 
 The formal harness must reproduce the pilot within tolerance at the headline N:
 
-- `neon / scalar_poly` ≈ 4.5× at 16k, ≈ 4.8× at 1M (pilot: 4.47× / 4.78×).
-- `autovec` within ~1% of `scalar_libm` at both N.
-- `scalar_poly` within ~1% of `scalar_libm` at both N (the A76 poly-swap wash).
+- `neon / scalar_poly` ≈ 4.3× at 16k, ≈ 4.7× at 1M (formal calibration 2026-06-01: 4.32× / 4.74×; pilot was 4.47× / 4.78×).
+- `autovec` within 0.01% of `scalar_libm` at all N (formal calibration confirmed).
+- `scalar_poly` 6–7% faster than `scalar_libm` at both N (formal calibration confirmed; Debian libm `erfc`/`exp` cost is not negligible on the A76).
 - correctness `max_abs_error` < 1e-4 all variants (pilot: 2.670e-05).
   A divergence beyond tolerance loops back to §4 or rescopes §3 — expected, not a failure.
 
