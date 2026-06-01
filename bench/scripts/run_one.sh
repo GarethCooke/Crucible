@@ -85,7 +85,7 @@ fi
 
 echo "==> Building ${SLUG}..."
 cmake -B "${BENCH_ROOT}/build" -S "${BENCH_ROOT}" -DCMAKE_BUILD_TYPE=Release -Wno-dev --log-level=ERROR
-cmake --build "${BENCH_ROOT}/build" --parallel > /dev/null
+cmake --build "${BENCH_ROOT}/build" --target "${BINARY_NAME}" --parallel > /dev/null
 
 # ─── Demo 03: SIMD Black-Scholes — verify then benchmark ─────────────────────
 # Runs correctness check first (exits non-zero on failure), then benchmarks.
