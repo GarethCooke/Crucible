@@ -43,9 +43,13 @@ interface Props {
   runs: SweepRun[]
   variants?: string[]
   title?: string
+  /** Ratio (achieved/offered) below which a point is considered decoupled. Default 0.9. */
+  decoupleThreshold?: number
+  /** When true, render the decoupled tail as a faint dashed continuation. Default false. */
+  showDecoupledTail?: boolean
 }
 
-export function LatencyVsLoadChart({ runs, variants, title }: Props) {
+export function LatencyVsLoadChart({ runs, variants, title, decoupleThreshold = 0.9, showDecoupledTail = false }: Props) {
   const ref = useChartEffect((el) => {
     const orderedVariants = variants ?? [...new Set(runs.map((r) => r.variant))]
     const valid = runs.filter(
@@ -55,8 +59,8 @@ export function LatencyVsLoadChart({ runs, variants, title }: Props) {
         r.latency_ns?.stats != null,
     )
     if (valid.length === 0) return
-    render(el, valid, orderedVariants, title)
-  }, [runs, variants, title])
+    render(el, valid, orderedVariants, title, decoupleThreshold, showDecoupledTail)
+  }, [runs, variants, title, decoupleThreshold, showDecoupledTail])
 
   return (
     <ChartZoom>
@@ -65,7 +69,7 @@ export function LatencyVsLoadChart({ runs, variants, title }: Props) {
   )
 }
 
-function render(el: SVGSVGElement, runs: SweepRun[], orderedVariants: string[], title?: string) {
+function render(el: SVGSVGElement, runs: SweepRun[], orderedVariants: string[], title?: string, decoupleThreshold = 0.9, showDecoupledTail = false) {
   const H = 380
   const W = el.clientWidth || 680
   const isNarrow = W < tokens.chart.mobileBreakpoint
@@ -85,6 +89,20 @@ function render(el: SVGSVGElement, runs: SweepRun[], orderedVariants: string[], 
     arr.sort((a, b) => (a.offered_rate_hz ?? 0) - (b.offered_rate_hz ?? 0))
   }
 
+  // Compute decoupling index per variant: first point where achieved/offered < threshold.
+  // All points at and before this index are "coupled" (drawn solid); points after are the
+  // non-physical tail (clipped by default, shown faint when showDecoupledTail=true).
+  const decoupleIdxByVariant = new Map<string, number>()
+  for (const [name, arr] of byVariant.entries()) {
+    const idx = arr.findIndex((r) => {
+      const offered = r.offered_rate_hz ?? 0
+      const achieved = r.ops_per_sec ?? 0
+      return offered > 0 && achieved > 0 && achieved / offered < decoupleThreshold
+    })
+    decoupleIdxByVariant.set(name, idx)
+  }
+
+  // Scale domains use all points so the axes are stable regardless of tail visibility.
   let xMin = Infinity, xMax = 0, yMin = Infinity, yMax = 0
   for (const arr of byVariant.values()) {
     for (const r of arr) {
@@ -121,15 +139,23 @@ function render(el: SVGSVGElement, runs: SweepRun[], orderedVariants: string[], 
     const varIdx = orderedVariants.indexOf(variantName)
     const color  = variantColorByIndex(varIdx)
 
+    const decoupleIdx = decoupleIdxByVariant.get(variantName) ?? -1
+    // splitIdx: index of the first decoupled point (included in the solid line).
+    // -1 means no decoupling found; treat all points as coupled.
+    const splitIdx = decoupleIdx === -1 ? arr.length - 1 : decoupleIdx
+    const coupledArr = arr.slice(0, splitIdx + 1)
+    const tailArr    = arr.slice(splitIdx + 1)
+
     for (const stat of STATS_SHOWN) {
-      const points: [number, number][] = arr
+      const coupled: [number, number][] = coupledArr
         .map((r) => [r.offered_rate_hz!, r.latency_ns!.stats[stat as keyof LatencyStats] as number] as [number, number])
         .filter(([, v]) => v > 0)
 
-      if (points.length === 0) continue
+      if (coupled.length === 0) continue
 
+      // Solid coupled line
       g.append('path')
-        .datum(points)
+        .datum(coupled)
         .attr('fill', 'none')
         .attr('stroke', color)
         .attr('stroke-width', stat === 'p50' ? 2 : 1.5)
@@ -138,7 +164,7 @@ function render(el: SVGSVGElement, runs: SweepRun[], orderedVariants: string[], 
         .attr('d', lineGen)
 
       g.selectAll(null)
-        .data(points)
+        .data(coupled)
         .enter()
         .append('circle')
         .attr('cx', (d) => x(d[0]))
@@ -146,6 +172,49 @@ function render(el: SVGSVGElement, runs: SweepRun[], orderedVariants: string[], 
         .attr('r', 2.5)
         .attr('fill', color)
         .attr('opacity', stat === 'p50' ? 1 : 0.6)
+
+      // Faint dashed tail (non-physical regime), connected from last coupled point
+      if (showDecoupledTail && tailArr.length > 0) {
+        const tailData: [number, number][] = tailArr
+          .map((r) => [r.offered_rate_hz!, r.latency_ns!.stats[stat as keyof LatencyStats] as number] as [number, number])
+          .filter(([, v]) => v > 0)
+
+        if (tailData.length > 0) {
+          const tailPath: [number, number][] = [coupled[coupled.length - 1], ...tailData]
+          g.append('path')
+            .datum(tailPath)
+            .attr('fill', 'none')
+            .attr('stroke', color)
+            .attr('stroke-width', stat === 'p50' ? 1.5 : 1)
+            .attr('stroke-dasharray', '4,4')
+            .attr('opacity', 0.3)
+            .attr('d', lineGen)
+
+          g.selectAll(null)
+            .data(tailData)
+            .enter()
+            .append('circle')
+            .attr('cx', (d) => x(d[0]))
+            .attr('cy', (d) => y(Math.max(1, d[1])))
+            .attr('r', 2)
+            .attr('fill', color)
+            .attr('opacity', 0.25)
+        }
+      }
+    }
+
+    // One hollow-circle marker per variant at the decoupling point (p50 y-coordinate)
+    if (decoupleIdx !== -1) {
+      const dr = arr[decoupleIdx]
+      if (dr.offered_rate_hz && dr.latency_ns?.stats.p50) {
+        g.append('circle')
+          .attr('cx', x(dr.offered_rate_hz))
+          .attr('cy', y(Math.max(1, dr.latency_ns.stats.p50)))
+          .attr('r', 5.5)
+          .attr('fill', 'none')
+          .attr('stroke', color)
+          .attr('stroke-width', 1.5)
+      }
     }
   }
 
@@ -160,7 +229,17 @@ function render(el: SVGSVGElement, runs: SweepRun[], orderedVariants: string[], 
     : axisBottom(x).ticks(6, '~s').tickSize(0)
 
   appendXAxis(g, inner, colors, xAxis)
-  appendXLabel(svg, 'offered load (items/sec, log scale)', margin.left + inner.w / 2, H - 6, colors)
+  appendXLabel(svg, 'offered load (items/sec, log scale)', margin.left + inner.w / 2, H - 18, colors)
+  if (!isNarrow) {
+    svg.append('text')
+      .attr('x', margin.left + inner.w / 2)
+      .attr('y', H - 4)
+      .attr('text-anchor', 'middle')
+      .attr('font-size', '9px')
+      .attr('font-family', typography.fontMono)
+      .attr('fill', colors.textMuted)
+      .text('x-axis is offered (requested) load; each curve stops where the variant\'s achieved throughput plateaus')
+  }
 
   appendYAxis(g, colors, axisLeft(y).ticks(6, '~g'))
   appendYLabel(svg, 'latency (ns, log scale)', -(margin.top + inner.h / 2), 16, colors)
