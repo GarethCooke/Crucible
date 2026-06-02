@@ -42,7 +42,7 @@ Three scalar lines cluster between 61–73 ns/option across the sweep. NEON sits
 <ThroughputBars
   slug="09-arm-neon"
   targetN={16384}
-  variants={["scalarlibm", "autovec", "scalarpoly", "neon"]}
+  variants={["scalarlibm", "scalarpoly", "neon", "autovec"]}
   stat="median"
   variantLabels={{ scalarlibm: "scalar (libm)", scalarpoly: "scalar (poly)", autovec: "autovec −O3", neon: "NEON (hand)" }}
   title="Median ns/option at N = 16 384 — L2-resident, compute-bound"
@@ -60,7 +60,7 @@ At N = 16 384 — comfortably within the 512 KB per-core L2 on the A76, the clea
 <ThroughputBars
   slug="09-arm-neon"
   targetN={1048576}
-  variants={["scalarlibm", "autovec", "scalarpoly", "neon"]}
+  variants={["scalarlibm", "scalarpoly", "neon", "autovec"]}
   stat="median"
   variantLabels={{ scalarlibm: "scalar (libm)", scalarpoly: "scalar (poly)", autovec: "autovec −O3", neon: "NEON (hand)" }}
   title="Median ns/option at N = 1 048 576 — past L3, fully amortised"

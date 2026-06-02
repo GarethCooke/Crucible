@@ -97,18 +97,32 @@ the input is 20 MB — larger than the 16 MB L3 per CCX — but the workload is
 compute-bound anyway, so throughput per option is essentially identical to the
 L2-resident case.
 
-<Benchmark
+<ThroughputBars
   slug="03-simd-blackscholes"
-  chart="throughput-bars"
+  variants={["scalarlibm", "scalarpoly", "sse2", "avx2fma"]}
+  variantLabels={{
+    scalarlibm: "scalar (libm)",
+    scalarpoly: "scalar (poly)",
+    sse2: "SSE2",
+    avx2fma: "AVX2+FMA",
+  }}
+  stat="median"
   targetN={16384}
-  title="Options priced per second at N=16k — L2-resident, compute-bound (higher is better)"
+  title="Median ns/option at N=16k — L2-resident, compute-bound (lower is better)"
 />
 
-<Benchmark
+<ThroughputBars
   slug="03-simd-blackscholes"
-  chart="throughput-bars"
+  variants={["scalarlibm", "scalarpoly", "sse2", "avx2fma"]}
+  variantLabels={{
+    scalarlibm: "scalar (libm)",
+    scalarpoly: "scalar (poly)",
+    sse2: "SSE2",
+    avx2fma: "AVX2+FMA",
+  }}
+  stat="median"
   targetN={1048576}
-  title="Options priced per second at N=1M — fully amortised (higher is better)"
+  title="Median ns/option at N=1M — fully amortised (lower is better)"
 />
 
 ## Decomposing the speedup
