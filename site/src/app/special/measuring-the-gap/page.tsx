@@ -72,9 +72,6 @@ export default async function MeasuringTheGapPage() {
   const n4ideal = groverIdeal.find((p) => p.n === 4)?.mean ?? null
   const n5ideal = groverIdeal.find((p) => p.n === 5)?.mean ?? null
 
-  const bvIdeal = data.ns_sweep.bv_ideal
-  const bvN5ideal = bvIdeal.find((p) => p.n === 5)?.mean ?? null
-
   const teachN = data.teaching_sweep.n
   const teachOpt = data.teaching_sweep.curve.reduce(
     (best, pt) => (pt.p_marked > best.p_marked ? pt : best),
@@ -299,12 +296,10 @@ export default async function MeasuringTheGapPage() {
         <H2>Does error mitigation help?</H2>
         <P>
           Dynamical decoupling (DD) and measurement twirling are the standard mitigation toolkit on
-          IBM hardware. The pilot experiments found a consistent "not a free lunch" result: mitigation
-          hurt where Grover already works (N=8), inflated run-to-run variance at the mid-collapse
-          point (N=16), and made no significant difference where the circuit had already collapsed
-          (N=32). If the committed hardware numbers show the mitigation effect at N=16 sitting within
-          the run-to-run spread, the panel caption will note "no significant effect" — the pilot was
-          suggestive but not conclusive at that N.
+          IBM hardware. The panel below compares Grover device success with mitigation off vs on
+          across N. Significance is assessed per N from run-to-run spread: where the off and on
+          intervals overlap, no effect is claimed; where they are disjoint, the signed difference
+          (off−on) is shown.{pending ? ' Device data is pending; the panel will update once the capture run is committed.' : ''}
         </P>
         <QuantumMitigation />
         <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>
