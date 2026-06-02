@@ -150,6 +150,190 @@ def sweep_iterations_aer(n, marked, max_iters=None, shots=4096):
     return curve
 
 
+# --- Run 1: the success-probability sweep (resolves Q1) -----------------------
+
+
+def marked_states(n, count):
+    """A deterministic, reproducible spread of `count` distinct marked states.
+
+    Evenly spaced across [0, 2^n) so the averaged P(marked) isn't biased by one
+    'easy' state (e.g. all-ones). Reproducible: same set every run.
+    """
+    N = 2**n
+    count = min(count, N)
+    idxs = sorted({round(i * (N - 1) / max(1, count - 1)) for i in range(count)})
+    return [format(idx, f"0{n}b") for idx in idxs]
+
+
+def _pub_counts(pub_result):
+    """Extract counts from a SamplerV2 PUB result (version-sensitive access)."""
+    data = pub_result.data
+    creg = next(iter(data.__dict__))  # default classical register name
+    return getattr(data, creg).get_counts()
+
+
+def _plan(ns, marked_count, reps):
+    """Build the (n, marked, rep) circuit plan shared by Aer and hardware paths."""
+    plan = []
+    for n in ns:
+        for marked in marked_states(n, marked_count):
+            for rep in range(reps):
+                plan.append((n, marked, rep))
+    return plan
+
+
+def _aggregate(records):
+    """records: list of dicts with n, p_marked. Return per-N mean P(marked)."""
+    by_n = {}
+    for r in records:
+        by_n.setdefault(r["n"], []).append(r["p_marked"])
+    return {n: sum(ps) / len(ps) for n, ps in by_n.items()}
+
+
+def run1_aer(ns, marked_count, reps, shots):
+    """Dry run: validate the whole plan on the noiseless simulator (free).
+
+    This is the ideal reference curve AND the pre-submission correctness check —
+    every circuit here must put P(marked) near 1.0, or the hardware run is wasted.
+    """
+    from qiskit import transpile
+    from qiskit_aer import AerSimulator
+
+    sim = AerSimulator()
+    plan = _plan(ns, marked_count, reps)
+    print(
+        f"Run 1 Aer dry-run: {len(plan)} circuits  (ns={ns}, "
+        f"{marked_count} marked states/N, {reps} reps, {shots} shots)"
+    )
+    records = []
+    for n, marked, rep in plan:
+        qc, _ = build_grover(n, marked)
+        counts = sim.run(transpile(qc, sim), shots=shots).result().get_counts()
+        p = counts.get(marked[::-1], 0) / shots
+        records.append({"n": n, "marked": marked, "rep": rep, "p_marked": p})
+    means = _aggregate(records)
+    rand = {n: 1 / (2**n) for n in ns}
+    print(f"\n{'N':>4}  {'mean P(marked)':>14}  {'random 1/N':>11}")
+    for n in ns:
+        print(f"{2**n:>4}  {means[n]:>14.3f}  {rand[n]:>11.3f}")
+    print(
+        "\n(Aer is noiseless — these should all sit near 1.0. If any N is low, "
+        "the circuit at that N is wrong; fix before --hardware.)"
+    )
+    return records, means
+
+
+def run1_hardware(
+    ns, marked_count, reps, shots, backend_name=None, mitigation=False, dump=True
+):
+    """The real sweep. Batches the whole plan into ONE job for budget efficiency.
+
+    Mitigation toggle applies dynamical decoupling + measurement twirling when on.
+    Dumps a JSON archive (per-circuit P, per-N mean, backend, timestamps, job id)
+    to pilot/scratch/ for the reproducibility record.
+    """
+    import json
+    from datetime import datetime, timezone
+    from qiskit import transpile
+    from qiskit_ibm_runtime import QiskitRuntimeService, SamplerV2
+
+    service = QiskitRuntimeService()
+    backend = (
+        service.backend(backend_name)
+        if backend_name
+        else service.least_busy(operational=True, simulator=False)
+    )
+    plan = _plan(ns, marked_count, reps)
+    print(f"  backend: {backend.name}")
+    print(
+        f"  plan: {len(plan)} circuits  (ns={ns}, {marked_count} marked/N, "
+        f"{reps} reps, {shots} shots, mitigation={'ON' if mitigation else 'OFF'})"
+    )
+
+    # Transpile every circuit to the backend, keep metadata aligned to PUB order.
+    pubs, meta = [], []
+    for n, marked, rep in plan:
+        qc, _ = build_grover(n, marked)
+        pubs.append(transpile(qc, backend))
+        meta.append({"n": n, "marked": marked, "rep": rep})
+
+    sampler = SamplerV2(mode=backend)
+    applied = {}
+    if mitigation:
+        # These option paths are version-sensitive; set defensively and record
+        # what actually stuck so the method section is honest.
+        for path, value in [
+            ("dynamical_decoupling.enable", True),
+            ("dynamical_decoupling.sequence_type", "XpXm"),
+            ("twirling.enable_gates", True),
+            ("twirling.enable_measure", True),
+        ]:
+            try:
+                obj = sampler.options
+                *parents, leaf = path.split(".")
+                for p in parents:
+                    obj = getattr(obj, p)
+                setattr(obj, leaf, value)
+                applied[path] = value
+            except Exception as e:
+                applied[path] = f"FAILED: {e}"
+        print(f"  mitigation applied: {applied}")
+
+    job = sampler.run(pubs, shots=shots)
+    print(f"  job id: {job.job_id()}  (queueing — costs no budget)")
+    result = job.result()
+
+    records = []
+    for m, pub in zip(meta, result):
+        try:
+            counts = _pub_counts(pub)
+            p = counts.get(m["marked"][::-1], 0) / shots
+        except Exception as e:
+            p = None
+            print(f"  decode error for {m} ({e})")
+        records.append({**m, "p_marked": p})
+
+    means = _aggregate([r for r in records if r["p_marked"] is not None])
+    rand = {n: 1 / (2**n) for n in ns}
+    print(f"\n{'N':>4}  {'mean P(marked)':>14}  {'random 1/N':>11}  verdict")
+    for n in ns:
+        mean = means.get(n)
+        if mean is None:
+            print(f"{2**n:>4}  {'(no data)':>14}")
+            continue
+        beats = "beats chance" if mean > 2 * rand[n] else "AT/BELOW chance"
+        print(f"{2**n:>4}  {mean:>14.3f}  {rand[n]:>11.3f}  {beats}")
+
+    try:
+        metrics = job.metrics()
+    except Exception:
+        metrics = {}
+    if dump:
+        os.makedirs("pilot/scratch", exist_ok=True)
+        path = f"pilot/scratch/run1_{job.job_id()}.json"
+        with open(path, "w") as f:
+            json.dump(
+                {
+                    "captured_at": datetime.now(timezone.utc).isoformat(),
+                    "backend": backend.name,
+                    "job_id": job.job_id(),
+                    "shots": shots,
+                    "mitigation": applied if mitigation else "off",
+                    "metrics": metrics,
+                    "per_n_mean": {str(2**n): means.get(n) for n in ns},
+                    "random_floor": {str(2**n): rand[n] for n in ns},
+                    "records": records,
+                },
+                f,
+                indent=2,
+            )
+        print(f"\n  archive dumped to {path}")
+        qpu = metrics.get("usage", {}).get("quantum_seconds")
+        if qpu is not None:
+            print(f"  QPU seconds this sweep: {qpu}  (cross-check Workloads page)")
+    return records, means
+
+
 # --- Hardware metering (spends QPU budget — explicit only) --------------------
 
 
@@ -238,6 +422,34 @@ def main():
         help="max iterations for --sweep (default: 2*optimal+1)",
     )
     ap.add_argument(
+        "--run1",
+        action="store_true",
+        help="Run 1 success-probability sweep (Aer dry-run unless --hardware)",
+    )
+    ap.add_argument(
+        "--ns",
+        type=str,
+        default="3,4,5",
+        help="comma-separated qubit counts for --run1 (default 3,4,5)",
+    )
+    ap.add_argument(
+        "--marked-count",
+        type=int,
+        default=4,
+        help="marked states averaged per N in --run1 (default 4)",
+    )
+    ap.add_argument(
+        "--reps",
+        type=int,
+        default=5,
+        help="outer repetitions per (N, marked) in --run1 (default 5)",
+    )
+    ap.add_argument(
+        "--mitigation",
+        action="store_true",
+        help="enable DD + measurement twirling (--run1 --hardware only)",
+    )
+    ap.add_argument(
         "--hardware", action="store_true", help="SUBMIT TO REAL QPU AND SPEND BUDGET"
     )
     ap.add_argument(
@@ -250,6 +462,36 @@ def main():
     args = ap.parse_args()
 
     marked = args.marked or ("1" * args.n)
+
+    if args.run1:
+        ns = [int(x) for x in args.ns.split(",")]
+        records, _ = run1_aer(ns, args.marked_count, args.reps, args.shots)
+        if args.hardware:
+            if any(r["p_marked"] < 0.5 for r in records):
+                print(
+                    "\nREFUSING to submit: a circuit failed the Aer dry-run "
+                    "(P(marked) < 0.5). Fix it before spending QPU time."
+                )
+                return
+            print("\n*** HARDWARE SWEEP — this spends QPU budget ***")
+            if (
+                input("Type 'yes' to submit the whole Run 1 plan to hardware: ")
+                .strip()
+                .lower()
+                != "yes"
+            ):
+                print("Aborted.")
+                return
+            run1_hardware(
+                ns,
+                args.marked_count,
+                args.reps,
+                args.shots,
+                backend_name=args.backend,
+                mitigation=args.mitigation,
+                dump=True,
+            )
+        return
 
     if args.sweep:
         sweep_iterations_aer(args.n, marked, max_iters=args.max_iters, shots=args.shots)
