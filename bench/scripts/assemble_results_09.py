@@ -119,8 +119,10 @@ def main() -> None:
             "Four variants of European call option pricing on AArch64 (BCM2712 / Cortex-A76). "
             "Cross-arch companion to demo 03 (Zen 2 SSE/AVX2). "
             "scalar_poly matches demo 03's construction exactly (libm log/sqrt + poly exp/N(x)). "
-            "autovec: GCC cannot cross the logf@plt barrier — asm is scalar despite -O3 NEON target. "
-            "neon: hand-written float32x4_t achieves ~4.5× at 16k, ~4.8× at 1M. "
+            "autovec: GCC cannot cross the logf@plt barrier — asm is scalar despite -O3 NEON target; timing within 0.01% of scalar_libm at every N. "
+            "scalar_poly runs ~6% faster than scalar_libm (6.4% at 16k, 6.2% at 1M) — Debian libm erfc/exp cost is not negligible. "
+            "neon: hand-written float32x4_t achieves ~4.3× at 16k (4.34×) rising to ~4.8× at 1M (4.81×) over scalar_poly (pure-width denominator); "
+            "neon/scalar_libm is larger (~4.6× at 16k, ~5.1× at 1M) but folds the algorithm win into the ratio. "
             "No second SIMD step: 128-bit NEON is the widest unit on BCM2712 (no SVE)."
         ),
     }
