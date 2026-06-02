@@ -224,13 +224,28 @@ def run1_aer(ns, marked_count, reps, shots):
 
 
 def run1_hardware(
-    ns, marked_count, reps, shots, backend_name=None, mitigation=False, dump=True
+    ns,
+    marked_count,
+    reps,
+    shots,
+    backend_name=None,
+    mitigation=False,
+    dump=True,
+    repeats=1,
+    qubits=None,
 ):
-    """The real sweep. Batches the whole plan into ONE job for budget efficiency.
+    """The real sweep, optionally repeated to separate signal from drift.
 
-    Mitigation toggle applies dynamical decoupling + measurement twirling when on.
-    Dumps a JSON archive (per-circuit P, per-N mean, backend, timestamps, job id)
-    to pilot/scratch/ for the reproducibility record.
+    repeats K: submit the whole plan K times as K separate jobs (job-to-job
+    variance IS the drift confound we're testing against). Reports per-N mean
+    across all repeats plus the run-to-run spread.
+
+    qubits: explicit physical-qubit list (length >= max(ns)). Pinning the layout
+    makes the mitigation OFF/ON comparison clean — same qubits every time, so the
+    only variable is mitigation, not which qubits the transpiler happened to pick.
+    If None, a fixed transpiler seed is used for determinism, but a recalibration
+    between jobs can still shift the chosen layout — so pass --qubits for a clean
+    comparison.
     """
     import json
     from datetime import datetime, timezone
@@ -244,94 +259,124 @@ def run1_hardware(
         else service.least_busy(operational=True, simulator=False)
     )
     plan = _plan(ns, marked_count, reps)
+    if qubits is not None and len(qubits) < max(ns):
+        raise ValueError(f"--qubits needs >= {max(ns)} entries for ns={ns}")
+
     print(f"  backend: {backend.name}")
     print(
-        f"  plan: {len(plan)} circuits  (ns={ns}, {marked_count} marked/N, "
-        f"{reps} reps, {shots} shots, mitigation={'ON' if mitigation else 'OFF'})"
+        f"  plan: {len(plan)} circuits x {repeats} repeat(s)  "
+        f"(ns={ns}, {marked_count} marked/N, {reps} reps, {shots} shots, "
+        f"mitigation={'ON' if mitigation else 'OFF'}, "
+        f"qubits={'pinned ' + str(qubits) if qubits else 'transpiler-chosen'})"
     )
 
-    # Transpile every circuit to the backend, keep metadata aligned to PUB order.
+    def _transpile(qc, n):
+        layout = qubits[:n] if qubits is not None else None
+        return transpile(qc, backend, initial_layout=layout, seed_transpiler=42)
+
+    def _make_sampler():
+        s = SamplerV2(mode=backend)
+        applied = {}
+        if mitigation:
+            for path, value in [
+                ("dynamical_decoupling.enable", True),
+                ("dynamical_decoupling.sequence_type", "XpXm"),
+                ("twirling.enable_gates", True),
+                ("twirling.enable_measure", True),
+            ]:
+                try:
+                    obj = s.options
+                    *parents, leaf = path.split(".")
+                    for p in parents:
+                        obj = getattr(obj, p)
+                    setattr(obj, leaf, value)
+                    applied[path] = value
+                except Exception as e:
+                    applied[path] = f"FAILED: {e}"
+        return s, applied
+
+    # Transpile once, reuse across repeats (identical circuits each job).
     pubs, meta = [], []
     for n, marked, rep in plan:
         qc, _ = build_grover(n, marked)
-        pubs.append(transpile(qc, backend))
+        pubs.append(_transpile(qc, n))
         meta.append({"n": n, "marked": marked, "rep": rep})
 
-    sampler = SamplerV2(mode=backend)
-    applied = {}
-    if mitigation:
-        # These option paths are version-sensitive; set defensively and record
-        # what actually stuck so the method section is honest.
-        for path, value in [
-            ("dynamical_decoupling.enable", True),
-            ("dynamical_decoupling.sequence_type", "XpXm"),
-            ("twirling.enable_gates", True),
-            ("twirling.enable_measure", True),
-        ]:
-            try:
-                obj = sampler.options
-                *parents, leaf = path.split(".")
-                for p in parents:
-                    obj = getattr(obj, p)
-                setattr(obj, leaf, value)
-                applied[path] = value
-            except Exception as e:
-                applied[path] = f"FAILED: {e}"
-        print(f"  mitigation applied: {applied}")
-
-    job = sampler.run(pubs, shots=shots)
-    print(f"  job id: {job.job_id()}  (queueing — costs no budget)")
-    result = job.result()
-
-    records = []
-    for m, pub in zip(meta, result):
-        try:
-            counts = _pub_counts(pub)
-            p = counts.get(m["marked"][::-1], 0) / shots
-        except Exception as e:
-            p = None
-            print(f"  decode error for {m} ({e})")
-        records.append({**m, "p_marked": p})
-
-    means = _aggregate([r for r in records if r["p_marked"] is not None])
     rand = {n: 1 / (2**n) for n in ns}
-    print(f"\n{'N':>4}  {'mean P(marked)':>14}  {'random 1/N':>11}  verdict")
-    for n in ns:
-        mean = means.get(n)
-        if mean is None:
-            print(f"{2**n:>4}  {'(no data)':>14}")
-            continue
-        beats = "beats chance" if mean > 2 * rand[n] else "AT/BELOW chance"
-        print(f"{2**n:>4}  {mean:>14.3f}  {rand[n]:>11.3f}  {beats}")
+    all_records = []  # flat, every circuit every repeat
+    per_repeat_means = []  # list (len K) of {n: mean}
+    job_ids, applied_final = [], {}
 
-    try:
-        metrics = job.metrics()
-    except Exception:
-        metrics = {}
+    for k in range(repeats):
+        sampler, applied_final = _make_sampler()
+        if mitigation and k == 0:
+            print(f"  mitigation applied: {applied_final}")
+        job = sampler.run(pubs, shots=shots)
+        job_ids.append(job.job_id())
+        print(f"  repeat {k+1}/{repeats}  job id: {job.job_id()}  (queueing)")
+        result = job.result()
+        recs = []
+        for m, pub in zip(meta, result):
+            try:
+                counts = _pub_counts(pub)
+                p = counts.get(m["marked"][::-1], 0) / shots
+            except Exception as e:
+                p = None
+                print(f"    decode error {m} ({e})")
+            rec = {**m, "repeat": k, "p_marked": p}
+            recs.append(rec)
+            all_records.append(rec)
+        per_repeat_means.append(
+            _aggregate([r for r in recs if r["p_marked"] is not None])
+        )
+
+    # Aggregate across repeats: mean of the per-repeat per-N means, plus spread.
+    print(f"\n{'N':>4}  {'mean':>6}  {'min':>6}  {'max':>6}  {'rand':>6}  per-repeat")
+    summary = {}
+    for n in ns:
+        vals = [m[n] for m in per_repeat_means if n in m]
+        if not vals:
+            continue
+        mean = sum(vals) / len(vals)
+        summary[n] = {
+            "mean": mean,
+            "min": min(vals),
+            "max": max(vals),
+            "per_repeat": vals,
+        }
+        pr = "[" + ", ".join(f"{v:.3f}" for v in vals) + "]"
+        print(
+            f"{2**n:>4}  {mean:>6.3f}  {min(vals):>6.3f}  {max(vals):>6.3f}  "
+            f"{rand[n]:>6.3f}  {pr}"
+        )
+    print(
+        "\n(If the OFF/ON gap exceeds the min..max spread, it's real; "
+        "if it sits inside the spread, it's drift.)"
+    )
+
     if dump:
         os.makedirs("pilot/scratch", exist_ok=True)
-        path = f"pilot/scratch/run1_{job.job_id()}.json"
+        tag = job_ids[0] if job_ids else "nojob"
+        path = f"pilot/scratch/run1_{'mit' if mitigation else 'raw'}_{tag}.json"
         with open(path, "w") as f:
             json.dump(
                 {
                     "captured_at": datetime.now(timezone.utc).isoformat(),
                     "backend": backend.name,
-                    "job_id": job.job_id(),
+                    "job_ids": job_ids,
                     "shots": shots,
-                    "mitigation": applied if mitigation else "off",
-                    "metrics": metrics,
-                    "per_n_mean": {str(2**n): means.get(n) for n in ns},
+                    "repeats": repeats,
+                    "qubits_pinned": qubits,
+                    "mitigation": applied_final if mitigation else "off",
+                    "summary_per_n": {str(2**n): summary.get(n) for n in ns},
                     "random_floor": {str(2**n): rand[n] for n in ns},
-                    "records": records,
+                    "records": all_records,
                 },
                 f,
                 indent=2,
             )
-        print(f"\n  archive dumped to {path}")
-        qpu = metrics.get("usage", {}).get("quantum_seconds")
-        if qpu is not None:
-            print(f"  QPU seconds this sweep: {qpu}  (cross-check Workloads page)")
-    return records, means
+        print(f"  archive dumped to {path}")
+    return all_records, summary
 
 
 # --- Hardware metering (spends QPU budget — explicit only) --------------------
@@ -445,6 +490,20 @@ def main():
         help="outer repetitions per (N, marked) in --run1 (default 5)",
     )
     ap.add_argument(
+        "--repeats",
+        type=int,
+        default=1,
+        help="repeat the whole sweep K times as separate jobs to "
+        "measure run-to-run drift (--run1 --hardware)",
+    )
+    ap.add_argument(
+        "--qubits",
+        type=str,
+        default=None,
+        help="comma-separated physical qubits to pin (length >= max n); "
+        "makes OFF/ON comparison clean. Default: transpiler-chosen.",
+    )
+    ap.add_argument(
         "--mitigation",
         action="store_true",
         help="enable DD + measurement twirling (--run1 --hardware only)",
@@ -482,6 +541,7 @@ def main():
             ):
                 print("Aborted.")
                 return
+            qubits = [int(x) for x in args.qubits.split(",")] if args.qubits else None
             run1_hardware(
                 ns,
                 args.marked_count,
@@ -490,6 +550,8 @@ def main():
                 backend_name=args.backend,
                 mitigation=args.mitigation,
                 dump=True,
+                repeats=args.repeats,
+                qubits=qubits,
             )
         return
 
