@@ -255,7 +255,11 @@ export default function MethodologyPage() {
           <code>machine.turbo</code> field. If turbo state cannot be determined
           the script exits non-zero rather than silently recording a wrong
           value. Boost obscures the true steady-state throughput the predictor
-          and cache hierarchy deliver at nominal frequency.
+          and cache hierarchy deliver at nominal frequency. On Machine 2 there
+          is no BIOS turbo to disable; the equivalent is a pinned clock
+          (governor <code>performance</code>, min = max at 2400 MHz) with{" "}
+          <code>get_throttled = 0x0</code> verified before and after each
+          capture &mdash; see Machine 2 above.
         </Commitment>
         <Commitment n={3} title="Core isolation">
           Cores 1–7 are isolated at the kernel level via{" "}
@@ -270,7 +274,11 @@ export default function MethodologyPage() {
           returning <code>0</code> and <code>lscpu</code> reporting 8 CPUs — to
           remove SMT-sibling resource sharing (L1, L2, execution ports,
           frontend) from all measurements. Isolated CPU IDs are recorded in each
-          demo&rsquo;s JSON <code>machine.isolated_cpus</code> field.
+          demo&rsquo;s JSON <code>machine.isolated_cpus</code> field. On
+          Machine 2 isolation uses <code>isolcpus=2,3</code> in the Pi kernel
+          cmdline with benchmarks pinned to core 3 via{" "}
+          <code>taskset -c 3</code>; the A76 exposes no SMT to disable. See
+          Machine 2 above.
           <br />
           <br />
           <strong style={{ color: "var(--text-secondary)" }}>
@@ -288,7 +296,7 @@ export default function MethodologyPage() {
           convention it used.
           <ul className="mt-2 mb-3 space-y-1 list-disc list-inside">
             <li>
-              <strong>Throughput / steady-state median</strong> (demos 1, 2, 3):
+              <strong>Throughput / steady-state median</strong> (demos 1, 2, 3, 9):
               ≥20 outer repetitions (Google Benchmark{" "}
               <code>--benchmark_repetitions</code>); aggregates computed across
               those repetitions.
@@ -299,10 +307,9 @@ export default function MethodologyPage() {
               percentiles computed from histograms merged across runs.
             </li>
             <li>
-              <strong>Working-set sweep</strong> (demos 6, 7, 8, 9):
-              5–20 outer repetitions per cell; median <code>ns_per_op</code> reported.
-              Sweep coverage substitutes for higher per-cell rep count. Each
-              post&rsquo;s footer states the exact rep count used.
+              <strong>Working-set sweep</strong> (demos 6, 7, 8):
+              5 outer repetitions per cell; median <code>ns_per_op</code> reported.
+              Sweep coverage substitutes for higher per-cell rep count.
             </li>
           </ul>
           Every chart states which statistic it shows:
@@ -379,7 +386,11 @@ cmake --build build --target bench_<NN>_<slug>
         <code>run_one.sh</code> requires <code>sudo</code> and the{" "}
         <code>cpuset</code> package (<code>sudo apt install cpuset</code> on
         Ubuntu); it runs the benchmark binary inside a <code>cset shield</code>{" "}
-        on cores 4–7 and tears the shield down automatically.
+        on cores 4–7 and tears the shield down automatically. On Machine 2 (the
+        Pi 5) <code>cset</code> is not used — Raspberry Pi OS is cgroup v2,
+        which <code>cset</code> does not target; AArch64 demos isolate with{" "}
+        <code>isolcpus=2,3</code> at boot and pin with{" "}
+        <code>taskset -c 3</code>, as documented in each demo&rsquo;s README.
       </p>
       <p className="text-sm mb-12" style={{ color: "var(--text-secondary)" }}>
         Source on GitHub:{" "}
