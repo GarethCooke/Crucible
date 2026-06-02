@@ -45,6 +45,7 @@ add_subdirectory(demos/05-allocators)
 add_subdirectory(demos/06-aos-vs-soa)
 add_subdirectory(demos/07-no-crossover)
 add_subdirectory(demos/08-sorting-shootout)
+add_subdirectory(demos/quantum-classical-baseline)
 
 # Demo 09 targets AArch64 Linux (Raspberry Pi 5 / BCM2712 / Cortex-A76).
 # -mcpu=cortex-a76 and <arm_neon.h> are not available on x86.
