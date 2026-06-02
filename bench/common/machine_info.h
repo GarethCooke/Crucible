@@ -134,7 +134,7 @@ inline std::string machine_info_json() {
 
     // head -1: guard against lscpu printing one line per socket/NUMA node
     const auto cpu      = shell("lscpu | grep 'Model name' | sed 's/.*: *//' | head -1");
-    const auto phys     = shell("lscpu | grep '^Core(s) per socket' | awk '{print $NF}'");
+    const auto phys     = shell("lscpu -b -p=core | grep -v '^#' | sort -u | wc -l | tr -dc '0-9'");
     const auto logical  = shell("lscpu | grep '^CPU(s):' | awk 'NR==1{print $NF}'");
     const auto smt_raw  = shell("lscpu | grep '^Thread(s) per core' | awk '{print $NF}'");
     const auto ram_gb   = shell("awk '/MemTotal/{printf \"%.0f\", $2/1024/1024}' /proc/meminfo");

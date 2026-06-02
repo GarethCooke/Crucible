@@ -32,6 +32,17 @@ export const palette = {
   'std_sort':   tokens.color.chart.series[0],
   'pdqsort':    tokens.color.chart.series[1],
   'radix_lsd':  tokens.color.chart.series[2],
+  // Black-Scholes cross-arch pairing — shared colours across demo 03 (Zen 2) and demo 09 (Pi).
+  // Analogous variants take the same series index in both demos.
+  // NB: demo-03 JSON uses no-underscore keys (scalarlibm, scalarpoly, sse2, avx2fma) — confirmed by grep.
+  // demo 03 (Zen 2 SSE/AVX2) and demo 09 (Pi NEON) share scalarlibm/scalarpoly keys:
+  'scalarlibm':   tokens.color.chart.series[0],   // libm baseline — shared
+  'scalarpoly':   tokens.color.chart.series[1],   // poly baseline — shared
+  'sse2':         tokens.color.chart.series[2],   // demo-03: 4-wide 128-bit SIMD
+  'avx2fma':      tokens.color.chart.series[3],   // demo-03 only (no demo-09 counterpart = width ceiling)
+  // demo 09 (Pi NEON): series[3] stays empty — no wider unit = the ceiling
+  'neon':         tokens.color.chart.series[2],   // = sse2 (4-wide / 128-bit analogue)
+  'autovec':      tokens.color.chart.series[4],   // demo-9-only
   series:   tokens.color.chart.series,
 } as const
 
