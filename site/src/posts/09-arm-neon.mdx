@@ -16,18 +16,18 @@ This is the first Crucible benchmark on a second reference machine. One rule cha
 
 ## Four variants
 
-| Key | Display | ISA | Notes |
-|-----|---------|-----|-------|
+| Key          | Display       | ISA            | Notes                                                    |
+| ------------ | ------------- | -------------- | -------------------------------------------------------- |
 | `scalarlibm` | scalar (libm) | aarch64-scalar | `std::log`, `std::exp`, libm erfc; `-fno-tree-vectorize` |
-| `autovec` | autovec −O3 | aarch64-scalar | same libm math, vectorise guard removed |
-| `scalarpoly` | scalar (poly) | aarch64-scalar | inline poly `exp` + `N(x)`; width-ratio denominator |
-| `neon` | NEON (hand) | aarch64-neon | `float32x4_t` intrinsics; inline poly throughout |
+| `autovec`    | autovec −O3   | aarch64-scalar | same libm math, vectorise guard removed                  |
+| `scalarpoly` | scalar (poly) | aarch64-scalar | inline poly `exp` + `N(x)`; width-ratio denominator      |
+| `neon`       | NEON (hand)   | aarch64-neon   | `float32x4_t` intrinsics; inline poly throughout         |
 
 **scalar (libm)** — the honest baseline. Prices one option at a time, taking its transcendentals straight from the system math library (`std::log`, `std::exp`, and the error function behind the normal CDF). Built with `-fno-tree-vectorize` so the compiler cannot quietly vectorise it — this is genuinely scalar code, confirmed in the emitted assembly.
 
-**autovec** — the same libm-based kernel as scalar (libm), but with the anti-vectorisation guard removed, so `-O3` is free to autovectorise. On AArch64 NEON is part of the baseline ISA and GCC vectorises by default — the question is whether it *can* here. It can't: the libm `log`/`exp`/`erfc` calls are opaque barriers the autovectoriser won't cross, so the assembly comes out byte-identical to scalar (libm) and the timing tracks it within 0.1%. The variant exists to show that "just turn on `-O3`" buys nothing for this kernel.
+**autovec** — the same libm-based kernel as scalar (libm), but with the anti-vectorisation guard removed, so `-O3` is free to autovectorise. On AArch64 NEON is part of the baseline ISA and GCC vectorises by default — the question is whether it _can_ here. It can't: the libm `log`/`exp`/`erfc` calls are opaque barriers the autovectoriser won't cross, so the assembly comes out byte-identical to scalar (libm) and the timing tracks it within 0.01%. The variant exists to show that "just turn on `-O3`" buys nothing for this kernel.
 
-**scalar (poly)** — replaces the libm transcendentals with inlined polynomial approximations (a polynomial `exp` and normal CDF), still one option at a time. This isolates the *algorithm* win — avoiding the libm call overhead — from the *width* win that comes later, and runs ~6% faster than scalar (libm). It is also the width-ratio denominator: the exact kernel NEON runs, minus the vectorisation, so NEON-over-poly is a clean 4-wide comparison. Using `scalar_libm` as the denominator would give a larger number that folds the algorithm win into "width"; the honest width measurement uses the equal-math baseline.
+**scalar (poly)** — replaces libm's `exp` and normal CDF with inlined polynomial approximations, still one option at a time. This isolates the _algorithm_ win — avoiding the libm `exp`/`erfc` dispatch — from the _width_ win that comes later, and runs ~6% faster than scalar (libm). It is the width-ratio denominator: it shares the dominant polynomial math (`exp`, `N(x)`) with the NEON kernel. Using `scalar_libm` as the denominator instead would fold the `exp`/`erfc` algorithm win into "width" and overstate what lane count buys; scalar_poly is the closer baseline. (One residual difference — the `log` and `sqrt` paths — is accounted for under _Decomposing the speedup_.)
 
 **NEON (hand)** — the poly kernel rewritten with hand-written `float32x4_t` intrinsics: four options priced per instruction, inline polynomials throughout (no libm calls to get in the autovectoriser's way). This is the SIMD variant that delivers the ~4.3× (at 16k) to ~4.8× (at 1M) width speedup over scalar (poly).
 
@@ -36,39 +36,54 @@ This is the first Crucible benchmark on a second reference machine. One rule cha
 <TimeVsN
   slug="09-arm-neon"
   variants={["scalarlibm", "autovec", "scalarpoly", "neon"]}
-  variantLabels={{ scalarlibm: "scalar (libm)", scalarpoly: "scalar (poly)", autovec: "autovec −O3", neon: "NEON (hand)" }}
+  variantLabels={{
+    scalarlibm: "scalar (libm)",
+    scalarpoly: "scalar (poly)",
+    autovec: "autovec −O3",
+    neon: "NEON (hand)",
+  }}
   stat="median"
   xScale="log"
   yAxisLabel="ns / option"
   title="Median ns/option vs N — all four variants, log N, linear cost"
 />
 
-Three scalar lines cluster between 61–73 ns/option across the sweep. NEON sits flat at ~14 ns. The autovec line coincides with `scalar_libm` — discussed below. The y-axis is linear so the ~4–5× gap is visceral; the gap between the scalar band and the NEON line doesn't vary with N once the per-call overhead amortises.
+Three scalar lines cluster between 61–73 ns/option across the sweep. NEON drops from ~22 ns at the smallest N to ~14 ns once per-call overhead amortises (see _The small-N caveat_) and holds flat there. The autovec line coincides with `scalar_libm` — discussed below. The y-axis is linear so the ~4–5× gap is visceral; the gap between the scalar band and the NEON line doesn't vary with N once the per-call overhead amortises.
 
 <ThroughputBars
   slug="09-arm-neon"
   targetN={16384}
   variants={["scalarlibm", "autovec", "scalarpoly", "neon"]}
   stat="median"
-  variantLabels={{ scalarlibm: "scalar (libm)", scalarpoly: "scalar (poly)", autovec: "autovec −O3", neon: "NEON (hand)" }}
+  variantLabels={{
+    scalarlibm: "scalar (libm)",
+    scalarpoly: "scalar (poly)",
+    autovec: "autovec −O3",
+    neon: "NEON (hand)",
+  }}
   title="Median ns/option at N = 16 384 — L2-resident, compute-bound"
 />
 
 At N = 16 384 — comfortably within the 512 KB per-core L2 on the A76, the cleanest compute-bound comparison:
 
-| Variant | ns/op | × vs scalar (poly) |
-|---------|-------|---------------------|
-| scalar (libm) | 65.4 | 0.94× |
-| autovec −O3 | 65.4 | 0.94× |
-| scalar (poly) | 61.2 | 1.00× (baseline) |
-| NEON (hand) | 14.1 | **4.3×** |
+| Variant       | ns/op | × vs scalar (poly) |
+| ------------- | ----- | ------------------ |
+| scalar (libm) | 65.4  | 0.94×              |
+| autovec −O3   | 65.4  | 0.94×              |
+| scalar (poly) | 61.2  | 1.00× (baseline)   |
+| NEON (hand)   | 14.1  | **4.3×**           |
 
 <ThroughputBars
   slug="09-arm-neon"
   targetN={1048576}
   variants={["scalarlibm", "autovec", "scalarpoly", "neon"]}
   stat="median"
-  variantLabels={{ scalarlibm: "scalar (libm)", scalarpoly: "scalar (poly)", autovec: "autovec −O3", neon: "NEON (hand)" }}
+  variantLabels={{
+    scalarlibm: "scalar (libm)",
+    scalarpoly: "scalar (poly)",
+    autovec: "autovec −O3",
+    neon: "NEON (hand)",
+  }}
   title="Median ns/option at N = 1 048 576 — past L3, fully amortised"
 />
 
@@ -78,11 +93,11 @@ At N = 1 048 576 (1M options, ~20 MB input): NEON holds at 13.7 ns; scalar (poly
 
 There are two wins stacked on top of each other, and they need to be accounted separately.
 
-**Algorithm win: ~6% (scalar libm → scalar poly).** Replacing `std::exp` and the libm normal CDF with inline polynomial approximations reduces ns/option by 6.4% at N=16k (65.4 → 61.2 ns) and 6.2% at N=1M. On Zen 2 the same step delivered 12%; on the A76 it's narrower, because Debian 14's libm AArch64 implementation carries less dispatch overhead than the x86 one. The step still matters: it is the gate to vectorisation, since there is no `vexpq_f32` or any NEON equivalent of libm's `erfc` — you cannot vectorise a loop containing a PLT call.
+**Algorithm win: ~6% (scalar libm → scalar poly).** Replacing `std::exp` and the libm normal CDF with inline polynomial approximations reduces ns/option by 6.4% at N=16k (65.4 → 61.2 ns) and 6.2% at N=1M. On Zen 2 the same step delivered 12%; on the A76 it's narrower, because the AArch64 glibc `libm` carries less `exp`/`erfc` dispatch overhead than the x86 one. The step still matters: it is the gate to vectorisation, since there is no `vexpq_f32` or any NEON equivalent of libm's `erfc` — you cannot vectorise a loop containing a PLT call.
 
-**Width win: ~4.3–4.8× (scalar poly → NEON).** The hand-written `float32x4_t` kernel processes four options per loop iteration using the same polynomial math as `scalar_poly`, widened to four lanes. This is the pure width win.
+**Width win: ~4.3–4.8× (scalar poly → NEON).** The hand-written `float32x4_t` kernel prices four options per loop iteration. It shares scalar_poly's polynomial `exp` and `N(x)`, but does two things scalar_poly doesn't: it replaces libm `log` with a polynomial `log` (`vec_logf_neon`, no PLT call) and scalar `sqrt` with a vector `fsqrt`. So the ratio is not lane width alone, and the two differences pull in opposite directions. First, the polynomial `log` _adds_ arithmetic: NEON evaluates ~125 flops per option against scalar_poly's ~98 — about 28% more work — and still finishes 4.3× ahead, which is the clearest evidence the lanes are doing real parallel work. Second, the libm `log` in the scalar baseline is slower than the polynomial `log` NEON uses, so the denominator is inflated, lifting the measured ratio on this machine to the top of the 4-wide band and slightly past it (the per-call overhead above pulls the other way at small N — which is why the SSE row's 16k point sits a touch under 4×). The pure-lane component is ~4×; the remainder is the `log` substitution plus the per-call overhead the wide loop amortises. The architectural ceiling the headline names is that ~4× lane factor — there is no wider unit to reach for — and the measured 4.3–4.8× is that factor plus these two effects, not a wider unit at work.
 
-The headline denominator is `scalar_poly` because the NEON kernel *is* the four-lane poly kernel — measuring against `scalar_libm` would give 65.4/14.1 = **4.6×** at 16k and 70.2/13.7 = **5.1×** at 1M, but those figures fold the algorithm win into "width" and overstate what lane count buys you. The 5.1× number is not wrong, but it is not the width number; 4.8× is. (The 5.1× figure labels what NEON gains over the libm baseline end-to-end, which is a valid but different question.)
+The headline denominator is `scalar_poly` because it shares the dominant poly math with the NEON kernel — measuring against `scalar_libm` would give 65.4/14.1 = **4.6×** at 16k and 70.2/13.7 = **5.1×** at 1M, but those figures fold the `exp`/`erfc` algorithm win into "width" and overstate what lane count buys you. The 5.1× number is not wrong, but it is not the width number; 4.8× is. (The 5.1× figure labels what NEON gains over the libm baseline end-to-end, which is a valid but different question.)
 
 <CodeCompare
   lang="cpp"
@@ -99,30 +114,30 @@ float32x4_t vS   = vld1q_f32(S);   float32x4_t vK   = vld1q_f32(K);
 float32x4_t vT   = vld1q_f32(T);   float32x4_t vR   = vld1q_f32(r);
 float32x4_t vSig = vld1q_f32(sigma);
 
-float32x4_t sig2      = vmulq_f32(vSig, vSig);
-float32x4_t sqrtT     = vsqrtq_f32(vT);
+float32x4_t sig2 = vmulq_f32(vSig, vSig);
+float32x4_t sqrtT = vsqrtq_f32(vT);
 float32x4_t sig_sqrtT = vmulq_f32(vSig, sqrtT);
 
 float32x4_t log_SK = vec_logf_neon(vdivq_f32(vS, vK));
 float32x4_t d1_num = vfmaq_f32(log_SK,
-                         vfmaq_f32(vR, vdupq_n_f32(0.5f), sig2), vT);
+vfmaq_f32(vR, vdupq_n_f32(0.5f), sig2), vT);
 float32x4_t d1 = vdivq_f32(d1_num, sig_sqrtT);
 float32x4_t d2 = vsubq_f32(d1, sig_sqrtT);
 
-float32x4_t Nd1  = vec_ncdf_neon(d1);
-float32x4_t Nd2  = vec_ncdf_neon(d2);
+float32x4_t Nd1 = vec_ncdf_neon(d1);
+float32x4_t Nd2 = vec_ncdf_neon(d2);
 float32x4_t disc = vec_expf_neon(vnegq_f32(vmulq_f32(vR, vT)));
 
 vst1q_f32(C, vsubq_f32(
-    vmulq_f32(vS, Nd1),
-    vmulq_f32(vmulq_f32(vK, disc), Nd2)));`}
+vmulq_f32(vS, Nd1),
+vmulq_f32(vmulq_f32(vK, disc), Nd2)));`}
 />
 
-The scalar variant is one call per option. The NEON variant loads four at once with `vld1q_f32`, computes all four d₁ and d₂ in parallel via `vfmaq_f32` (fused multiply-add on `float32x4_t`), and stores four results with `vst1q_f32`. The polynomial helpers (`vec_logf_neon`, `vec_expf_neon`, `vec_ncdf_neon`) in [`poly_neon.h`](https://github.com/GarethCooke/Crucible/tree/master/bench/demos/09-arm-neon/poly_neon.h) are the same Horner evaluations as the scalar equivalents, widened to `float32x4_t`. No PLT calls appear in the main vector loop; `vsqrtq_f32` emits a single hardware `fsqrt` instruction.
+The scalar variant is one call per option. The NEON variant loads four at once with `vld1q_f32`, computes all four d₁ and d₂ in parallel via `vfmaq_f32` (fused multiply-add on `float32x4_t`), and stores four results with `vst1q_f32`. The `exp` and normal-CDF helpers (`vec_expf_neon`, `vec_ncdf_neon`) in [`poly_neon.h`](https://github.com/GarethCooke/Crucible/blob/master/bench/demos/09-arm-neon/poly_neon.h) are width-ports of the same Horner evaluations scalar_poly uses (`fast_expf`, `ncdf_poly`). `vec_logf_neon` has no scalar counterpart in scalar_poly — which calls libm `log` — so it is the one piece of math the NEON kernel adds rather than widens. No PLT calls appear in the main vector loop; `vsqrtq_f32` emits a single hardware `fsqrt` instruction.
 
 ## The autovectoriser's tell
 
-The `autovec` variant sits on top of `scalar_libm` at every N — within 0.1% across the full sweep. GCC at `-O3 -mcpu=cortex-a76`, targeting a core where NEON is on by default, did not vectorise the Black-Scholes loop.
+The `autovec` variant sits on top of `scalar_libm` at every N — within 0.01% across the full sweep. GCC at `-O3 -mcpu=cortex-a76`, targeting a core where NEON is on by default, did not vectorise the Black-Scholes loop.
 
 This is worth naming explicitly. On AArch64, NEON is part of the baseline ISA — there is no `-mno-avx` gate. The compiler is actively trying to vectorise at `-O3`. It failed here, and the assembled output confirms it: the `autovec` object file contains no `.4s` register operations in the main loop. The barrier is `logf@plt` — the libm call cannot be inlined or proven pure through the PLT, and GCC gives up on the loop entirely rather than partially vectorising around the call.
 
@@ -136,13 +151,13 @@ At N = 1 024 the ratio is only **3.1×** (scalar poly: 67.4 ns, NEON: 22.0 ns). 
 
 All ratios below are within-machine `scalar_poly → SIMD`, derived from the JSON files. Absolute ns/op are never compared across machines.
 
-| Machine | SIMD variant | width | ratio vs scalar (poly) at N = 16k | ratio at N = 1M |
-|---------|-------------|-------|-----------------------------------|-----------------|
-| Zen 2 / Ryzen 3800X | SSE2 (4-wide) | 128-bit | 3.8× | 4.1× |
-| **Cortex-A76 / Pi 5** | **NEON (4-wide)** | **128-bit** | **4.3×** | **4.8×** |
-| Zen 2 / Ryzen 3800X | AVX2+FMA (8-wide) | 256-bit | 7.5× | 9.3× |
+| Machine               | SIMD variant      | width       | ratio vs scalar (poly) at N = 16k | ratio at N = 1M |
+| --------------------- | ----------------- | ----------- | --------------------------------- | --------------- |
+| Zen 2 / Ryzen 3800X   | SSE2 (4-wide)     | 128-bit     | 3.8×                              | 4.1×            |
+| **Cortex-A76 / Pi 5** | **NEON (4-wide)** | **128-bit** | **4.3×**                          | **4.8×**        |
+| Zen 2 / Ryzen 3800X   | AVX2+FMA (8-wide) | 256-bit     | 7.5×                              | 9.3×            |
 
-*(Zen 2 ratios: SSE2 = scalarpoly / sse2 at each N; AVX2 = scalarpoly / avx2fma. Source: [`03-simd-blackscholes.json`](https://github.com/GarethCooke/Crucible/blob/master/site/src/data/perf/03-simd-blackscholes.json).)*
+_(Zen 2 ratios: SSE2 = scalarpoly / sse2 at each N; AVX2 = scalarpoly / avx2fma. Source: [`03-simd-blackscholes.json`](https://github.com/GarethCooke/Crucible/blob/master/site/src/data/perf/03-simd-blackscholes.json).)_
 
 The 4-wide units on both machines land in the 4–5× band. NEON's ratio is slightly above SSE2's — a machine-specific difference in scalar baseline behaviour and compiler code generation, not a claim that NEON is faster than SSE. The structural point is the third row: on Zen 2, AVX2 is available and the ratio nearly doubles again. On the Pi, there is no third row.
 
@@ -171,8 +186,8 @@ Clean results require `isolcpus=2,3` in the kernel command line (set via `/boot/
 
 ---
 
-*Raspberry Pi 5 Model B Rev 1.1 (BCM2712). CPU: Cortex-A76, 4 cores, AArch64. Clock: pinned at 2400 MHz (governor = performance; turbo = false; `get_throttled = 0x0` confirmed — no CPU throttling during capture). Kernel: 6.18.29+rpt-rpi-2712. Compiler: gcc (Debian 14.2.0-19) 14.2.0; per-variant flags as documented in CMakeLists.txt. Core isolation: `isolcpus=2,3` (kernel cmdline); benchmarks pinned to core 3 via `taskset -c 3`. 20 outer repetitions per cell; median ns_per_op reported (throughput convention). Correctness verified against scalar_libm reference over 1M inputs: max_abs_error = 5.722e-05 for NEON and scalar_poly (< 1e-4 threshold); autovec and scalar_libm are bit-exact (0.0).*
+_Raspberry Pi 5 Model B Rev 1.1 (BCM2712). CPU: Cortex-A76, 4 cores, AArch64. Clock: pinned at 2400 MHz (governor = performance; turbo = false; `get_throttled = 0x0` confirmed — no CPU throttling during capture). Kernel: 6.18.29+rpt-rpi-2712. Compiler: gcc (Debian 14.2.0-19) 14.2.0; per-variant flags as documented in CMakeLists.txt. Core isolation: `isolcpus=2,3` (kernel cmdline); benchmarks pinned to core 3 via `taskset -c 3`. 20 outer repetitions per cell; median ns_per_op reported (throughput convention). Correctness verified against scalar_libm reference over 1M inputs: max_abs_error = 5.722e-05 for NEON and scalar_poly (< 1e-4 threshold); autovec and scalar_libm are bit-exact (0.0)._
 
-*Source: [`bench/demos/09-arm-neon/`](https://github.com/GarethCooke/Crucible/tree/master/bench/demos/09-arm-neon) · [JSON](https://github.com/GarethCooke/Crucible/blob/master/site/src/data/perf/09-arm-neon.json).*
+_Source: [`bench/demos/09-arm-neon/`](https://github.com/GarethCooke/Crucible/tree/master/bench/demos/09-arm-neon) · [JSON](https://github.com/GarethCooke/Crucible/blob/master/site/src/data/perf/09-arm-neon.json)._
 
-*[Methodology →](/methodology)*
+_[Methodology →](/methodology)_

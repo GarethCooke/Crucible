@@ -37,8 +37,10 @@ The variants are ordered to isolate *where* each speedup comes from:
    `std::erfc` from `<cmath>`, compiled with `-fno-tree-vectorize -mno-avx2`.
 2. **`scalar_poly`** — same loop, same ISA flags, but `exp` and `N(x)` replaced
    with polynomial approximations. `std::log` and `std::sqrt` stay as libm.
-3. **`sse2_intrinsics`** — 4-wide `__m128`, manual intrinsics. Same polynomial
-   math as variant 2, widened to four lanes.
+3. **`sse2_intrinsics`** — 4-wide `__m128`, manual intrinsics. Shares variant 2's
+   polynomial `exp` and `N(x)`, widened to four lanes, and additionally vectorises
+   `log` (which variant 2 leaves to libm, since a libm `log` can't be issued into a
+   SIMD register).
 4. **`avx2_fma_intrinsics`** — 8-wide `__m256`, FMA throughout. `_mm256_fmadd_ps`
    replaces every `mul+add` in the Horner evaluations.
 
@@ -85,7 +87,7 @@ static void price8(
 }`}
 />
 
-The `CodeCompare` shows the most informative diff — same algorithm, different width.
+The `CodeCompare` shows the most informative diff — same polynomial core, different width.
 See the [repo](https://github.com/GarethCooke/Crucible/tree/master/bench/demos/03-simd-blackscholes/) for all four variants and the
 polynomial helpers.
 
@@ -150,8 +152,8 @@ inner loop.
 
 **Step 2 → 3: SSE width win.** Widening from 1 to 4 lanes with `__m128` gives a
 4.1× throughput gain at N=1M — slightly above clean 4× width because the scalar
-variant carries some loop-overhead and pipeline-fill cost the SIMD variant
-amortises. The main brake on a higher ratio is that `div` and `sqrt` aren't 4×
+variant keeps a libm `log` the SSE variant replaces with a vectorised polynomial,
+and carries loop-overhead and pipeline-fill cost the SIMD variant amortises. The main brake on a higher ratio is that `div` and `sqrt` aren't 4×
 cheaper in SSE — their throughput improves with width but the latency-bound
 operations don't disappear.
 
