@@ -131,6 +131,7 @@ export default async function HomePage() {
                 </p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
+                <StatusPill status="in-progress" />
                 <span
                   className="font-mono text-xs hidden sm:block"
                   style={{ color: 'var(--text-muted)' }}

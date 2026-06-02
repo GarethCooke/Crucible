@@ -11,6 +11,7 @@ export const metadata: Metadata = {
   title: 'Measuring the Gap — Grover\'s algorithm on real quantum hardware',
   description:
     'Take a problem with a famous theoretical quantum speedup, run it both ways, and measure the gap between the promise and the silicon. Classical wins decisively today; this post shows precisely why.',
+  robots: { index: false, follow: true },
 }
 
 function SpecialBadge() {
@@ -90,6 +91,18 @@ export default async function MeasuringTheGapPage() {
 
   return (
     <article>
+      {/* In-progress banner */}
+      <div
+        className="rounded-xl border p-4 mb-8 flex items-start gap-3"
+        style={{ borderColor: 'rgba(251, 191, 36, 0.5)', background: 'rgba(245, 158, 11, 0.08)' }}
+      >
+        <span className="font-bold shrink-0 mt-0.5" style={{ color: '#fbbf24' }}>!</span>
+        <p className="text-sm leading-relaxed" style={{ color: '#fcd34d' }}>
+          <strong>In progress</strong> — this post is awaiting its hardware capture. The device
+          measurements shown are placeholders; the simulator, theory, and explainer are final.
+        </p>
+      </div>
+
       {/* Back navigation */}
       <div className="flex items-center gap-4 mb-12">
         <a href="/" className="text-sm transition-opacity hover:opacity-70" style={{ color: 'var(--text-muted)' }}>

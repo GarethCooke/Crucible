@@ -54,6 +54,14 @@ Do not run until the capture has filled the JSON device nulls and produced the a
 
 5.4 Re-render the mitigation panel against real numbers; confirm the Task 3 spread rule produced the right per-N text (soften to "no significant effect" wherever the off/on intervals overlap).
 
+5.5 Remove the in-progress markers added by the hotfix brief (`quantum-measuring-the-gap-in-progress-marker-hotfix-brief.md`). All three must come off in the same pass:
+
+- Remove the in-progress banner from `site/src/app/special/measuring-the-gap/page.tsx` (the `<div>` block above the back navigation).
+- Remove `robots: { index: false, follow: true }` from the `metadata` export in the same file.
+- Remove the `<StatusPill status="in-progress" />` from the special editions listing in `site/src/app/page.tsx`.
+
+Gate this step on zero `[hardware capture pending]` strings remaining in the rendered post (i.e., 5.1 must pass first).
+
 ## Acceptance
 
 - Task 1: glob is flat; methodology demo total unchanged (both values stated); special post + companion absent from any numbered count or the demos-1–N cross-read list.
