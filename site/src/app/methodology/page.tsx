@@ -83,16 +83,24 @@ export default function MethodologyPage() {
         non-negotiable commitments below.
       </p>
 
-      {/* ── Reference machine ─────────────────────────────────────────────── */}
+      {/* ── Reference machines ────────────────────────────────────────────── */}
       <h2
         id="reference-machine"
         className="font-sans font-semibold text-sm uppercase tracking-widest mb-4"
         style={{ color: "var(--text-muted)" }}
       >
-        Reference machine
+        Reference machines
       </h2>
+
+      {/* Machine 1: Zen 2 */}
+      <p
+        className="font-mono text-xs uppercase tracking-widest mb-2"
+        style={{ color: "var(--text-muted)" }}
+      >
+        Machine 1 — x86-64 (demos 1–8)
+      </p>
       <div
-        className="rounded-xl border p-5 mb-12 font-mono text-sm space-y-1"
+        className="rounded-xl border p-5 mb-4 font-mono text-sm space-y-1"
         style={{
           borderColor: "var(--border-color)",
           background: "var(--bg-card)",
@@ -149,12 +157,80 @@ export default function MethodologyPage() {
           </span>
         </div>
       </div>
-      <p className="text-sm mb-6" style={{ color: "var(--text-muted)" }}>
+      <p className="text-sm mb-8" style={{ color: "var(--text-muted)" }}>
         Zen 2 implements 256-bit AVX2 as two 128-bit µops — called out
         explicitly in any SIMD post. Full{" "}
         <code>lscpu --extended</code> output,
         kernel version, and compiler version are committed to the repo alongside
         each benchmark result.
+      </p>
+
+      {/* Machine 2: Pi 5 / Cortex-A76 */}
+      <p
+        className="font-mono text-xs uppercase tracking-widest mb-2"
+        style={{ color: "var(--text-muted)" }}
+      >
+        Machine 2 — AArch64 (demo 9+)
+      </p>
+      <div
+        className="rounded-xl border p-5 mb-4 font-mono text-sm space-y-1"
+        style={{
+          borderColor: "var(--border-color)",
+          background: "var(--bg-card)",
+          color: "var(--text-secondary)",
+        }}
+      >
+        <div>
+          <span style={{ color: "var(--text-muted)" }}>CPU</span>{" "}
+          <span className="ml-4">
+            Cortex-A76 (BCM2712) — 4 cores, AArch64, NEON baseline ISA, no SVE
+          </span>
+        </div>
+        <div>
+          <span style={{ color: "var(--text-muted)" }}>Board</span>{" "}
+          <span className="ml-4">Raspberry Pi 5 Model B Rev 1.1</span>
+        </div>
+        <div>
+          <span style={{ color: "var(--text-muted)" }}>RAM</span>{" "}
+          <span className="ml-4">4 GB LPDDR4X</span>
+        </div>
+        <div>
+          <span style={{ color: "var(--text-muted)" }}>OS</span>{" "}
+          <span className="ml-4">Raspberry Pi OS (64-bit)</span>
+        </div>
+        <div>
+          <span style={{ color: "var(--text-muted)" }}>Boot</span>{" "}
+          <span className="ml-4">
+            isolcpus=2,3 in kernel cmdline; benchmarks pinned to core 3 via
+            taskset -c 3; IRQ affinity redirected off cores 2–3
+          </span>
+        </div>
+        <div>
+          <span style={{ color: "var(--text-muted)" }}>Clock</span>{" "}
+          <span className="ml-4">
+            governor = performance; clock pinned at 2400 MHz (MAXMHZ);
+            get_throttled = 0x0 verified (no CPU throttling) — replaces the
+            Zen 2 BIOS turbo-disable with a clock-pin approach
+          </span>
+        </div>
+        <div
+          className="pt-2 border-t"
+          style={{ borderColor: "var(--border-color)" }}
+        >
+          <span style={{ color: "var(--text-muted)" }}>ISA</span>{" "}
+          <span className="ml-4">
+            AArch64 · NEON (128-bit) ·{" "}
+            <strong style={{ color: "var(--text-primary)" }}>no SVE</strong>
+          </span>
+        </div>
+      </div>
+      <p className="text-sm mb-12" style={{ color: "var(--text-muted)" }}>
+        Cross-machine absolute ns/op comparisons are never made between Machine 1
+        and Machine 2 — different clocks, compilers, and memory subsystems make
+        them meaningless. The only portable quantity across machines is the
+        within-machine speedup ratio. Full <code>lscpu --extended</code> output,
+        kernel version, and compiler version are committed alongside each
+        benchmark result.
       </p>
       {/* ── Four commitments ──────────────────────────────────────────────── */}
       <h2
@@ -223,9 +299,10 @@ export default function MethodologyPage() {
               percentiles computed from histograms merged across runs.
             </li>
             <li>
-              <strong>Working-set sweep</strong> (demos 6, 7, 8):
-              5 outer repetitions per cell; median <code>ns_per_op</code> reported.
-              Sweep coverage substitutes for higher per-cell rep count.
+              <strong>Working-set sweep</strong> (demos 6, 7, 8, 9):
+              5–20 outer repetitions per cell; median <code>ns_per_op</code> reported.
+              Sweep coverage substitutes for higher per-cell rep count. Each
+              post&rsquo;s footer states the exact rep count used.
             </li>
           </ul>
           Every chart states which statistic it shows:
