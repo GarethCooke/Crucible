@@ -123,10 +123,11 @@ export function QuantumProbChartClient({
           .attr('opacity', 0.9)
           .attr('d', lineGen)
 
-        g.selectAll(`.dot-qp-${s.label.replace(/\s+/g, '-')}`)
+        const safeClass = s.label.replace(/[^a-zA-Z0-9]+/g, '-')
+        g.selectAll(`.dot-qp-${safeClass}`)
           .data(validPts)
           .join('circle')
-          .attr('class', `dot-qp-${s.label.replace(/\s+/g, '-')}`)
+          .attr('class', `dot-qp-${safeClass}`)
           .attr('cx', (d) => x(d.xLabel) ?? 0)
           .attr('cy', (d) => y(d.y!))
           .attr('r', 4)
