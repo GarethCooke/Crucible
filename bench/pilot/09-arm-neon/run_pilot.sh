@@ -111,7 +111,7 @@ if [[ ! -f "$ASM_DIR/price_neon.s" || ! -f "$ASM_DIR/price_scalar.s" ]]; then
     info "Hint: rebuild with --build, or run: $SCRIPT_DIR/dump_asm.sh $BIN $ASM_DIR"
     A5_OK=0
 else
-    # NEON must be present in price_neon.s
+    # Hand-NEON must contain vector ops
     NEON_HITS=$(grep -cE 'fmla|v[0-9]+\.4s' "$ASM_DIR/price_neon.s" || true)
     if [[ "$NEON_HITS" -gt 0 ]]; then
         pass "price_neon.s: $NEON_HITS NEON instruction(s) found (fmla / v*.4s)"
@@ -120,15 +120,27 @@ else
         A5_OK=0
     fi
 
-    # Scalar baseline must have zero vector ops
+    # Scalar baseline must have zero vector ops (autovec guard check)
     SCALAR_HITS=$(grep -cE 'fmla|v[0-9]+\.4s' "$ASM_DIR/price_scalar.s" || true)
     if [[ "$SCALAR_HITS" -eq 0 ]]; then
-        pass "price_scalar.s: no NEON ops — autovec guard is working"
+        pass "price_scalar.s: no NEON ops — -fno-tree-vectorize guard is working"
     else
         fail "price_scalar.s: $SCALAR_HITS NEON instruction(s) found"
-        fail "  The -fno-tree-vectorize guard failed; A2/A3 would measure autovec-vs-autovec."
+        fail "  The -fno-tree-vectorize guard failed; A2 would measure autovec-vs-autovec."
         fail "  Check the __attribute__((optimize(\"no-tree-vectorize\"))) on price_scalar()."
         A5_OK=0
+    fi
+
+    # Autovec variant must contain vector ops (confirms GCC autovectorised at -O3)
+    if [[ -f "$ASM_DIR/price_autovec.s" ]]; then
+        AUTOVEC_HITS=$(grep -cE 'fmla|v[0-9]+\.4s' "$ASM_DIR/price_autovec.s" || true)
+        if [[ "$AUTOVEC_HITS" -gt 0 ]]; then
+            pass "price_autovec.s: $AUTOVEC_HITS NEON instruction(s) — GCC autovectorised at -O3"
+        else
+            warn "price_autovec.s: no NEON ops — GCC did not autovectorise; A3 will show no gap (fine outcome)"
+        fi
+    else
+        warn "price_autovec.s not found — rebuild to generate it (cmake --build build)"
     fi
 fi
 
@@ -187,7 +199,7 @@ fi
 # ─────────────────────────────────────────────────────────────────────────────
 # A2 / A3 — NEON-over-scalar ratio (two N)
 # ─────────────────────────────────────────────────────────────────────────────
-header "A2/A3 — NEON-over-scalar ratios"
+header "A2 — NEON-over-scalar ratios"
 
 run_variant() {
     local variant="$1" n="$2" logfile="$3"
@@ -235,33 +247,30 @@ else
     fail "  Do not write the brief on a sub-ceiling number."
 fi
 
-# ── A3 validation (autovec-vs-hand-NEON margin, decides Framing A) ────────────
-# Note: The scalar variant in this binary is guarded with -fno-tree-vectorize
-# (via __attribute__), so the A2 ratio reflects hand-NEON vs truly-scalar,
-# which is an *upper bound* on the autovec-vs-hand-NEON gap (autovec narrows it).
-# A true A3 measurement requires a separate build without the guard; the pilot
-# scope treats A2 and A3 as the same run set, so we use A2's 16k numbers here.
-MARGIN_16K=$(fp_pct_diff "$SCALAR_16K" "$NEON_16K")
+# ── A3 — autovec vs hand-NEON at N=16k (decides Framing A) ───────────────────
+# Runs the autovec variant (same polynomial, no guard — GCC autovectorises at
+# -O3 -mcpu=cortex-a76) and compares its median against hand-NEON at 16k.
+# This is the question the scope couldn't answer from A2's guarded-scalar data.
+header "A3 — Autovec vs hand-NEON (Framing A)"
+info "=== N=16384 (autovec vs hand-NEON) ==="
+run_variant autovec 16384 "$LOG_DIR/a3_autovec_16k.txt"
+
+AUTOVEC_16K=$(extract_median_ns "$LOG_DIR/a3_autovec_16k.txt")
+MARGIN_16K=$(fp_pct_diff "$AUTOVEC_16K" "$NEON_16K")
+RATIO_A3=$(fp_ratio "$AUTOVEC_16K" "$NEON_16K")
+info "A3 autovec vs hand-NEON: autovec=${AUTOVEC_16K} ns/op  neon=${NEON_16K} ns/op  ratio=${RATIO_A3}×  hand-NEON advantage=${MARGIN_16K}%"
 
 if fp_gt "$MARGIN_16K" 15; then
     RESULTS[A3]="GO"
-    pass "A3: Hand-NEON advantage ${MARGIN_16K}% > 15% — Framing A is alive as secondary story — GO"
-    info "  (scalar baseline is autovec-guarded; true autovec gap may be smaller)"
+    pass "A3: Hand-NEON beats autovec by ${MARGIN_16K}% > 15% — Framing A alive as secondary story — GO"
 elif fp_gt "$MARGIN_16K" 10; then
     RESULTS[A3]="WARN"
     warn "A3: Margin ${MARGIN_16K}% (10–15%) — borderline; Framing A questionable."
-    warn "  Consider building without the -fno-tree-vectorize guard to measure autovec directly."
 else
     RESULTS[A3]="COLLAPSE"
     info "A3: Margin ${MARGIN_16K}% ≤ 10% — Framing A collapses."
-    info "  Demo rests on Framing B alone ('the compiler gets free NEON but 4-wide is still the wall')."
+    info "  Demo rests on Framing B alone: 'free autovec NEON still hits the same 4-wide wall.'"
     info "  This is a fine outcome — scope §A3 says so explicitly."
-fi
-
-# Hard-stop on A2 — A4 can still run (thermal soak is independent of ratio), but
-# flag it so the user knows.
-if [[ "${RESULTS[A2]}" == "STOP" ]]; then
-    warn "A2 is a hard stop but continuing to A4 (thermal soak is independent)."
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────

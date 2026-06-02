@@ -1,32 +1,193 @@
 ---
 title: "NEON on ARM: vector width is not a given"
-date: "2026-06-01"
-status: "in-progress"
-expectedAt: "June 2026"
-summary: "The demo 3 Black-Scholes kernel, ported to AArch64 NEON on a Raspberry Pi 5 (Cortex-A76). Same kernel, different ISA — and a vector unit with no wider gear to shift into. A within-machine look at where SIMD tops out when the silicon caps you at four-wide."
+date: "2026-06-02"
+summary: "The demo 3 Black-Scholes kernel on a Cortex-A76. NEON delivers ~4.3× over scalar at 16k, rising to ~4.8× at 1M — and stops there. Where Zen 2 had AVX2 to reach for, the Pi 5 doesn't. Vector width is a property of the silicon."
 ---
 
-<InProgressNotice expectedAt="June 2026" />
+[Demo 3](/posts/03-simd-blackscholes) priced the same Black-Scholes kernel at roughly 4× the throughput with SSE, then nearly doubled again with AVX2 — a width story on a machine that had width to give. This post runs the identical kernel on a Raspberry Pi 5 (Cortex-A76), on AArch64 NEON.
 
-## The thesis
+The result is clean. NEON is 128-bit, four `float32` lanes, and there is no wider unit on BCM2712. The kernel hits **~4.3× over scalar** at 16k options, climbs to **~4.8×** at 1M as per-call overhead amortises, and stops. Where Zen 2 had AVX2 to reach for, the Pi doesn't. The ceiling is not a measurement failure; it is the architecture.
 
-[Demo 3](/posts/03-simd-blackscholes) showed SIMD pays off on Zen 2, and climbed from 4-wide SSE up to AVX2. This post takes the same Black-Scholes call-pricing kernel and ports it to a different instruction set entirely — AArch64 NEON, on a Raspberry Pi 5 (Cortex-A76).
+## The workload
 
-The Cortex-A76 is NEON-only: 128-bit registers, four-wide `float32`, and no SVE to reach for. So the architectural expectation is that the kernel tops out near the four-wide ceiling and stays there — where the Zen 2 box had a wider unit to shift into, this core doesn't. Vector width is a property of the silicon, not an assumption you get to make.
+European call option pricing under Black-Scholes — the same kernel, same parameter ranges, and the same fixed seed (`0xCAFEBABE`) as demo 3. Input: SoA arrays of `S`, `K`, `T`, `r`, `σ` (all `float`). Output: an array of call prices `C`. See [demo 3](/posts/03-simd-blackscholes) for the full formula and the motivation for the SoA layout; the details don't change here.
 
-This is the first Crucible demo on a second reference machine. That changes one rule: absolute nanoseconds-per-op are never compared across the two rigs — different clocks, cores, and memory make that meaningless. The only portable quantity is the within-machine speedup ratio, and that is what the post will measure.
+This is the first Crucible benchmark on a second reference machine. One rule changes as a result: absolute nanoseconds-per-option are never compared across the two rigs. Different clocks, different memory subsystems, different compilers — the numbers don't travel. The only portable quantity is the within-machine speedup ratio.
 
-## What the post will cover
+## Four variants
 
-The demo 3 Black-Scholes kernel, on the Pi 5, across two variants:
+| Key          | Display       | ISA            | Notes                                                    |
+| ------------ | ------------- | -------------- | -------------------------------------------------------- |
+| `scalarlibm` | scalar (libm) | aarch64-scalar | `std::log`, `std::exp`, libm erfc; `-fno-tree-vectorize` |
+| `autovec`    | autovec −O3   | aarch64-scalar | same libm math, vectorise guard removed                  |
+| `scalarpoly` | scalar (poly) | aarch64-scalar | inline poly `exp` + `N(x)`; width-ratio denominator      |
+| `neon`       | NEON (hand)   | aarch64-neon   | `float32x4_t` intrinsics; inline poly throughout         |
 
-1. **Scalar baseline** — guarded against autovectorisation, so the comparison is honest. On AArch64, NEON is on by default at `-O3`, which makes this guard load-bearing in a way it isn't on x86.
-2. **Hand-written NEON** — the kernel expressed in `float32x4_t` intrinsics.
+**scalar (libm)** — the honest baseline. Prices one option at a time, taking its transcendentals straight from the system math library (`std::log`, `std::exp`, and the error function behind the normal CDF). Built with `-fno-tree-vectorize` so the compiler cannot quietly vectorise it — this is genuinely scalar code, confirmed in the emitted assembly.
 
-An N-sweep across cache-resident sizes, with the headline view contrasting the NEON-over-scalar ratio against demo 3's x86 curve — ratio against ratio, never absolute time against absolute time. The post may also look at how hand-written NEON compares to what GCC's autovectoriser produces on its own, since on ARM that's the default rather than an opt-in.
+**autovec** — the same libm-based kernel as scalar (libm), but with the anti-vectorisation guard removed, so `-O3` is free to autovectorise. On AArch64 NEON is part of the baseline ISA and GCC vectorises by default — the question is whether it _can_ here. It can't: the libm `log`/`exp`/`erfc` calls are opaque barriers the autovectoriser won't cross, so the assembly comes out byte-identical to scalar (libm) and the timing tracks it within 0.01%. The variant exists to show that "just turn on `-O3`" buys nothing for this kernel.
 
-## What makes the post interesting
+**scalar (poly)** — replaces libm's `exp` and normal CDF with inlined polynomial approximations, still one option at a time. This isolates the _algorithm_ win — avoiding the libm `exp`/`erfc` dispatch — from the _width_ win that comes later, and runs ~6% faster than scalar (libm). It is the width-ratio denominator: it shares the dominant polynomial math (`exp`, `N(x)`) with the NEON kernel. Using `scalar_libm` as the denominator instead would fold the `exp`/`erfc` algorithm win into "width" and overstate what lane count buys; scalar_poly is the closer baseline. (One residual difference — the `log` and `sqrt` paths — is accounted for under _Decomposing the speedup_.)
 
-The interesting result isn't that SIMD works on ARM — demo 3 already proved vectorisation pays. It's the ceiling. The kernel that kept climbing on Zen 2 has nowhere to climb here, because the hardware caps it at four-wide and there's no wider unit to ask for. It's a clean, on-the-record demonstration that the headroom you got last time was a property of that machine — and that the measurement methodology travels across ISA and microarchitecture intact.
+**NEON (hand)** — the poly kernel rewritten with hand-written `float32x4_t` intrinsics: four options priced per instruction, inline polynomials throughout (no libm calls to get in the autovectoriser's way). This is the SIMD variant that delivers the ~4.3× (at 16k) to ~4.8× (at 1M) width speedup over scalar (poly).
 
-Expected to land in June 2026.
+## The ceiling
+
+<TimeVsN
+  slug="09-arm-neon"
+  variants={["scalarlibm", "autovec", "scalarpoly", "neon"]}
+  variantLabels={{
+    scalarlibm: "scalar (libm)",
+    scalarpoly: "scalar (poly)",
+    autovec: "autovec −O3",
+    neon: "NEON (hand)",
+  }}
+  stat="median"
+  xScale="log"
+  yAxisLabel="ns / option"
+  title="Median ns/option vs N — all four variants, log N, linear cost"
+/>
+
+Three scalar lines cluster between 61–73 ns/option across the sweep. NEON drops from ~22 ns at the smallest N to ~14 ns once per-call overhead amortises (see _The small-N caveat_) and holds flat there. The autovec line coincides with `scalar_libm` — discussed below. The y-axis is linear so the ~4–5× gap is visceral; the gap between the scalar band and the NEON line doesn't vary with N once the per-call overhead amortises.
+
+<ThroughputBars
+  slug="09-arm-neon"
+  targetN={16384}
+  variants={["scalarlibm", "autovec", "scalarpoly", "neon"]}
+  stat="median"
+  variantLabels={{
+    scalarlibm: "scalar (libm)",
+    scalarpoly: "scalar (poly)",
+    autovec: "autovec −O3",
+    neon: "NEON (hand)",
+  }}
+  title="Median ns/option at N = 16 384 — L2-resident, compute-bound"
+/>
+
+At N = 16 384 — comfortably within the 512 KB per-core L2 on the A76, the cleanest compute-bound comparison:
+
+| Variant       | ns/op | × vs scalar (poly) |
+| ------------- | ----- | ------------------ |
+| scalar (libm) | 65.4  | 0.94×              |
+| autovec −O3   | 65.4  | 0.94×              |
+| scalar (poly) | 61.2  | 1.00× (baseline)   |
+| NEON (hand)   | 14.1  | **4.3×**           |
+
+<ThroughputBars
+  slug="09-arm-neon"
+  targetN={1048576}
+  variants={["scalarlibm", "autovec", "scalarpoly", "neon"]}
+  stat="median"
+  variantLabels={{
+    scalarlibm: "scalar (libm)",
+    scalarpoly: "scalar (poly)",
+    autovec: "autovec −O3",
+    neon: "NEON (hand)",
+  }}
+  title="Median ns/option at N = 1 048 576 — past L3, fully amortised"
+/>
+
+At N = 1 048 576 (1M options, ~20 MB input): NEON holds at 13.7 ns; scalar (poly) rises to 65.9 ns; the ratio reaches **4.8×**. NEON is compute-bound on the polynomial kernel — throughput barely moves as the working set grows past cache because the transcendental approximations keep all execution units busy regardless of where the data lives.
+
+## Decomposing the speedup
+
+There are two wins stacked on top of each other, and they need to be accounted separately.
+
+**Algorithm win: ~6% (scalar libm → scalar poly).** Replacing `std::exp` and the libm normal CDF with inline polynomial approximations reduces ns/option by 6.4% at N=16k (65.4 → 61.2 ns) and 6.2% at N=1M. On Zen 2 the same step delivered 12%; on the A76 it's narrower, because the AArch64 glibc `libm` carries less `exp`/`erfc` dispatch overhead than the x86 one. The step still matters: it is the gate to vectorisation, since there is no `vexpq_f32` or any NEON equivalent of libm's `erfc` — you cannot vectorise a loop containing a PLT call.
+
+**Width win: ~4.3–4.8× (scalar poly → NEON).** The hand-written `float32x4_t` kernel prices four options per loop iteration. It shares scalar_poly's polynomial `exp` and `N(x)`, but does two things scalar_poly doesn't: it replaces libm `log` with a polynomial `log` (`vec_logf_neon`, no PLT call) and scalar `sqrt` with a vector `fsqrt`. So the ratio is not lane width alone, and the two differences pull in opposite directions. First, the polynomial `log` _adds_ arithmetic: NEON evaluates ~125 flops per option against scalar_poly's ~98 — about 28% more work — and still finishes 4.3× ahead, which is the clearest evidence the lanes are doing real parallel work. Second, the libm `log` in the scalar baseline is slower than the polynomial `log` NEON uses, so the denominator is inflated, lifting the measured ratio on this machine to the top of the 4-wide band and slightly past it (the per-call overhead above pulls the other way at small N — which is why the SSE row's 16k point sits a touch under 4×). The pure-lane component is ~4×; the remainder is the `log` substitution plus the per-call overhead the wide loop amortises. The architectural ceiling the headline names is that ~4× lane factor — there is no wider unit to reach for — and the measured 4.3–4.8× is that factor plus these two effects, not a wider unit at work.
+
+The headline denominator is `scalar_poly` because it shares the dominant poly math with the NEON kernel — measuring against `scalar_libm` would give 65.4/14.1 = **4.6×** at 16k and 70.2/13.7 = **5.1×** at 1M, but those figures fold the `exp`/`erfc` algorithm win into "width" and overstate what lane count buys you. The 5.1× number is not wrong, but it is not the width number; 4.8× is. (The 5.1× figure labels what NEON gains over the libm baseline end-to-end, which is a valid but different question.)
+
+<CodeCompare
+  lang="cpp"
+  labels={["scalar_poly — one option per iteration", "NEON — four options per call"]}
+  naive={`// scalar_poly.cpp — price_options_scalar_poly
+// Compiled: -O3 -mcpu=cortex-a76 -fno-tree-vectorize
+// bs_call_poly: libm log + libm sqrt + inline poly exp/N(x)
+for (int64_t i = 0; i < n; ++i) {
+    C[i] = bs_call_poly(S[i], K[i], T[i], r[i], sigma[i]);
+}`}
+  optimized={`// neon_intrinsics.cpp — price4 (four options per call)
+// Compiled: -O3 -mcpu=cortex-a76
+float32x4_t vS   = vld1q_f32(S);   float32x4_t vK   = vld1q_f32(K);
+float32x4_t vT   = vld1q_f32(T);   float32x4_t vR   = vld1q_f32(r);
+float32x4_t vSig = vld1q_f32(sigma);
+
+float32x4_t sig2 = vmulq_f32(vSig, vSig);
+float32x4_t sqrtT = vsqrtq_f32(vT);
+float32x4_t sig_sqrtT = vmulq_f32(vSig, sqrtT);
+
+float32x4_t log_SK = vec_logf_neon(vdivq_f32(vS, vK));
+float32x4_t d1_num = vfmaq_f32(log_SK,
+vfmaq_f32(vR, vdupq_n_f32(0.5f), sig2), vT);
+float32x4_t d1 = vdivq_f32(d1_num, sig_sqrtT);
+float32x4_t d2 = vsubq_f32(d1, sig_sqrtT);
+
+float32x4_t Nd1 = vec_ncdf_neon(d1);
+float32x4_t Nd2 = vec_ncdf_neon(d2);
+float32x4_t disc = vec_expf_neon(vnegq_f32(vmulq_f32(vR, vT)));
+
+vst1q_f32(C, vsubq_f32(
+vmulq_f32(vS, Nd1),
+vmulq_f32(vmulq_f32(vK, disc), Nd2)));`}
+/>
+
+The scalar variant is one call per option. The NEON variant loads four at once with `vld1q_f32`, computes all four d₁ and d₂ in parallel via `vfmaq_f32` (fused multiply-add on `float32x4_t`), and stores four results with `vst1q_f32`. The `exp` and normal-CDF helpers (`vec_expf_neon`, `vec_ncdf_neon`) in [`poly_neon.h`](https://github.com/GarethCooke/Crucible/blob/master/bench/demos/09-arm-neon/poly_neon.h) are width-ports of the same Horner evaluations scalar_poly uses (`fast_expf`, `ncdf_poly`). `vec_logf_neon` has no scalar counterpart in scalar_poly — which calls libm `log` — so it is the one piece of math the NEON kernel adds rather than widens. No PLT calls appear in the main vector loop; `vsqrtq_f32` emits a single hardware `fsqrt` instruction.
+
+## The autovectoriser's tell
+
+The `autovec` variant sits on top of `scalar_libm` at every N — within 0.01% across the full sweep. GCC at `-O3 -mcpu=cortex-a76`, targeting a core where NEON is on by default, did not vectorise the Black-Scholes loop.
+
+This is worth naming explicitly. On AArch64, NEON is part of the baseline ISA — there is no `-mno-avx` gate. The compiler is actively trying to vectorise at `-O3`. It failed here, and the assembled output confirms it: the `autovec` object file contains no `.4s` register operations in the main loop. The barrier is `logf@plt` — the libm call cannot be inlined or proven pure through the PLT, and GCC gives up on the loop entirely rather than partially vectorising around the call.
+
+This is exactly the barrier that `scalar_poly` was designed to clear: replace the PLT-bound transcendentals with inline polynomials, and the loop becomes vectorisable. The 4.3× gain is not something `-O3` discovers on its own, even on a target where SIMD is the default.
+
+## The small-N caveat
+
+At N = 1 024 the ratio is only **3.1×** (scalar poly: 67.4 ns, NEON: 22.0 ns). This is not a contradiction of the ceiling — it is per-call overhead. The benchmark harness's counter start/stop and function-call cost per outer iteration is a fixed charge; at 1k options it is a meaningful fraction of the measured time and inflates the NEON denominator more than the scalar one (NEON's loop is proportionally shorter). By N = 16k the overhead has amortised and the ratio reaches 4.3×, where it stays. Treat N ≥ 16k as the representative compute-bound regime.
+
+## Cross-architecture: the width ceiling in context
+
+All ratios below are within-machine `scalar_poly → SIMD`, derived from the JSON files. Absolute ns/op are never compared across machines.
+
+| Machine               | SIMD variant      | width       | ratio vs scalar (poly) at N = 16k | ratio at N = 1M |
+| --------------------- | ----------------- | ----------- | --------------------------------- | --------------- |
+| Zen 2 / Ryzen 3800X   | SSE2 (4-wide)     | 128-bit     | 3.8×                              | 4.1×            |
+| **Cortex-A76 / Pi 5** | **NEON (4-wide)** | **128-bit** | **4.3×**                          | **4.8×**        |
+| Zen 2 / Ryzen 3800X   | AVX2+FMA (8-wide) | 256-bit     | 7.5×                              | 9.3×            |
+
+_(Zen 2 ratios: SSE2 = scalarpoly / sse2 at each N; AVX2 = scalarpoly / avx2fma. Source: [`03-simd-blackscholes.json`](https://github.com/GarethCooke/Crucible/blob/master/site/src/data/perf/03-simd-blackscholes.json).)_
+
+The 4-wide units on both machines land in the 4–5× band. NEON's ratio is slightly above SSE2's — a machine-specific difference in scalar baseline behaviour and compiler code generation, not a claim that NEON is faster than SSE. The structural point is the third row: on Zen 2, AVX2 is available and the ratio nearly doubles again. On the Pi, there is no third row.
+
+A core with SVE could extend this table downward. SVE's scalable vector length means the same instruction set applies to 128-bit through 2048-bit implementations; on a Cortex-X925 or Neoverse V1 the ratio would not stop at 4.8×. That is a natural sequel to this post; this post measures the ceiling as it stands on BCM2712.
+
+## What this doesn't show
+
+- **No cross-machine absolute ns/op comparison.** The Pi 5 and the Zen 2 box run at different clock speeds on different memory subsystems compiled by different compiler versions. Absolute nanoseconds-per-option do not travel across machines. All the cross-arch table above shows is within-machine ratios, measured on the same algorithm at the same N values.
+- **Not a claim about ARM in general.** The results are A76-specific. ARM cores with SVE (Neoverse V1, Cortex-X925, and others) have wider execution units and would scale past the 4-wide ceiling shown here. "ARM SIMD tops out at 4×" is not what this post says; "this A76 has no wider unit to reach for" is.
+- **SVE deferred.** Measuring the same kernel on an SVE-capable core, with 256-bit or 512-bit vector length at runtime, would complete the cross-arch width comparison. That requires different hardware and is a candidate sequel.
+
+## Reproducing this
+
+The harness, all four variant implementations, polynomial headers, and committed ASM dumps are in the repository under `bench/demos/09-arm-neon/`. To reproduce on a Pi 5 or other Cortex-A76 board:
+
+```bash
+git clone https://github.com/GarethCooke/Crucible
+cd Crucible/bench
+cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
+cmake --build build --target bench_09_arm_neon
+taskset -c 3 ./build/bench_09_arm_neon \
+  --benchmark_repetitions=20 --benchmark_out_format=json
+```
+
+Clean results require `isolcpus=2,3` in the kernel command line (set via `/boot/firmware/cmdline.txt` on Raspberry Pi OS). Without it, the scheduler will place work on cores 2–3 and inflate variance. IRQ affinity should also be redirected off those cores. The capture used `taskset -c 3` (core 3 only) to stay within the isolated set. See [methodology](/methodology) for the statistical conventions.
+
+---
+
+_Raspberry Pi 5 Model B Rev 1.1 (BCM2712). CPU: Cortex-A76, 4 cores, AArch64. Clock: pinned at 2400 MHz (governor = performance; turbo = false; `get_throttled = 0x0` confirmed — no CPU throttling during capture). Kernel: 6.18.29+rpt-rpi-2712. Compiler: gcc (Debian 14.2.0-19) 14.2.0; per-variant flags as documented in CMakeLists.txt. Core isolation: `isolcpus=2,3` (kernel cmdline); benchmarks pinned to core 3 via `taskset -c 3`. 20 outer repetitions per cell; median ns_per_op reported (throughput convention). Correctness verified against scalar_libm reference over 1M inputs: max_abs_error = 5.722e-05 for NEON and scalar_poly (< 1e-4 threshold); autovec and scalar_libm are bit-exact (0.0)._
+
+_Source: [`bench/demos/09-arm-neon/`](https://github.com/GarethCooke/Crucible/tree/master/bench/demos/09-arm-neon) · [JSON](https://github.com/GarethCooke/Crucible/blob/master/site/src/data/perf/09-arm-neon.json)._
+
+_[Methodology →](/methodology)_

@@ -134,7 +134,7 @@ inline std::string machine_info_json() {
 
     // head -1: guard against lscpu printing one line per socket/NUMA node
     const auto cpu      = shell("lscpu | grep 'Model name' | sed 's/.*: *//' | head -1");
-    const auto phys     = shell("lscpu | grep '^Core(s) per socket' | awk '{print $NF}'");
+    const auto phys     = shell("lscpu -b -p=core | grep -v '^#' | sort -u | wc -l | tr -dc '0-9'");
     const auto logical  = shell("lscpu | grep '^CPU(s):' | awk 'NR==1{print $NF}'");
     const auto smt_raw  = shell("lscpu | grep '^Thread(s) per core' | awk '{print $NF}'");
     const auto ram_gb   = shell("awk '/MemTotal/{printf \"%.0f\", $2/1024/1024}' /proc/meminfo");
@@ -163,6 +163,12 @@ inline std::string machine_info_json() {
     // lscpu --extended: makes CCX topology visible; condensed to one line via \n escaping
     const auto lscpu_ext = shell_multiline("lscpu --extended 2>/dev/null");
 
+    // arch: ISA family (e.g. "x86_64", "aarch64") — distinguishes the two rigs.
+    const auto arch = shell("uname -m");
+    // soc: SoC/board model from device-tree (Pi: "Raspberry Pi 5 Model B Rev 1.0").
+    // Absent on x86 (no device-tree); 2>/dev/null + tr strip the NUL terminator.
+    const auto soc  = shell("tr -d '\\0' < /proc/device-tree/model 2>/dev/null");
+
     const bool smt_on   = (smt_raw != "1");
 
     std::string turbo_field;
@@ -186,7 +192,9 @@ inline std::string machine_info_json() {
         + (iso_effective.empty() ? "" : "\"isolated_cpus_effective\":\"" + iso_effective + "\",")
         + "\"isolated_cpus_source\":\""     + iso_source    + "\","
         "\"cpu_affinity\":\""               + cpu_affinity  + "\","
-        "\"lscpu_extended\":\""             + lscpu_ext     + "\"";
+        "\"lscpu_extended\":\""             + lscpu_ext     + "\","
+        "\"arch\":\""                       + arch          + "\","
+        "\"soc\":"                          + (soc.empty() ? "null" : "\"" + soc + "\"");
 }
 
 } // namespace crucible

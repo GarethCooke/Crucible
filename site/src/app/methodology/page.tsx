@@ -83,16 +83,24 @@ export default function MethodologyPage() {
         non-negotiable commitments below.
       </p>
 
-      {/* ── Reference machine ─────────────────────────────────────────────── */}
+      {/* ── Reference machines ────────────────────────────────────────────── */}
       <h2
         id="reference-machine"
         className="font-sans font-semibold text-sm uppercase tracking-widest mb-4"
         style={{ color: "var(--text-muted)" }}
       >
-        Reference machine
+        Reference machines
       </h2>
+
+      {/* Machine 1: Zen 2 */}
+      <p
+        className="font-mono text-xs uppercase tracking-widest mb-2"
+        style={{ color: "var(--text-muted)" }}
+      >
+        Machine 1 — x86-64 (demos 1–8)
+      </p>
       <div
-        className="rounded-xl border p-5 mb-12 font-mono text-sm space-y-1"
+        className="rounded-xl border p-5 mb-4 font-mono text-sm space-y-1"
         style={{
           borderColor: "var(--border-color)",
           background: "var(--bg-card)",
@@ -149,12 +157,80 @@ export default function MethodologyPage() {
           </span>
         </div>
       </div>
-      <p className="text-sm mb-6" style={{ color: "var(--text-muted)" }}>
+      <p className="text-sm mb-8" style={{ color: "var(--text-muted)" }}>
         Zen 2 implements 256-bit AVX2 as two 128-bit µops — called out
         explicitly in any SIMD post. Full{" "}
         <code>lscpu --extended</code> output,
         kernel version, and compiler version are committed to the repo alongside
         each benchmark result.
+      </p>
+
+      {/* Machine 2: Pi 5 / Cortex-A76 */}
+      <p
+        className="font-mono text-xs uppercase tracking-widest mb-2"
+        style={{ color: "var(--text-muted)" }}
+      >
+        Machine 2 — AArch64 (demo 9+)
+      </p>
+      <div
+        className="rounded-xl border p-5 mb-4 font-mono text-sm space-y-1"
+        style={{
+          borderColor: "var(--border-color)",
+          background: "var(--bg-card)",
+          color: "var(--text-secondary)",
+        }}
+      >
+        <div>
+          <span style={{ color: "var(--text-muted)" }}>CPU</span>{" "}
+          <span className="ml-4">
+            Cortex-A76 (BCM2712) — 4 cores, AArch64, NEON baseline ISA, no SVE
+          </span>
+        </div>
+        <div>
+          <span style={{ color: "var(--text-muted)" }}>Board</span>{" "}
+          <span className="ml-4">Raspberry Pi 5 Model B Rev 1.1</span>
+        </div>
+        <div>
+          <span style={{ color: "var(--text-muted)" }}>RAM</span>{" "}
+          <span className="ml-4">4 GB LPDDR4X</span>
+        </div>
+        <div>
+          <span style={{ color: "var(--text-muted)" }}>OS</span>{" "}
+          <span className="ml-4">Raspberry Pi OS (64-bit)</span>
+        </div>
+        <div>
+          <span style={{ color: "var(--text-muted)" }}>Boot</span>{" "}
+          <span className="ml-4">
+            isolcpus=2,3 in kernel cmdline; benchmarks pinned to core 3 via
+            taskset -c 3; IRQ affinity redirected off cores 2–3
+          </span>
+        </div>
+        <div>
+          <span style={{ color: "var(--text-muted)" }}>Clock</span>{" "}
+          <span className="ml-4">
+            governor = performance; clock pinned at 2400 MHz (MAXMHZ);
+            get_throttled = 0x0 verified (no CPU throttling) — replaces the
+            Zen 2 BIOS turbo-disable with a clock-pin approach
+          </span>
+        </div>
+        <div
+          className="pt-2 border-t"
+          style={{ borderColor: "var(--border-color)" }}
+        >
+          <span style={{ color: "var(--text-muted)" }}>ISA</span>{" "}
+          <span className="ml-4">
+            AArch64 · NEON (128-bit) ·{" "}
+            <strong style={{ color: "var(--text-primary)" }}>no SVE</strong>
+          </span>
+        </div>
+      </div>
+      <p className="text-sm mb-12" style={{ color: "var(--text-muted)" }}>
+        Cross-machine absolute ns/op comparisons are never made between Machine 1
+        and Machine 2 — different clocks, compilers, and memory subsystems make
+        them meaningless. The only portable quantity across machines is the
+        within-machine speedup ratio. Full <code>lscpu --extended</code> output,
+        kernel version, and compiler version are committed alongside each
+        benchmark result.
       </p>
       {/* ── Four commitments ──────────────────────────────────────────────── */}
       <h2
@@ -179,7 +255,11 @@ export default function MethodologyPage() {
           <code>machine.turbo</code> field. If turbo state cannot be determined
           the script exits non-zero rather than silently recording a wrong
           value. Boost obscures the true steady-state throughput the predictor
-          and cache hierarchy deliver at nominal frequency.
+          and cache hierarchy deliver at nominal frequency. On Machine 2 there
+          is no BIOS turbo to disable; the equivalent is a pinned clock
+          (governor <code>performance</code>, min = max at 2400 MHz) with{" "}
+          <code>get_throttled = 0x0</code> verified before and after each
+          capture &mdash; see Machine 2 above.
         </Commitment>
         <Commitment n={3} title="Core isolation">
           Cores 1–7 are isolated at the kernel level via{" "}
@@ -194,7 +274,11 @@ export default function MethodologyPage() {
           returning <code>0</code> and <code>lscpu</code> reporting 8 CPUs — to
           remove SMT-sibling resource sharing (L1, L2, execution ports,
           frontend) from all measurements. Isolated CPU IDs are recorded in each
-          demo&rsquo;s JSON <code>machine.isolated_cpus</code> field.
+          demo&rsquo;s JSON <code>machine.isolated_cpus</code> field. On
+          Machine 2 isolation uses <code>isolcpus=2,3</code> in the Pi kernel
+          cmdline with benchmarks pinned to core 3 via{" "}
+          <code>taskset -c 3</code>; the A76 exposes no SMT to disable. See
+          Machine 2 above.
           <br />
           <br />
           <strong style={{ color: "var(--text-secondary)" }}>
@@ -212,7 +296,7 @@ export default function MethodologyPage() {
           convention it used.
           <ul className="mt-2 mb-3 space-y-1 list-disc list-inside">
             <li>
-              <strong>Throughput / steady-state median</strong> (demos 1, 2, 3):
+              <strong>Throughput / steady-state median</strong> (demos 1, 2, 3, 9):
               ≥20 outer repetitions (Google Benchmark{" "}
               <code>--benchmark_repetitions</code>); aggregates computed across
               those repetitions.
@@ -302,7 +386,11 @@ cmake --build build --target bench_<NN>_<slug>
         <code>run_one.sh</code> requires <code>sudo</code> and the{" "}
         <code>cpuset</code> package (<code>sudo apt install cpuset</code> on
         Ubuntu); it runs the benchmark binary inside a <code>cset shield</code>{" "}
-        on cores 4–7 and tears the shield down automatically.
+        on cores 4–7 and tears the shield down automatically. On Machine 2 (the
+        Pi 5) <code>cset</code> is not used — Raspberry Pi OS is cgroup v2,
+        which <code>cset</code> does not target; AArch64 demos isolate with{" "}
+        <code>isolcpus=2,3</code> at boot and pin with{" "}
+        <code>taskset -c 3</code>, as documented in each demo&rsquo;s README.
       </p>
       <p className="text-sm mb-12" style={{ color: "var(--text-secondary)" }}>
         Source on GitHub:{" "}

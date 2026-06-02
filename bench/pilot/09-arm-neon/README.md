@@ -39,7 +39,7 @@ would make the A2/A3 ratios meaningless — the script aborts early if that guar
 | A5 | NEON ops present in `asm/price_neon.s`; none in `asm/price_scalar.s` | **FAIL → abort** |
 | A1 | All 5 `perf stat` counters available (no `<not supported>`) | **REFRAME** if any missing |
 | A2 | NEON-over-scalar ratio at N=16k (compute-bound) | ≥3.5× **GO** · 2.5–3.5× **WARN** · <2.5× **STOP** |
-| A3 | Hand-NEON advantage % at N=16k (decides Framing A) | >15% **GO** · ≤10% **COLLAPSE** (fine) |
+| A3 | `--variant autovec` vs `--variant neon` at N=16k — GCC autovec vs hand-NEON | >15% hand-NEON advantage **GO** · ≤10% **COLLAPSE** (fine) |
 | A4 | 8-min thermal soak on core 3; polls temp + throttle every 2s | Any throttle bit **STOP** · temp ≥80°C **WARN** |
 
 Run output and the A4 soak poll log are saved to `pilot_logs/`.
