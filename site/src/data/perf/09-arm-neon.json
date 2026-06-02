@@ -21,21 +21,21 @@
     "arch": "aarch64",
     "soc": "Raspberry Pi 5 Model B Rev 1.1"
   },
-  "captured_at": "2026-06-01T20:47:16Z",
+  "captured_at": "2026-06-02T07:52:03Z",
   "runs": [
     {
       "variant": "autovec",
       "n": 1024,
-      "iterations": 9386,
+      "iterations": 9374,
       "ns_per_op": {
-        "median": 72.8482,
-        "min": 72.8218,
-        "p99": 72.8645,
-        "iqr": 0.0251
+        "median": 72.9024,
+        "min": 72.8791,
+        "p99": 72.9276,
+        "iqr": 0.0155
       },
-      "ops_per_sec": 13728234,
-      "instructions_per_cycle": 1.97,
-      "gflops": 1.345,
+      "ops_per_sec": 13717980,
+      "instructions_per_cycle": 1.967,
+      "gflops": 1.344,
       "max_abs_error_vs_scalar_libm": 0.0,
       "variant_isa": "aarch64-scalar",
       "compile_flags": "-O3 -mcpu=cortex-a76"
@@ -43,16 +43,16 @@
     {
       "variant": "autovec",
       "n": 16384,
-      "iterations": 655,
+      "iterations": 653,
       "ns_per_op": {
-        "median": 65.2876,
-        "min": 65.2737,
-        "p99": 65.294,
-        "iqr": 0.0034
+        "median": 65.3727,
+        "min": 65.3573,
+        "p99": 65.3822,
+        "iqr": 0.0084
       },
-      "ops_per_sec": 15317906,
-      "instructions_per_cycle": 1.973,
-      "gflops": 1.501,
+      "ops_per_sec": 15297533,
+      "instructions_per_cycle": 1.97,
+      "gflops": 1.499,
       "max_abs_error_vs_scalar_libm": 0.0,
       "variant_isa": "aarch64-scalar",
       "compile_flags": "-O3 -mcpu=cortex-a76"
@@ -62,14 +62,14 @@
       "n": 262144,
       "iterations": 38,
       "ns_per_op": {
-        "median": 68.9927,
-        "min": 68.9499,
-        "p99": 69.016,
-        "iqr": 0.0155
+        "median": 68.9381,
+        "min": 68.8968,
+        "p99": 69.0516,
+        "iqr": 0.0399
       },
-      "ops_per_sec": 14496454,
-      "instructions_per_cycle": 1.855,
-      "gflops": 1.421,
+      "ops_per_sec": 14508816,
+      "instructions_per_cycle": 1.857,
+      "gflops": 1.422,
       "max_abs_error_vs_scalar_libm": 0.0,
       "variant_isa": "aarch64-scalar",
       "compile_flags": "-O3 -mcpu=cortex-a76"
@@ -79,14 +79,14 @@
       "n": 1048576,
       "iterations": 10,
       "ns_per_op": {
-        "median": 70.3062,
-        "min": 70.294,
-        "p99": 70.3238,
-        "iqr": 0.011
+        "median": 70.2103,
+        "min": 70.197,
+        "p99": 70.229,
+        "iqr": 0.0172
       },
-      "ops_per_sec": 14225944,
-      "instructions_per_cycle": 1.819,
-      "gflops": 1.394,
+      "ops_per_sec": 14244939,
+      "instructions_per_cycle": 1.822,
+      "gflops": 1.396,
       "max_abs_error_vs_scalar_libm": 0.0,
       "variant_isa": "aarch64-scalar",
       "compile_flags": "-O3 -mcpu=cortex-a76"
@@ -94,16 +94,16 @@
     {
       "variant": "neon",
       "n": 1024,
-      "iterations": 31093,
+      "iterations": 31069,
       "ns_per_op": {
-        "median": 21.9916,
-        "min": 21.975,
-        "p99": 22.0113,
-        "iqr": 0.0155
+        "median": 22.004,
+        "min": 21.9784,
+        "p99": 22.0238,
+        "iqr": 0.0159
       },
-      "ops_per_sec": 45475846,
-      "instructions_per_cycle": 1.385,
-      "gflops": 5.684,
+      "ops_per_sec": 45448229,
+      "instructions_per_cycle": 1.386,
+      "gflops": 5.681,
       "max_abs_error_vs_scalar_libm": 5.722e-05,
       "variant_isa": "aarch64-neon",
       "compile_flags": "-O3 -mcpu=cortex-a76"
@@ -111,16 +111,16 @@
     {
       "variant": "neon",
       "n": 16384,
-      "iterations": 3044,
+      "iterations": 3032,
       "ns_per_op": {
-        "median": 14.039,
-        "min": 14.0373,
-        "p99": 14.0402,
-        "iqr": 0.0017
+        "median": 14.091,
+        "min": 14.0877,
+        "p99": 14.0943,
+        "iqr": 0.003
       },
-      "ops_per_sec": 71234982,
-      "instructions_per_cycle": 1.389,
-      "gflops": 8.904,
+      "ops_per_sec": 70971991,
+      "instructions_per_cycle": 1.384,
+      "gflops": 8.871,
       "max_abs_error_vs_scalar_libm": 5.722e-05,
       "variant_isa": "aarch64-neon",
       "compile_flags": "-O3 -mcpu=cortex-a76"
@@ -128,16 +128,16 @@
     {
       "variant": "neon",
       "n": 262144,
-      "iterations": 196,
+      "iterations": 197,
       "ns_per_op": {
-        "median": 13.5981,
-        "min": 13.5959,
-        "p99": 13.6006,
-        "iqr": 0.0021
+        "median": 13.5927,
+        "min": 13.5899,
+        "p99": 13.596,
+        "iqr": 0.0014
       },
-      "ops_per_sec": 73552422,
+      "ops_per_sec": 73578451,
       "instructions_per_cycle": 1.387,
-      "gflops": 9.194,
+      "gflops": 9.197,
       "max_abs_error_vs_scalar_libm": 5.722e-05,
       "variant_isa": "aarch64-neon",
       "compile_flags": "-O3 -mcpu=cortex-a76"
@@ -145,16 +145,16 @@
     {
       "variant": "neon",
       "n": 1048576,
-      "iterations": 48,
+      "iterations": 49,
       "ns_per_op": {
-        "median": 13.9122,
-        "min": 13.9076,
-        "p99": 13.9161,
-        "iqr": 0.0038
+        "median": 13.6977,
+        "min": 13.6945,
+        "p99": 13.6996,
+        "iqr": 0.0017
       },
-      "ops_per_sec": 71892794,
-      "instructions_per_cycle": 1.352,
-      "gflops": 8.987,
+      "ops_per_sec": 73017971,
+      "instructions_per_cycle": 1.373,
+      "gflops": 9.127,
       "max_abs_error_vs_scalar_libm": 5.722e-05,
       "variant_isa": "aarch64-neon",
       "compile_flags": "-O3 -mcpu=cortex-a76"
@@ -162,16 +162,16 @@
     {
       "variant": "scalarlibm",
       "n": 1024,
-      "iterations": 9373,
+      "iterations": 9361,
       "ns_per_op": {
-        "median": 72.851,
-        "min": 72.8247,
-        "p99": 72.8868,
-        "iqr": 0.0349
+        "median": 72.9591,
+        "min": 72.9279,
+        "p99": 73.017,
+        "iqr": 0.0236
       },
-      "ops_per_sec": 13728429,
-      "instructions_per_cycle": 1.97,
-      "gflops": 1.345,
+      "ops_per_sec": 13707064,
+      "instructions_per_cycle": 1.967,
+      "gflops": 1.343,
       "max_abs_error_vs_scalar_libm": 0.0,
       "variant_isa": "aarch64-scalar",
       "compile_flags": "-O3 -mcpu=cortex-a76 -fno-tree-vectorize"
@@ -181,14 +181,14 @@
       "n": 16384,
       "iterations": 654,
       "ns_per_op": {
-        "median": 65.292,
-        "min": 65.2845,
-        "p99": 65.2986,
-        "iqr": 0.0054
+        "median": 65.372,
+        "min": 65.3637,
+        "p99": 65.3814,
+        "iqr": 0.0038
       },
-      "ops_per_sec": 15317005,
-      "instructions_per_cycle": 1.973,
-      "gflops": 1.501,
+      "ops_per_sec": 15298032,
+      "instructions_per_cycle": 1.97,
+      "gflops": 1.499,
       "max_abs_error_vs_scalar_libm": 0.0,
       "variant_isa": "aarch64-scalar",
       "compile_flags": "-O3 -mcpu=cortex-a76 -fno-tree-vectorize"
@@ -196,16 +196,16 @@
     {
       "variant": "scalarlibm",
       "n": 262144,
-      "iterations": 39,
+      "iterations": 38,
       "ns_per_op": {
-        "median": 68.9869,
-        "min": 68.9659,
-        "p99": 69.0459,
-        "iqr": 0.0353
+        "median": 68.9351,
+        "min": 68.8705,
+        "p99": 69.6049,
+        "iqr": 0.0733
       },
-      "ops_per_sec": 14497926,
-      "instructions_per_cycle": 1.855,
-      "gflops": 1.421,
+      "ops_per_sec": 14509110,
+      "instructions_per_cycle": 1.857,
+      "gflops": 1.422,
       "max_abs_error_vs_scalar_libm": 0.0,
       "variant_isa": "aarch64-scalar",
       "compile_flags": "-O3 -mcpu=cortex-a76 -fno-tree-vectorize"
@@ -215,14 +215,14 @@
       "n": 1048576,
       "iterations": 10,
       "ns_per_op": {
-        "median": 70.3123,
-        "min": 70.2953,
-        "p99": 70.333,
-        "iqr": 0.0097
+        "median": 70.2223,
+        "min": 70.193,
+        "p99": 70.2547,
+        "iqr": 0.0186
       },
-      "ops_per_sec": 14224726,
-      "instructions_per_cycle": 1.819,
-      "gflops": 1.394,
+      "ops_per_sec": 14242922,
+      "instructions_per_cycle": 1.821,
+      "gflops": 1.396,
       "max_abs_error_vs_scalar_libm": 0.0,
       "variant_isa": "aarch64-scalar",
       "compile_flags": "-O3 -mcpu=cortex-a76 -fno-tree-vectorize"
@@ -230,16 +230,16 @@
     {
       "variant": "scalarpoly",
       "n": 1024,
-      "iterations": 10135,
+      "iterations": 10128,
       "ns_per_op": {
-        "median": 67.4307,
-        "min": 67.349,
-        "p99": 67.4947,
-        "iqr": 0.0515
+        "median": 67.4176,
+        "min": 67.3551,
+        "p99": 67.4582,
+        "iqr": 0.0298
       },
-      "ops_per_sec": 14831029,
-      "instructions_per_cycle": 1.87,
-      "gflops": 1.453,
+      "ops_per_sec": 14833848,
+      "instructions_per_cycle": 1.871,
+      "gflops": 1.454,
       "max_abs_error_vs_scalar_libm": 5.722e-05,
       "variant_isa": "aarch64-scalar",
       "compile_flags": "-O3 -mcpu=cortex-a76 -fno-tree-vectorize"
@@ -247,16 +247,16 @@
     {
       "variant": "scalarpoly",
       "n": 16384,
-      "iterations": 703,
+      "iterations": 699,
       "ns_per_op": {
-        "median": 60.6926,
-        "min": 60.6486,
-        "p99": 60.8109,
-        "iqr": 0.1089
+        "median": 61.1904,
+        "min": 61.0738,
+        "p99": 61.2794,
+        "iqr": 0.1679
       },
-      "ops_per_sec": 16478661,
-      "instructions_per_cycle": 1.836,
-      "gflops": 1.615,
+      "ops_per_sec": 16351115,
+      "instructions_per_cycle": 1.821,
+      "gflops": 1.602,
       "max_abs_error_vs_scalar_libm": 5.722e-05,
       "variant_isa": "aarch64-scalar",
       "compile_flags": "-O3 -mcpu=cortex-a76 -fno-tree-vectorize"
@@ -266,14 +266,14 @@
       "n": 262144,
       "iterations": 41,
       "ns_per_op": {
-        "median": 64.6853,
-        "min": 64.4363,
-        "p99": 64.778,
-        "iqr": 0.0813
+        "median": 64.6659,
+        "min": 64.5345,
+        "p99": 64.7512,
+        "iqr": 0.0998
       },
-      "ops_per_sec": 15462689,
+      "ops_per_sec": 15466599,
       "instructions_per_cycle": 1.709,
-      "gflops": 1.515,
+      "gflops": 1.516,
       "max_abs_error_vs_scalar_libm": 5.722e-05,
       "variant_isa": "aarch64-scalar",
       "compile_flags": "-O3 -mcpu=cortex-a76 -fno-tree-vectorize"
@@ -283,18 +283,18 @@
       "n": 1048576,
       "iterations": 10,
       "ns_per_op": {
-        "median": 65.8948,
-        "min": 65.6654,
-        "p99": 66.0065,
-        "iqr": 0.1302
+        "median": 65.8858,
+        "min": 65.5982,
+        "p99": 65.941,
+        "iqr": 0.1946
       },
-      "ops_per_sec": 15179013,
-      "instructions_per_cycle": 1.676,
+      "ops_per_sec": 15182792,
+      "instructions_per_cycle": 1.677,
       "gflops": 1.488,
       "max_abs_error_vs_scalar_libm": 5.722e-05,
       "variant_isa": "aarch64-scalar",
       "compile_flags": "-O3 -mcpu=cortex-a76 -fno-tree-vectorize"
     }
   ],
-  "notes": "Four variants of European call option pricing on AArch64 (BCM2712 / Cortex-A76). Cross-arch companion to demo 03 (Zen 2 SSE/AVX2). scalar_poly matches demo 03's construction exactly (libm log/sqrt + poly exp/N(x)). autovec: GCC cannot cross the logf@plt barrier \u2014 asm is scalar despite -O3 NEON target; timing within 0.01% of scalar_libm at every N. scalar_poly runs 6-7% faster than scalar_libm (7.0% at 16k, 6.3% at 1M) \u2014 Debian libm erfc/exp cost is not negligible. neon: hand-written float32x4_t achieves ~4.3\u00d7 at 16k (4.32\u00d7), ~4.7\u00d7 at 1M (4.74\u00d7) over scalar_poly (pure-width denominator); neon/scalar_libm is larger (~4.65\u00d7 at 16k, ~5.05\u00d7 at 1M) but folds the algorithm win into the ratio. No second SIMD step: 128-bit NEON is the widest unit on BCM2712 (no SVE). cores_physical hard-set to 4 (BCM2712 quad-core Cortex-A76; probe returned 0)."
+  "notes": "Four variants of European call option pricing on AArch64 (BCM2712 / Cortex-A76). Cross-arch companion to demo 03 (Zen 2 SSE/AVX2). scalar_poly matches demo 03's construction exactly (libm log/sqrt + poly exp/N(x)). autovec: GCC cannot cross the logf@plt barrier \u2014 asm is scalar despite -O3 NEON target. neon: hand-written float32x4_t achieves ~4.5\u00d7 at 16k, ~4.8\u00d7 at 1M. No second SIMD step: 128-bit NEON is the widest unit on BCM2712 (no SVE)."
 }
