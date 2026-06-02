@@ -93,6 +93,43 @@ def build_grover(n, marked, iterations=None):
     return qc, iters
 
 
+def build_bv(n, secret):
+    """Bernstein-Vazirani: recover hidden n-bit `secret` in ONE oracle query.
+
+    Shallow by construction (one layer of CX into a phase-kickback ancilla), so
+    it should survive on hardware at N where deep Grover has drowned — that's the
+    contrast: the failure is circuit DEPTH x error, not 'quantum'. Uses n input
+    qubits + 1 ancilla; measures the n input qubits. secret[i] -> qubit i.
+    """
+    from qiskit import QuantumCircuit
+
+    assert len(secret) == n, "secret must have length n"
+    qc = QuantumCircuit(n + 1, n)
+    qc.x(n)  # ancilla -> |1>
+    qc.h(n)  # ancilla -> |->  (phase kickback target)
+    qc.h(range(n))  # inputs -> superposition
+    for i, b in enumerate(secret):
+        if b == "1":
+            qc.cx(i, n)  # oracle: f(x) = secret . x
+    qc.h(range(n))
+    qc.measure(range(n), range(n))
+    return qc
+
+
+def _build(algo, n, state, iterations=None):
+    """Dispatch: build the circuit for `algo` ('grover' or 'bv').
+
+    Both share the success convention: the expected measured string is
+    state[::-1] (Qiskit's little-endian readout of state indexed by qubit).
+    """
+    if algo == "grover":
+        qc, _ = build_grover(n, state, iterations=iterations)
+        return qc
+    if algo == "bv":
+        return build_bv(n, state)
+    raise ValueError(f"unknown algo: {algo}")
+
+
 # --- Aer verification (free, local) -------------------------------------------
 
 
@@ -190,11 +227,11 @@ def _aggregate(records):
     return {n: sum(ps) / len(ps) for n, ps in by_n.items()}
 
 
-def run1_aer(ns, marked_count, reps, shots):
+def run1_aer(ns, marked_count, reps, shots, algo="grover"):
     """Dry run: validate the whole plan on the noiseless simulator (free).
 
     This is the ideal reference curve AND the pre-submission correctness check —
-    every circuit here must put P(marked) near 1.0, or the hardware run is wasted.
+    every circuit here must put P(success) near 1.0, or the hardware run is wasted.
     """
     from qiskit import transpile
     from qiskit_aer import AerSimulator
@@ -202,20 +239,20 @@ def run1_aer(ns, marked_count, reps, shots):
     sim = AerSimulator()
     plan = _plan(ns, marked_count, reps)
     print(
-        f"Run 1 Aer dry-run: {len(plan)} circuits  (ns={ns}, "
-        f"{marked_count} marked states/N, {reps} reps, {shots} shots)"
+        f"Run 1 Aer dry-run [{algo}]: {len(plan)} circuits  (ns={ns}, "
+        f"{marked_count} states/N, {reps} reps, {shots} shots)"
     )
     records = []
     for n, marked, rep in plan:
-        qc, _ = build_grover(n, marked)
+        qc = _build(algo, n, marked)
         counts = sim.run(transpile(qc, sim), shots=shots).result().get_counts()
         p = counts.get(marked[::-1], 0) / shots
         records.append({"n": n, "marked": marked, "rep": rep, "p_marked": p})
     means = _aggregate(records)
     rand = {n: 1 / (2**n) for n in ns}
-    print(f"\n{'N':>4}  {'mean P(marked)':>14}  {'random 1/N':>11}")
+    print(f"\n{'N':>4}  {'mean P(success)':>15}  {'random 1/N':>11}")
     for n in ns:
-        print(f"{2**n:>4}  {means[n]:>14.3f}  {rand[n]:>11.3f}")
+        print(f"{2**n:>4}  {means[n]:>15.3f}  {rand[n]:>11.3f}")
     print(
         "\n(Aer is noiseless — these should all sit near 1.0. If any N is low, "
         "the circuit at that N is wrong; fix before --hardware.)"
@@ -233,6 +270,7 @@ def run1_hardware(
     dump=True,
     repeats=1,
     qubits=None,
+    algo="grover",
 ):
     """The real sweep, optionally repeated to separate signal from drift.
 
@@ -240,12 +278,10 @@ def run1_hardware(
     variance IS the drift confound we're testing against). Reports per-N mean
     across all repeats plus the run-to-run spread.
 
-    qubits: explicit physical-qubit list (length >= max(ns)). Pinning the layout
-    makes the mitigation OFF/ON comparison clean — same qubits every time, so the
-    only variable is mitigation, not which qubits the transpiler happened to pick.
-    If None, a fixed transpiler seed is used for determinism, but a recalibration
-    between jobs can still shift the chosen layout — so pass --qubits for a clean
-    comparison.
+    qubits: explicit physical-qubit list. Pinning makes the OFF/ON (or
+    grover/bv) comparison clean — same qubits every time. Length must cover the
+    widest circuit (BV uses n+1 qubits). If None, a fixed transpiler seed is used
+    for determinism, but a recalibration between jobs can still shift the layout.
     """
     import json
     from datetime import datetime, timezone
@@ -259,19 +295,21 @@ def run1_hardware(
         else service.least_busy(operational=True, simulator=False)
     )
     plan = _plan(ns, marked_count, reps)
-    if qubits is not None and len(qubits) < max(ns):
-        raise ValueError(f"--qubits needs >= {max(ns)} entries for ns={ns}")
+    widest = max(ns) + (1 if algo == "bv" else 0)
+    if qubits is not None and len(qubits) < widest:
+        raise ValueError(f"--qubits needs >= {widest} entries for algo={algo}, ns={ns}")
 
     print(f"  backend: {backend.name}")
     print(
-        f"  plan: {len(plan)} circuits x {repeats} repeat(s)  "
-        f"(ns={ns}, {marked_count} marked/N, {reps} reps, {shots} shots, "
+        f"  plan [{algo}]: {len(plan)} circuits x {repeats} repeat(s)  "
+        f"(ns={ns}, {marked_count} states/N, {reps} reps, {shots} shots, "
         f"mitigation={'ON' if mitigation else 'OFF'}, "
         f"qubits={'pinned ' + str(qubits) if qubits else 'transpiler-chosen'})"
     )
 
-    def _transpile(qc, n):
-        layout = qubits[:n] if qubits is not None else None
+    def _transpile(qc):
+        w = qc.num_qubits
+        layout = qubits[:w] if qubits is not None else None
         return transpile(qc, backend, initial_layout=layout, seed_transpiler=42)
 
     def _make_sampler():
@@ -298,14 +336,15 @@ def run1_hardware(
     # Transpile once, reuse across repeats (identical circuits each job).
     pubs, meta = [], []
     for n, marked, rep in plan:
-        qc, _ = build_grover(n, marked)
-        pubs.append(_transpile(qc, n))
+        qc = _build(algo, n, marked)
+        pubs.append(_transpile(qc))
         meta.append({"n": n, "marked": marked, "rep": rep})
 
     rand = {n: 1 / (2**n) for n in ns}
     all_records = []  # flat, every circuit every repeat
     per_repeat_means = []  # list (len K) of {n: mean}
     job_ids, applied_final = [], {}
+    qpu_total = 0
 
     for k in range(repeats):
         sampler, applied_final = _make_sampler()
@@ -315,6 +354,13 @@ def run1_hardware(
         job_ids.append(job.job_id())
         print(f"  repeat {k+1}/{repeats}  job id: {job.job_id()}  (queueing)")
         result = job.result()
+        try:
+            qpu = job.metrics().get("usage", {}).get("quantum_seconds")
+            if qpu is not None:
+                qpu_total += qpu
+                print(f"    QPU seconds: {qpu}  (running total this run: {qpu_total})")
+        except Exception:
+            pass
         recs = []
         for m, pub in zip(meta, result):
             try:
@@ -357,11 +403,12 @@ def run1_hardware(
     if dump:
         os.makedirs("pilot/scratch", exist_ok=True)
         tag = job_ids[0] if job_ids else "nojob"
-        path = f"pilot/scratch/run1_{'mit' if mitigation else 'raw'}_{tag}.json"
+        path = f"pilot/scratch/run1_{algo}_{'mit' if mitigation else 'raw'}_{tag}.json"
         with open(path, "w") as f:
             json.dump(
                 {
                     "captured_at": datetime.now(timezone.utc).isoformat(),
+                    "algo": algo,
                     "backend": backend.name,
                     "job_ids": job_ids,
                     "shots": shots,
@@ -472,6 +519,12 @@ def main():
         help="Run 1 success-probability sweep (Aer dry-run unless --hardware)",
     )
     ap.add_argument(
+        "--algo",
+        choices=["grover", "bv"],
+        default="grover",
+        help="grover (deep, collapses) or bv (shallow, survives) for --run1",
+    )
+    ap.add_argument(
         "--ns",
         type=str,
         default="3,4,5",
@@ -524,12 +577,14 @@ def main():
 
     if args.run1:
         ns = [int(x) for x in args.ns.split(",")]
-        records, _ = run1_aer(ns, args.marked_count, args.reps, args.shots)
+        records, _ = run1_aer(
+            ns, args.marked_count, args.reps, args.shots, algo=args.algo
+        )
         if args.hardware:
             if any(r["p_marked"] < 0.5 for r in records):
                 print(
                     "\nREFUSING to submit: a circuit failed the Aer dry-run "
-                    "(P(marked) < 0.5). Fix it before spending QPU time."
+                    "(P(success) < 0.5). Fix it before spending QPU time."
                 )
                 return
             print("\n*** HARDWARE SWEEP — this spends QPU budget ***")
@@ -552,6 +607,7 @@ def main():
                 dump=True,
                 repeats=args.repeats,
                 qubits=qubits,
+                algo=args.algo,
             )
         return
 
