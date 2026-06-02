@@ -1,0 +1,117 @@
+---
+title: "How Grover's search actually works"
+summary: "A companion to the main post. The post measures what happens when you run Grover's search on real quantum hardware; this explains what the algorithm is doing inside the circuit, so the collapse the post charts means something. No prior quantum background assumed."
+date: "2026-06-02"
+special: true
+---
+
+A companion to the main post. The post measures what happens when you run Grover's search on real quantum hardware; this explains what the algorithm is *doing* inside the circuit, so the collapse the post charts means something. No prior quantum background assumed — if you can read a little pseudocode, you can follow this.
+
+---
+
+## The one mental model you need (and the myth to drop)
+
+**The myth:** "A quantum computer tries all the answers at once and tells you the right one." This is wrong, and it'll mislead you the moment you try to reason about why the hardware fails. If it were true, search would be instant, not √N.
+
+**The model that's actually right:** the machine holds a list of **amplitudes** — one number per possible answer. For n qubits there are N = 2ⁿ possible answers, so N amplitudes. An amplitude is like a probability, except it can be negative (and in general complex). When you finally measure, you get answer *i* with probability proportional to amplitude*ᵢ* squared. You get **one** answer out, not all of them.
+
+So you never "read all the answers." The entire game is: **arrange the amplitudes so that the marked answer has a large magnitude and everything else is near zero, before you measure.** Grover is a recipe for doing exactly that, and it needs √N steps because each step can only nudge the amplitudes a little.
+
+Hold that picture — amplitudes you're sculpting, one measurement at the end — and the rest is mechanical.
+
+---
+
+## The problem being solved
+
+Unstructured search: someone gives you a test (the "oracle") that says yes/no for a candidate, and you want the one candidate that passes. No structure, no sorting — all you can do is try candidates.
+
+- **Classically:** in the worst case you try all N. That's a linear scan, O(N).
+- **Grover:** finds it in about (π/4)·√N steps. For N = 16 that's ~3 steps instead of up to 16. Quadratic, not exponential — a real but modest speedup, and (the post's whole point) one that today's noisy hardware throws away.
+
+---
+
+## The steps
+
+### Step 1 — Equal superposition
+
+The circuit starts with every qubit in state |0⟩, so the whole register is the single answer "000…0". A **Hadamard** (`H`) gate on each qubit spreads it into an equal mix of *all* N answers — every amplitude becomes 1/√N. Not "all answers at once" in the magic sense; just: the list of amplitudes starts out flat.
+
+Why flat? Because we have no idea where the answer is yet, so we start with no bias. Grover's job is to bend this flat list toward the marked answer.
+
+### Step 2 — The oracle: mark the answer with a sign
+
+The oracle flips the **sign** of the marked answer's amplitude: +1/√N becomes −1/√N. Every other amplitude is untouched.
+
+Here's the subtle part most explanations skip: **right after the oracle, measuring would tell you nothing.** Probabilities are amplitude *squared*, and (−1/√N)² = (1/√N)² — so the marked answer is exactly as likely as everything else. The mark is real but *invisible to measurement*. It's a sign change hiding in the amplitudes.
+
+The standard way to build it: the easy thing to phase-flip is the "all-ones" answer (11…1), using a multi-controlled Z. So you first apply X gates to the qubits that *should* be 0 in the target pattern — relabelling the marked answer as all-ones — apply the multi-controlled Z, then undo the X gates. Net effect: exactly the marked answer's amplitude has its sign flipped, nothing else. (And a multi-controlled Z is itself just H · (multi-controlled X) · H on the target qubit.)
+
+### Step 3 — The diffuser: make the invisible mark visible
+
+This is where the amplification happens. The diffuser does **"inversion about the mean"**: it reflects every amplitude around the *average* of all amplitudes.
+
+Walk it through with the numbers. After the oracle, one amplitude is −1/√N (marked) and N−1 are +1/√N. The average is therefore slightly *positive*. Now reflect each amplitude across that average:
+
+- The marked amplitude was *below* the mean (it's negative), so reflecting it lands it *well above* the mean — its magnitude jumps up.
+- The unmarked amplitudes were just above the mean, so reflecting them nudges them slightly *down*.
+
+The hidden sign flip has been converted into a visible size difference. The marked answer is now genuinely more probable. That's "amplitude amplification." As a circuit it's an `H`–`X`–(multi-controlled Z)–`X`–`H` sandwich on all qubits, which is the algebra for reflecting about the equal-superposition state — the same thing as inversion about the mean.
+
+### Repeat — why a fixed number of times, and why more is worse
+
+One oracle + one diffuser = one **Grover iteration**. Geometrically, each iteration rotates the amplitude "state" by a fixed angle toward the marked answer. Do it the right number of times — about (π/4)·√N — and you land as close to the marked answer as you can get. **Keep going and you rotate past it**, and the probability *drops*. Over-rotation is a real failure mode, not a safety margin.
+
+You can see the whole rotation on a noiseless simulator. For N = 16 (optimal is 3 iterations), probability of measuring the marked answer at each iteration count:
+
+```
+iters  P(marked)
+    0      0.062   <- flat start, = 1/16, pure chance
+    1      0.485
+    2      0.904
+    3      0.964   <- optimal, as good as it gets
+    4      0.589   <- rotated past the target
+    5      0.127
+    6      0.020   <- worse than random
+```
+
+That oscillation is the point: Grover is a controlled rotation you can overshoot, not a magic lookup.
+
+### Step 4 — Measure
+
+Reading the qubits collapses the whole amplitude list down to **one** answer, chosen with probability = amplitude². After the optimal number of iterations the marked answer's amplitude dominates, so you almost always read it back. "Almost" — at N = 8 it's about 0.94 on an ideal simulator, not 1.0, which is why results are reported as a *probability*, not a yes/no.
+
+(One practical wrinkle: many quantum SDKs print measurement bit-strings in reverse order, rightmost qubit first, so a target of `100` comes back as `001`. Worth watching whenever you read results.)
+
+---
+
+## Why simulate first, and what changes on real hardware
+
+Running the circuit on a **noiseless simulator** is exact arithmetic on the amplitude list — it tells you the circuit is *logically* correct (the marked answer dominates) for free, before you spend time on real hardware.
+
+A real device runs the *same* circuit, but two things break the clean rotation:
+
+- **Gate error:** every physical gate is slightly wrong, and Grover stacks many gates. Errors compound with circuit depth.
+- **Decoherence:** the qubits' fragile state decays over time. A deep circuit takes long enough that the amplitudes blur before you measure.
+
+So the device's amplitudes don't end up sculpted into a clean spike on the marked answer — they smear back toward flat. That's the collapse the post measures: the gap between the simulator (clean rotation, near-1.0) and the hardware (noise eating the rotation, sliding toward the 1/N floor). The √N advantage is real in the math and gone in the silicon.
+
+It's also why the same circuit gives different numbers on different days: quantum backends recalibrate, so the noise changes. The classical baseline and the simulator reproduce exactly; the hardware numbers are pinned by archiving the actual job results, not by re-running.
+
+---
+
+## Links — in rough reading order
+
+1. **IBM Quantum Learning — Grover's algorithm (computer-science track).** The gentlest correct treatment, structured exactly as the steps above (superposition → mark → diffuse → repeat).
+2. **IBM Quantum Learning — "Fundamentals of quantum algorithms" (John Watrous), Grover lesson.** The rigorous version with the actual mathematics of the rotation and the iteration count. Linked from the module above; the course to graduate to.
+3. **Nielsen & Chuang, *Quantum Computation and Quantum Information*, §6.1.** The canonical textbook treatment of Grover and the inversion-about-the-mean geometry.
+4. **Mandviwalla, Ohshiro & Ji, "Implementing Grover's Algorithm on the IBM Quantum Computers."** A short empirical paper running Grover on real hardware, useful prior art for the collapse story (their 4-qubit/3-iteration ideal accuracy is ~96%).
+
+Skip the breathless explainers. Anything that says "tries all answers simultaneously" is teaching the myth from the top of this page, and it'll cost you when you try to reason about why the device collapses.
+
+---
+
+## What you don't need to follow this
+
+- The complex-number details of amplitudes. "Numbers, can be negative, squared gives probability" is enough to reason about every step here.
+- The matrix algebra behind why the H–X–Z–X–H sandwich is a reflection. Know *what* it does (inversion about the mean); the derivation is in links 2 and 3.
+- How circuits get compiled to a specific device's native gates and connectivity ("transpilation"). For following the algorithm, you can treat it as a compiler pass.

@@ -1,0 +1,436 @@
+{
+  "schema": "quantum-measuring-the-gap-v1",
+  "data_status": "aer-only",
+  "note": "Aer-only placeholder \u2014 hardware numbers are null pending the user's capture run. Aer (ideal simulator) and teaching-sweep data are committed and reproducible. Do not publish hardware-null cells as measurement results.",
+  "capture_meta": {
+    "backend": null,
+    "physical_qubits": null,
+    "calibration_timestamp": null,
+    "shots": 4096,
+    "ns": [
+      3,
+      4,
+      5
+    ],
+    "captured_at": "2026-06-02T20:52:42.218881+00:00"
+  },
+  "ns_sweep": {
+    "grover_ideal": [
+      {
+        "n": 3,
+        "N": 8,
+        "mean": 0.9436,
+        "min": 0.9387,
+        "max": 0.9485,
+        "per_repeat": [
+          0.9409,
+          0.9485,
+          0.9478,
+          0.9468,
+          0.9417,
+          0.939,
+          0.9407,
+          0.9485,
+          0.9448,
+          0.9429,
+          0.9429,
+          0.9438,
+          0.9419,
+          0.9421,
+          0.948,
+          0.9465,
+          0.9431,
+          0.9387,
+          0.9436,
+          0.9407
+        ]
+      },
+      {
+        "n": 4,
+        "N": 16,
+        "mean": 0.9612,
+        "min": 0.9575,
+        "max": 0.9678,
+        "per_repeat": [
+          0.9631,
+          0.9636,
+          0.9597,
+          0.9617,
+          0.9644,
+          0.9612,
+          0.9609,
+          0.9592,
+          0.9612,
+          0.9578,
+          0.9575,
+          0.9678,
+          0.9653,
+          0.9617,
+          0.9622,
+          0.9585,
+          0.9583,
+          0.9575,
+          0.9607,
+          0.9622
+        ]
+      },
+      {
+        "n": 5,
+        "N": 32,
+        "mean": 0.9991,
+        "min": 0.9983,
+        "max": 1.0,
+        "per_repeat": [
+          0.999,
+          0.9983,
+          0.999,
+          0.9985,
+          0.9993,
+          0.9988,
+          0.9985,
+          0.9988,
+          0.9998,
+          0.999,
+          0.999,
+          0.999,
+          0.9998,
+          1.0,
+          0.9995,
+          0.9998,
+          0.999,
+          0.9985,
+          0.9988,
+          0.9988
+        ]
+      }
+    ],
+    "grover_device": [
+      {
+        "n": 3,
+        "N": 8,
+        "mean": null,
+        "min": null,
+        "max": null,
+        "per_repeat": [],
+        "status": "hardware-capture-pending"
+      },
+      {
+        "n": 4,
+        "N": 16,
+        "mean": null,
+        "min": null,
+        "max": null,
+        "per_repeat": [],
+        "status": "hardware-capture-pending"
+      },
+      {
+        "n": 5,
+        "N": 32,
+        "mean": null,
+        "min": null,
+        "max": null,
+        "per_repeat": [],
+        "status": "hardware-capture-pending"
+      }
+    ],
+    "bv_ideal": [
+      {
+        "n": 3,
+        "N": 8,
+        "mean": 1.0,
+        "min": 1.0,
+        "max": 1.0,
+        "per_repeat": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      {
+        "n": 4,
+        "N": 16,
+        "mean": 1.0,
+        "min": 1.0,
+        "max": 1.0,
+        "per_repeat": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      {
+        "n": 5,
+        "N": 32,
+        "mean": 1.0,
+        "min": 1.0,
+        "max": 1.0,
+        "per_repeat": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    ],
+    "bv_device": [
+      {
+        "n": 3,
+        "N": 8,
+        "mean": null,
+        "min": null,
+        "max": null,
+        "per_repeat": [],
+        "status": "hardware-capture-pending"
+      },
+      {
+        "n": 4,
+        "N": 16,
+        "mean": null,
+        "min": null,
+        "max": null,
+        "per_repeat": [],
+        "status": "hardware-capture-pending"
+      },
+      {
+        "n": 5,
+        "N": 32,
+        "mean": null,
+        "min": null,
+        "max": null,
+        "per_repeat": [],
+        "status": "hardware-capture-pending"
+      }
+    ],
+    "classical_floor": [
+      {
+        "n": 3,
+        "N": 8,
+        "mean": 1.0
+      },
+      {
+        "n": 4,
+        "N": 16,
+        "mean": 1.0
+      },
+      {
+        "n": 5,
+        "N": 32,
+        "mean": 1.0
+      }
+    ],
+    "random_floor": [
+      {
+        "n": 3,
+        "N": 8,
+        "mean": 0.125
+      },
+      {
+        "n": 4,
+        "N": 16,
+        "mean": 0.0625
+      },
+      {
+        "n": 5,
+        "N": 32,
+        "mean": 0.03125
+      }
+    ]
+  },
+  "mitigation": {
+    "note": "Grover device success with mitigation off vs on. Null until hardware capture.",
+    "off": [
+      {
+        "n": 3,
+        "N": 8,
+        "mean": null,
+        "min": null,
+        "max": null,
+        "per_repeat": [],
+        "status": "hardware-capture-pending"
+      },
+      {
+        "n": 4,
+        "N": 16,
+        "mean": null,
+        "min": null,
+        "max": null,
+        "per_repeat": [],
+        "status": "hardware-capture-pending"
+      },
+      {
+        "n": 5,
+        "N": 32,
+        "mean": null,
+        "min": null,
+        "max": null,
+        "per_repeat": [],
+        "status": "hardware-capture-pending"
+      }
+    ],
+    "on": [
+      {
+        "n": 3,
+        "N": 8,
+        "mean": null,
+        "min": null,
+        "max": null,
+        "per_repeat": [],
+        "status": "hardware-capture-pending"
+      },
+      {
+        "n": 4,
+        "N": 16,
+        "mean": null,
+        "min": null,
+        "max": null,
+        "per_repeat": [],
+        "status": "hardware-capture-pending"
+      },
+      {
+        "n": 5,
+        "N": 32,
+        "mean": null,
+        "min": null,
+        "max": null,
+        "per_repeat": [],
+        "status": "hardware-capture-pending"
+      }
+    ]
+  },
+  "teaching_sweep": {
+    "n": 4,
+    "N": 16,
+    "marked": "1111",
+    "note": "Aer-only (no QPU cost). Shows over-rotation: P(marked) rises then falls past optimal.",
+    "curve": [
+      {
+        "iters": 0,
+        "p_marked": 0.0615
+      },
+      {
+        "iters": 1,
+        "p_marked": 0.4851
+      },
+      {
+        "iters": 2,
+        "p_marked": 0.9038
+      },
+      {
+        "iters": 3,
+        "p_marked": 0.9636
+      },
+      {
+        "iters": 4,
+        "p_marked": 0.5894
+      },
+      {
+        "iters": 5,
+        "p_marked": 0.1272
+      },
+      {
+        "iters": 6,
+        "p_marked": 0.0198
+      },
+      {
+        "iters": 7,
+        "p_marked": 0.3738
+      }
+    ]
+  },
+  "circuit_depth": {
+    "grover": [
+      {
+        "n": 3,
+        "N": 8,
+        "optimal_iters": 2,
+        "depth": 10,
+        "two_qubit_gates": 0
+      },
+      {
+        "n": 4,
+        "N": 16,
+        "optimal_iters": 3,
+        "depth": 14,
+        "two_qubit_gates": 0
+      },
+      {
+        "n": 5,
+        "N": 32,
+        "optimal_iters": 4,
+        "depth": 18,
+        "two_qubit_gates": 0
+      }
+    ],
+    "bv": [
+      {
+        "n": 3,
+        "N": 8,
+        "depth": 1,
+        "two_qubit_gates": 0
+      },
+      {
+        "n": 4,
+        "N": 16,
+        "depth": 1,
+        "two_qubit_gates": 0
+      },
+      {
+        "n": 5,
+        "N": 32,
+        "depth": 1,
+        "two_qubit_gates": 0
+      }
+    ]
+  },
+  "raw_archive_paths": []
+}

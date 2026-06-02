@@ -406,6 +406,54 @@ cmake --build build --target bench_<NN>_<slug>
         this page covers the conventions that apply across all of them.
       </p>
 
+      {/* ── Special editions — methodology departure ──────────────────────── */}
+      <h2
+        id="special-editions"
+        className="font-sans font-semibold text-sm uppercase tracking-widest mb-4"
+        style={{ color: "var(--text-muted)" }}
+      >
+        Special editions
+      </h2>
+      <p className="text-sm mb-4" style={{ color: "var(--text-secondary)" }}>
+        Occasional posts sit outside the standard methodology. They are not counted
+        as numbered demos and do not affect the four commitments above. Each departure
+        is documented here and in the post itself.
+      </p>
+      <div
+        className="rounded-xl border p-5 mb-12"
+        style={{ borderColor: "var(--border-color)", background: "var(--bg-card)" }}
+      >
+        <div className="flex items-center gap-3 mb-3">
+          <a
+            href="/special/measuring-the-gap"
+            className="font-sans font-semibold text-sm transition-opacity hover:opacity-70"
+            style={{ color: "var(--text-primary)" }}
+          >
+            Measuring the Gap — Grover&rsquo;s algorithm on real quantum hardware
+          </a>
+          <span
+            className="font-mono text-xs px-2 py-0.5 rounded border shrink-0"
+            style={{ color: "var(--cyan)", borderColor: "var(--cyan)", opacity: 0.7 }}
+          >
+            special edition
+          </span>
+        </div>
+        <ul className="space-y-1.5">
+          {[
+            "Not a C++ benchmark — primary implementation is Python/Qiskit on IBM Quantum cloud hardware.",
+            "Reference machine is an IBM QPU, not the Zen 2 or Cortex-A76 rigs.",
+            "Metric is P(success), a dimensionless probability, not ns/op.",
+            "Numbers are not reproducible by re-running — calibration changes. Committed JSON archives the job results.",
+            "NOT counted in the numbered demo total. The demo count is unchanged.",
+          ].map((item) => (
+            <li key={item} className="flex gap-3 text-sm" style={{ color: "var(--text-secondary)" }}>
+              <span style={{ color: "var(--cyan)" }} className="shrink-0">–</span>
+              {item}
+            </li>
+          ))}
+        </ul>
+      </div>
+
       {/* ── References ────────────────────────────────────────────────────── */}
       <h2
         id="references"
