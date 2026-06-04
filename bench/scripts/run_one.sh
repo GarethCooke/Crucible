@@ -16,6 +16,7 @@ PASSTHROUGH_ARGS=()
 for arg in "$@"; do
     case "$arg" in
         --skipchecks|---skipchecks) SKIP_ENV_CHECKS=1 ;;
+        --allow-boost) export CRUCIBLE_ALLOW_BOOST=1 ;;
         *) PASSTHROUGH_ARGS+=("$arg") ;;
     esac
 done
@@ -56,24 +57,44 @@ if [[ "$(uname -m)" == "aarch64" ]]; then
     echo "AArch64 rig detected — CRUCIBLE_TURBO=${CRUCIBLE_TURBO}, env checks delegated to pi-preflight.sh" >&2
 fi
 
-# Verify turbo state and export for machine_info.h to consume.
-# Caller can pre-set CRUCIBLE_TURBO=on|off to override (e.g. on systems
-# without cpupower); otherwise we derive it from cpupower output.
+# Determine boost state. Primary: kernel sysfs (more reliable than cpupower for
+# detecting BIOS CPB state). Fallback: cpupower for drivers where the sysfs node
+# is absent. CRUCIBLE_TURBO can be pre-set by the caller to skip detection entirely.
 if [ -z "${CRUCIBLE_TURBO:-}" ]; then
-    boost=$(cpupower frequency-info 2>/dev/null \
-        | awk '/boost state support/{flag=1; next} flag && /Active/{print tolower($2); exit}')
-    case "$boost" in
-        no)  export CRUCIBLE_TURBO=off ;;
-        yes) export CRUCIBLE_TURBO=on  ;;
+    boost_sysfs=$(cat /sys/devices/system/cpu/cpufreq/boost 2>/dev/null || echo "")
+    case "$boost_sysfs" in
+        "0") export CRUCIBLE_TURBO=off ;;
+        "1") export CRUCIBLE_TURBO=on  ;;
         *)
-            echo "FATAL: cannot determine turbo state from cpupower" >&2
-            echo "Run 'cpupower frequency-info' and verify manually," >&2
-            echo "then export CRUCIBLE_TURBO=on|off before invoking this script." >&2
-            exit 1
+            # sysfs node absent — fall back to cpupower
+            boost=$(cpupower frequency-info 2>/dev/null \
+                | awk '/boost state support/{flag=1; next} flag && /Active/{print tolower($2); exit}')
+            case "$boost" in
+                no)  export CRUCIBLE_TURBO=off ;;
+                yes) export CRUCIBLE_TURBO=on  ;;
+                *)
+                    echo "FATAL: cannot determine boost state from sysfs or cpupower." >&2
+                    echo "  Set CRUCIBLE_TURBO=on|off manually, or check driver:" >&2
+                    echo "  lsmod | grep cpufreq; cpupower frequency-info" >&2
+                    exit 1
+                    ;;
+            esac
             ;;
     esac
 fi
 echo "CRUCIBLE_TURBO=$CRUCIBLE_TURBO (verified)" >&2
+
+# BOOST GATE — hard precondition, not bypassable via --skipchecks.
+# Methodology requires boost off; a boosted capture invalidates all timing claims.
+# To deliberately capture with boost on: export CRUCIBLE_ALLOW_BOOST=1 (or --allow-boost).
+if [[ "${CRUCIBLE_TURBO}" == "on" ]] && [[ "${CRUCIBLE_ALLOW_BOOST:-}" != "1" ]]; then
+    echo "FATAL: Core Performance Boost is enabled (CRUCIBLE_TURBO=on)." >&2
+    echo "  Disable in BIOS: Ai Tweaker → Core Performance Boost → Disabled (master switch)." >&2
+    echo "  PBO-off alone is insufficient — use the CPB master switch." >&2
+    echo "  Verify: lscpu | grep 'max MHz'  (expect ~3900, not 4560)" >&2
+    echo "  Override (boost-on captures only): export CRUCIBLE_ALLOW_BOOST=1" >&2
+    exit 1
+fi
 
 if [[ "${SKIP_ENV_CHECKS}" == "1" ]]; then
     echo "WARNING: env checks skipped (--skipchecks) — results may be noisy" >&2

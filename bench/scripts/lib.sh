@@ -39,3 +39,42 @@ set_governor_performance() {
     actual=$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null || echo unknown)
     [[ "$actual" == "performance" ]] || { echo "ERROR: governor not performance: $actual" >&2; exit 1; }
 }
+
+# Hard gate: abort if Core Performance Boost is enabled.
+# Primary signal: /sys/devices/system/cpu/cpufreq/boost (acpi-cpufreq, "1"=on).
+# Cross-check: lscpu MAXMHZ vs amd_pstate base_frequency — BIOS CPB on raises MAXMHZ
+# above the base clock even when the software toggle is off.
+# Override (boost-on captures only): export CRUCIBLE_ALLOW_BOOST=1 before calling.
+assert_boost_off() {
+    if [[ "${CRUCIBLE_ALLOW_BOOST:-}" == "1" ]]; then
+        echo "WARNING: boost gate bypassed (CRUCIBLE_ALLOW_BOOST=1)" >&2
+        return 0
+    fi
+
+    local boost_sysfs
+    boost_sysfs=$(cat /sys/devices/system/cpu/cpufreq/boost 2>/dev/null || echo "")
+
+    if [[ "${boost_sysfs}" == "1" ]]; then
+        echo "FATAL: Core Performance Boost is enabled (cpufreq/boost=1)." >&2
+        echo "  Disable in BIOS: Ai Tweaker → Core Performance Boost → Disabled (master switch)." >&2
+        echo "  Verify: lscpu | grep 'max MHz'  (expect base clock, not 4560)" >&2
+        echo "  Override (boost-on captures only): export CRUCIBLE_ALLOW_BOOST=1" >&2
+        exit 1
+    fi
+
+    # Cross-check via amd_pstate base_frequency: if MAXMHZ > base*1.05, BIOS CPB is active.
+    local max_mhz base_khz base_mhz
+    max_mhz=$(lscpu 2>/dev/null | awk '/CPU max MHz/{gsub(/\..*/, "", $NF); print $NF+0}')
+    base_khz=$(cat /sys/devices/system/cpu/cpu0/cpufreq/base_frequency 2>/dev/null || echo "0")
+
+    if [[ "${max_mhz:-0}" -gt 0 && "${base_khz:-0}" -gt 0 ]]; then
+        base_mhz=$(( base_khz / 1000 ))
+        if [[ "${max_mhz}" -gt $(( base_mhz * 105 / 100 )) ]]; then
+            echo "FATAL: MAXMHZ=${max_mhz} MHz exceeds base ${base_mhz} MHz by >5%." >&2
+            echo "  BIOS Core Performance Boost appears active despite software toggle off." >&2
+            echo "  Disable in BIOS: Ai Tweaker → Core Performance Boost → Disabled." >&2
+            echo "  Verify: lscpu | grep 'max MHz'  (expect ~${base_mhz}, not ${max_mhz})" >&2
+            exit 1
+        fi
+    fi
+}
