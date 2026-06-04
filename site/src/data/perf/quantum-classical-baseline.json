@@ -1,0 +1,70 @@
+{
+  "demo": "quantum-classical-baseline",
+  "title": "Sorted vs unsorted branch prediction",
+  "machine": {
+    "cpu": "AMD Ryzen 7 3800X 8-Core Processor",
+    "cores_physical": 8,
+    "cores_logical": 8,
+    "smt_enabled": false,
+    "ram_gb": 31,
+    "ram_speed_mhz": null,
+    "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+    "kernel": "6.8.0-117-generic",
+    "governor": "performance",
+    "turbo": false,
+    "isolated_cpus": "1-7",
+    "isolated_cpus_requested": "1-7",
+    "isolated_cpus_effective": "1-7",
+    "isolated_cpus_source": "cmdline+probe",
+    "cpu_affinity": "4-7",
+    "lscpu_extended": "CPU NODE SOCKET CORE L1d:L1i:L2:L3 ONLINE    MAXMHZ    MINMHZ       MHZ\n  0    0      0    0 0:0:0:0          yes 4560.0552 2200.0000 3900.5061\n  1    0      0    1 1:1:1:0          yes 4560.0552 2200.0000 3900.0000\n  2    0      0    2 2:2:2:0          yes 4560.0552 2200.0000 3900.0000\n  3    0      0    3 3:3:3:0          yes 4560.0552 2200.0000 3900.0000\n  4    0      0    4 4:4:4:1          yes 4560.0552 2200.0000 3900.0000\n  5    0      0    5 5:5:5:1          yes 4560.0552 2200.0000 3900.0000\n  6    0      0    6 6:6:6:1          yes 4560.0552 2200.0000 3900.0000\n  7    0      0    7 7:7:7:1          yes 4560.0552 2200.0000 3900.0000",
+    "arch": "x86_64",
+    "soc": null
+  },
+  "captured_at": "2026-06-04T08:06:33Z",
+  "runs": [
+    {
+      "variant": "linearscan",
+      "n": 3,
+      "iterations": 341227247,
+      "ns_per_op": {
+        "median": 0.0007,
+        "min": 0.0007,
+        "p99": 0.0008,
+        "iqr": 0.0
+      },
+      "ops_per_sec": 0,
+      "branch_misses_per_op": 0,
+      "instructions_per_cycle": 0
+    },
+    {
+      "variant": "linearscan",
+      "n": 4,
+      "iterations": 209993295,
+      "ns_per_op": {
+        "median": 0.0008,
+        "min": 0.0008,
+        "p99": 0.0008,
+        "iqr": 0.0
+      },
+      "ops_per_sec": 0,
+      "branch_misses_per_op": 0,
+      "instructions_per_cycle": 0
+    },
+    {
+      "variant": "linearscan",
+      "n": 5,
+      "iterations": 118590069,
+      "ns_per_op": {
+        "median": 0.0012,
+        "min": 0.0012,
+        "p99": 0.0012,
+        "iqr": 0.0
+      },
+      "ops_per_sec": 0,
+      "branch_misses_per_op": 0,
+      "instructions_per_cycle": 0
+    }
+  ],
+  "notes": "Branch predictor learns sorted patterns; unsorted forces ~50% mispredicts."
+}
