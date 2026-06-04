@@ -9,15 +9,15 @@ set -euo pipefail
 BINARY="${1:?Usage: $0 <binary>}"
 
 COUNT=$(objdump -d "$BINARY" \
-    | grep -A 40 '<_ZL9worker_fn' \
-    | grep -c 'movsd' || true)
+    | awk '/^[0-9a-f]+ <_ZL9worker_fn.*>:/,/^$/' \
+    | grep -cE '\bv?movsd\b' || true)
 
 if [[ -z "$COUNT" || "$COUNT" -lt 2 ]]; then
-    echo "CODEGEN FAIL: found ${COUNT:-0} movsd in worker_fn (expected >=2)." >&2
+    echo "CODEGEN FAIL: found ${COUNT:-0} movsd/vmovsd in worker_fn (expected >=2)." >&2
     echo "  The volatile double pnl store may have been elided." >&2
     echo "  Without it, the false-sharing effect does not manifest cleanly." >&2
     echo "  See the comment at the top of false_sharing_pnl.cpp for debug guidance." >&2
     exit 1
 fi
 
-echo "CODEGEN OK: ${COUNT} movsd found in worker_fn (volatile load+store confirmed)"
+echo "CODEGEN OK: ${COUNT} movsd/vmovsd found in worker_fn (volatile load+store confirmed)"
