@@ -4,6 +4,21 @@ A companion to the main post. The post measures what happens when you run Grover
 
 ---
 
+## What Grover's algorithm is, and what it's for
+
+Grover's algorithm (Lov Grover, 1996) is a quantum algorithm for **unstructured search**: finding one specific item in a large set of possibilities when there's no structure to exploit.
+
+Make "no structure" concrete. You're handed a test — a black box that answers "yes" for exactly the item you want and "no" for everything else — and a space of N candidates. There's no ordering to binary-search and no index to look up; the only move available is to feed a candidate to the test and see what it says. The textbook framing: a function f(x) that returns 1 for one secret input and 0 for all others, and your job is to find that input.
+
+- **Classically**, you have no better option than trying candidates one at a time. Worst case, that's all N of them — O(N). A million possibilities, up to a million tests.
+- **Grover** finds it in about (π/4)·√N tests — a **quadratic** speedup. A million possibilities in roughly a thousand steps instead of a million.
+
+That's why it's famous: it's one of the few algorithms with a *proven* quantum speedup (the textbook companion to Shor's factoring algorithm), and it's the canonical "quantum makes search faster" result — the one reached for when people talk about brute-forcing a key space. Two things set up the rest of this page. The speedup is **quadratic, not exponential** — real but modest; it doesn't make hard problems easy, it makes them somewhat less slow. And that √N count is the *ideal*: it assumes perfect gates, which is exactly what real hardware doesn't have.
+
+So the question this page answers is *how* Grover gets to √N — and the question the main post answers is what's left of that speedup once you run it on a noisy machine.
+
+---
+
 ## The one mental model you need (and the myth to drop)
 
 **The myth:** "A quantum computer tries all the answers at once and tells you the right one." This is wrong, and it'll mislead you the moment you try to reason about why the hardware fails. If it were true, search would be instant, not √N.
@@ -13,15 +28,6 @@ A companion to the main post. The post measures what happens when you run Grover
 So you never "read all the answers." The entire game is: **arrange the amplitudes so that the marked answer has a large magnitude and everything else is near zero, before you measure.** Grover is a recipe for doing exactly that, and it needs √N steps because each step can only nudge the amplitudes a little.
 
 Hold that picture — amplitudes you're sculpting, one measurement at the end — and the rest is mechanical.
-
----
-
-## The problem being solved
-
-Unstructured search: someone gives you a test (the "oracle") that says yes/no for a candidate, and you want the one candidate that passes. No structure, no sorting — all you can do is try candidates.
-
-- **Classically:** in the worst case you try all N. That's a linear scan, O(N).
-- **Grover:** finds it in about (π/4)·√N steps. For N = 16 that's ~3 steps instead of up to 16. Quadratic, not exponential — a real but modest speedup, and (the post's whole point) one that today's noisy hardware throws away.
 
 ---
 
