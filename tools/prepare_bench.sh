@@ -26,4 +26,8 @@ fi
 echo "==> Migrating all running tasks back to the default root cpuset..."
 sudo cset shield --reset > /dev/null 2>&1 || true
 
+# in prepare_bench.sh, with the other state setup
+echo "==> Setting perf_event_paranoid for counter access..."
+sudo sysctl -w kernel.perf_event_paranoid=0 >/dev/null
+
 echo "==> Environment OK."
