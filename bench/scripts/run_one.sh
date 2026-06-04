@@ -601,12 +601,12 @@ if [[ "${SLUG}" == "01-branch-prediction" ]]; then
     DISASM_OUT="${REPO_ROOT}/site/src/data/perf/01-branch-prediction.disasm.txt"
 
     # 1. Capture sum_threshold (branching variant — 13-char name → _ZL13sum_threshold)
-    echo "==> Verifying disassembly of sum_threshold (must contain jl/jge, no cmov/SIMD)..."
+    echo "==> Verifying disassembly of sum_threshold (must contain a conditional comparison branch (jl/jle/jg/jge/jb/jbe/ja/jae), no cmov/SIMD)..."
     objdump -d "${BINARY}" \
-        | awk '/<_ZL13sum_threshold[^_]/,/^$/' \
+        | awk '/^[0-9a-f]+ <_ZL13sum_threshold[^_].*>:/,/^$/' \
         > "${DISASM_OUT}" 2>/dev/null || true
-    if ! grep -qE '\b(jl|jge|jb|jae)\b' "${DISASM_OUT}"; then
-        echo "ERROR: no jl/jge/jb/jae found in sum_threshold — branch may have been eliminated." >&2
+    if ! grep -qE '\bj(l|le|g|ge|b|be|a|ae)\b' "${DISASM_OUT}"; then
+        echo "ERROR: no conditional comparison branch (jl/jle/jg/jge/jb/jbe/ja/jae) found in sum_threshold — branch may have been eliminated." >&2
         echo "       Check for cmov/SIMD ops:" >&2
         grep -E '\b(cmov|vpcmpgtd|vpand|vpaddd)\b' "${DISASM_OUT}" >&2 || true
         exit 1
@@ -621,7 +621,7 @@ if [[ "${SLUG}" == "01-branch-prediction" ]]; then
     # 2. Capture sum_threshold_branchless (24-char name → _ZL24sum_threshold_branchless)
     echo "==> Verifying disassembly of sum_threshold_branchless (must contain cmov, no SIMD)..."
     BRANCHLESS_DISASM=$(objdump -d "${BINARY}" \
-        | awk '/<_ZL24sum_threshold_branchless/,/^$/' 2>/dev/null || true)
+        | awk '/^[0-9a-f]+ <_ZL24sum_threshold_branchless.*>:/,/^$/' 2>/dev/null || true)
     if ! echo "${BRANCHLESS_DISASM}" | grep -qE '\bcmov'; then
         echo "ERROR: no cmov found in sum_threshold_branchless." >&2
         echo "       The ternary operator may not have compiled to cmov." >&2
