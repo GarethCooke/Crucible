@@ -28,6 +28,7 @@ BENCH_ROOT="${REPO_ROOT}/bench"
 OUT_JSON="${REPO_ROOT}/site/src/data/perf/${SLUG}.json"
 
 BINARY_NAME="bench_${SLUG//-/_}"
+[[ "${SLUG}" == "02-false-sharing" ]] && BINARY_NAME="bench_02_false_sharing_pnl"
 BINARY="${BENCH_ROOT}/build/demos/${SLUG}/${BINARY_NAME}"
 
 # shellcheck source=bench/scripts/lib.sh
