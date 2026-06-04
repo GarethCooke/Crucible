@@ -1,24 +1,35 @@
 #!/usr/bin/env bash
-# verify_boost_off.sh — Task 5 acceptance check for recaptured Machine 1 JSONs.
+# verify_boost_off.sh — standalone acceptance check for recaptured Machine 1 JSONs.
 #
-# For every supplied JSON (or all perf/*.json when called with no args), verifies:
-#   1. machine.turbo == false
-#   2. machine.freq_max_mhz < 4000  (no 4560 boost ceiling)
-#   3. machine.lscpu_extended contains no MAXMHZ column value >= 4500
-#   4. The JSON is well-formed (jq parse succeeds)
+# One command, authoritative verdict — no manual jq/eyeballing needed. For every
+# supplied JSON (or all Machine 1 perf/*.json when called with no args), a demo
+# PASSES only if ALL of:
+#   1. JSON is well-formed (jq parse succeeds)
+#   2. machine.turbo == false                       (not true / null / missing)
+#   3. machine.freq_max_mhz present AND < 4000       (missing => FAIL: not recaptured
+#                                                      with the fixed header)
+#   4. machine.turbo_source present and != "unavailable"
+#                                                    (a real signal verified it;
+#                                                     "unavailable" => detection failed)
+#   5. machine.lscpu_extended contains no MAXMHZ column value >= 4500 (the 4560 ceiling)
+#
+# freq_base_mhz is informational only and may legitimately be null (acpi-cpufreq does
+# not expose base_frequency); it is NOT gated on. turbo_source is printed for each demo
+# so you can see which signal verified it: "freq_compare*" = MAXMHZ ground-truth active
+# (amd_pstate); "cpufreq/boost" = software-toggle fallback (acpi-cpufreq).
 #
 # Usage:
-#   bench/scripts/verify_boost_off.sh                        # all Machine 1 JSONs
-#   bench/scripts/verify_boost_off.sh site/src/data/perf/06-aos-vs-soa.json ...
+#   bench/scripts/verify_boost_off.sh                       # all Machine 1 JSONs
+#   bench/scripts/verify_boost_off.sh path/to/one.json ...  # a single just-captured demo
 #
-# Exit 0: all checks pass.  Exit 1: one or more failures.
+# Exit 0: all checks pass.  Exit 1: any failure (including missing file / missing field).
 
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 PERF_DIR="${REPO_ROOT}/site/src/data/perf"
 
-# Machine 1 (Ryzen 7 3800X) demos — demo 09 is the Pi rig, skip it.
+# Machine 1 (Ryzen 7 3800X) demos — demo 09 is the Pi rig (no boost), skip it.
 MACHINE1_SLUGS=(
     01-branch-prediction
     02-false-sharing-pnl
@@ -31,14 +42,30 @@ MACHINE1_SLUGS=(
     08-sorting-shootout
 )
 
+if ! command -v jq >/dev/null 2>&1; then
+    echo "ERROR: jq is required but not installed." >&2
+    exit 1
+fi
+
 if [[ "$#" -gt 0 ]]; then
     FILES=("$@")
 else
     FILES=()
+    MISSING=()
     for slug in "${MACHINE1_SLUGS[@]}"; do
         f="${PERF_DIR}/${slug}.json"
-        [[ -f "$f" ]] && FILES+=("$f")
+        if [[ -f "$f" ]]; then
+            FILES+=("$f")
+        else
+            MISSING+=("$slug")
+        fi
     done
+    # A Machine 1 demo whose JSON is absent is a failure, not a silent skip.
+    if [[ "${#MISSING[@]}" -gt 0 ]]; then
+        for slug in "${MISSING[@]}"; do
+            echo "FAIL [$slug]: expected JSON not found at ${PERF_DIR}/${slug}.json" >&2
+        done
+    fi
 fi
 
 if [[ "${#FILES[@]}" -eq 0 ]]; then
@@ -52,6 +79,7 @@ FAIL=0
 for f in "${FILES[@]}"; do
     label="$(basename "$f")"
     ok=1
+    reasons=()
 
     # 1. Well-formed JSON
     if ! jq empty "$f" 2>/dev/null; then
@@ -60,43 +88,63 @@ for f in "${FILES[@]}"; do
         continue
     fi
 
-    # 2. machine.turbo == false
-    turbo=$(jq -r '.machine.turbo // "MISSING"' "$f")
+    # NB: jq's // treats false as empty, so a plain `.machine.turbo // "MISSING"`
+    # would report a genuine `false` as MISSING. Use has() + tostring instead.
+    turbo=$(jq -r 'if (.machine|has("turbo")) and (.machine.turbo != null)
+                   then (.machine.turbo|tostring) else "MISSING" end' "$f")
+    freq_max=$(jq -r '.machine.freq_max_mhz // "MISSING"' "$f")
+    tsource=$(jq -r '.machine.turbo_source // "MISSING"' "$f")
+    fbase=$(jq -r '.machine.freq_base_mhz // "null"' "$f")
+
+    # 2. turbo == false
     if [[ "$turbo" != "false" ]]; then
-        echo "FAIL [$label]: machine.turbo=${turbo} (expected false)" >&2
+        reasons+=("turbo=${turbo} (expected false)")
         ok=0
     fi
 
-    # 3. machine.freq_max_mhz < 4000 (present and plausible base-clock value)
-    freq_max=$(jq -r '.machine.freq_max_mhz // "null"' "$f")
-    if [[ "$freq_max" == "null" ]]; then
-        echo "WARN [$label]: machine.freq_max_mhz absent (pre-fix capture?)" >&2
+    # 3. freq_max_mhz present and < 4000
+    if [[ "$freq_max" == "MISSING" || "$freq_max" == "null" ]]; then
+        reasons+=("freq_max_mhz absent (not recaptured with fixed header)")
+        ok=0
     elif [[ "$freq_max" -ge 4000 ]]; then
-        echo "FAIL [$label]: machine.freq_max_mhz=${freq_max} >= 4000 — boost may be active" >&2
+        reasons+=("freq_max_mhz=${freq_max} >= 4000 (boost active)")
         ok=0
     fi
 
-    # 4. lscpu_extended MAXMHZ column: no value >= 4500 (the 4560 boost ceiling)
+    # 4. turbo_source present and a real signal
+    if [[ "$tsource" == "MISSING" || "$tsource" == "unavailable" ]]; then
+        reasons+=("turbo_source=${tsource} (no real signal verified boost state)")
+        ok=0
+    fi
+
+    # 5. lscpu_extended: no MAXMHZ column value >= 4500
     lscpu_ext=$(jq -r '.machine.lscpu_extended // ""' "$f")
-    if echo "$lscpu_ext" | grep -qE '[0-9]{4}\.[0-9]+' ; then
-        # Extract all numeric values that look like MHz (4+ digits)
+    if [[ -n "$lscpu_ext" ]]; then
         boosted_mhz=$(echo "$lscpu_ext" \
             | grep -oE '[0-9]{4}\.[0-9]+' \
             | awk -F. '$1 >= 4500 {print $1"."$2}' || true)
         if [[ -n "$boosted_mhz" ]]; then
-            echo "FAIL [$label]: lscpu_extended contains MAXMHZ >= 4500: ${boosted_mhz}" >&2
+            reasons+=("lscpu_extended MAXMHZ >= 4500: ${boosted_mhz}")
             ok=0
         fi
     fi
 
     if [[ "$ok" -eq 1 ]]; then
-        echo "PASS [$label]: turbo=false, freq_max_mhz=${freq_max}"
+        echo "PASS [$label]: turbo=false  freq_max_mhz=${freq_max}  freq_base_mhz=${fbase}  via ${tsource}"
         PASS=$(( PASS + 1 ))
     else
+        for r in "${reasons[@]}"; do
+            echo "FAIL [$label]: $r" >&2
+        done
         FAIL=$(( FAIL + 1 ))
     fi
 done
 
+# Count any missing-file failures recorded above (no-arg mode only).
+if [[ "$#" -eq 0 && "${#MISSING[@]:-0}" -gt 0 ]]; then
+    FAIL=$(( FAIL + ${#MISSING[@]} ))
+fi
+
 echo ""
-echo "Results: ${PASS} passed, ${FAIL} failed (${#FILES[@]} total)"
+echo "Results: ${PASS} passed, ${FAIL} failed"
 [[ "$FAIL" -eq 0 ]]
