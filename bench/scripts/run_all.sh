@@ -29,6 +29,7 @@ DEMOS=(
     05-allocators
     06-aos-vs-soa
     07-no-crossover
+    08-sorting-shootout
 )
 
 for slug in "${DEMOS[@]}"; do
