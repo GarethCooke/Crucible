@@ -52,6 +52,24 @@ inline std::string shell_multiline(const char* cmd) {
     return safe;
 }
 
+// Reads /sys/devices/system/cpu/cpu0/cpufreq/cpb (acpi-cpufreq Core Performance Boost flag).
+// Returns "off" (0), "on" (1), or "" if the node is absent (not acpi-cpufreq or no cpb support).
+// cpb is a machine-wide flag; cpu0 is representative. Present on Ryzen under acpi-cpufreq.
+inline std::string boost_from_cpb() {
+    FILE* f = ::fopen("/sys/devices/system/cpu/cpu0/cpufreq/cpb", "r");
+    if (!f) return "";
+    char buf[8] = {};
+    bool ok = (::fgets(buf, sizeof(buf), f) != nullptr);
+    ::fclose(f);
+    if (!ok) return "";
+    std::string v(buf);
+    while (!v.empty() && (v.back() == '\n' || v.back() == '\r' || v.back() == ' '))
+        v.pop_back();
+    if (v == "0") return "off";
+    if (v == "1") return "on";
+    return "";  // unexpected value — don't assume
+}
+
 // Reads /sys/devices/system/cpu/cpufreq/boost (acpi-cpufreq: "1"=on, "0"=off).
 // Returns "on", "off", or "" if the node is absent or unreadable (e.g. amd_pstate_epp).
 inline std::string boost_from_cpufreq_boost() {
@@ -70,8 +88,8 @@ inline std::string boost_from_cpufreq_boost() {
 }
 
 // Parses "CPU max MHz" from lscpu output. Returns integer MHz, or 0 if unavailable.
-// This reflects the CPU's hardware maximum — changes with BIOS CPB state: ~3900 with
-// CPB off, ~4560 with CPB on (Ryzen 7 3800X). This is the ground truth for boost state.
+// Advertised silicon ceiling — on acpi-cpufreq this stays at the boost ceiling (e.g. 4560)
+// even when CPB is off. Do not use to infer boost state; use cpb or scaling_avail_freq instead.
 inline int max_freq_mhz_from_lscpu() {
     std::string raw = shell_capture("lscpu 2>/dev/null | awk '/CPU max MHz/{gsub(/\\..*/, \"\", $NF); print $NF+0}'");
     if (raw.empty()) return 0;
@@ -93,6 +111,33 @@ inline int base_freq_mhz_from_sysfs() {
     ::fclose(f);
     if (!ok || khz == 0) return 0;
     return static_cast<int>(khz / 1000);
+}
+
+// Parses /sys/devices/system/cpu/cpufreq/policy0/scaling_available_frequencies.
+// Returns the maximum entry in MHz (file lists KHz values, space-separated), or 0 if absent.
+// With CPB on this list includes boost frequencies; with CPB off it caps at the base P-state.
+// Guard: ignores empty/whitespace-only content; units are KHz.
+inline int max_avail_freq_mhz_from_sysfs() {
+    FILE* f = ::fopen("/sys/devices/system/cpu/cpufreq/policy0/scaling_available_frequencies", "r");
+    if (!f) return 0;
+    char buf[512] = {};
+    bool ok = (::fgets(buf, sizeof(buf), f) != nullptr);
+    ::fclose(f);
+    if (!ok) return 0;
+    int max_mhz = 0;
+    const char* p = buf;
+    while (*p) {
+        while (*p == ' ' || *p == '\t') ++p;
+        if (*p == '\n' || *p == '\r' || *p == '\0') break;
+        unsigned long khz = 0;
+        bool got_digit = false;
+        while (*p >= '0' && *p <= '9') { khz = khz * 10 + (*p - '0'); ++p; got_digit = true; }
+        if (got_digit) {
+            int mhz = static_cast<int>(khz / 1000);
+            if (mhz > max_mhz) max_mhz = mhz;
+        }
+    }
+    return max_mhz;
 }
 
 // Read the kernel's effective isolated CPU set from /sys/devices/system/cpu/isolated.
@@ -187,13 +232,13 @@ inline std::string machine_info_json() {
     const auto kernel   = shell("uname -r");
     const auto governor = shell("cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null || echo unknown");
     // Derive boost state from kernel sysfs — never from an env assertion.
-    // Primary: /sys/devices/system/cpu/cpufreq/boost (acpi-cpufreq, "1"=on/"0"=off).
-    // Cross-check: lscpu MAXMHZ vs amd_pstate base_frequency; MAXMHZ reflects BIOS CPB
-    // state directly (CPB off → ~3900, CPB on → ~4560 on Ryzen 7 3800X) and overrides
-    // the software toggle if the two disagree.
-    const auto boost_sysfs = detail::boost_from_cpufreq_boost();
-    const int freq_max     = detail::max_freq_mhz_from_lscpu();
-    const int freq_base    = detail::base_freq_mhz_from_sysfs();
+    // Priority: (1) per-CPU cpb, (2) scaling_available_frequencies top vs base,
+    // (3) global cpufreq/boost, (4) null/unavailable.
+    const auto cpb_state           = detail::boost_from_cpb();
+    const auto boost_sysfs         = detail::boost_from_cpufreq_boost();
+    const int freq_max_advertised  = detail::max_freq_mhz_from_lscpu();   // advisory: stays at silicon ceiling on acpi-cpufreq
+    const int freq_max_available   = detail::max_avail_freq_mhz_from_sysfs();
+    const int freq_base            = detail::base_freq_mhz_from_sysfs();
 
     // isolated_cpus: parse requested value from /proc/cmdline; read effective value
     // from /sys/devices/system/cpu/isolated (kernel's view, may exclude core 0).
@@ -219,18 +264,22 @@ inline std::string machine_info_json() {
 
     const bool smt_on   = (smt_raw != "1");
 
-    // Resolve turbo: MAXMHZ comparison is ground truth when both signals are available
-    // (it catches BIOS CPB on even when the software sysfs toggle is off).
+    // Resolve turbo via sysfs — priority order matches acpi-cpufreq on the Machine 1 rig.
     std::string turbo_field;
     std::string turbo_source;
 
-    const bool have_freq_compare = (freq_max > 0 && freq_base > 0);
-    const bool freq_says_boosted = have_freq_compare && (freq_max > freq_base * 105 / 100);
-
-    if (have_freq_compare) {
-        turbo_field  = freq_says_boosted ? "true" : "false";
-        turbo_source = boost_sysfs.empty() ? "freq_compare" : "freq_compare+cpufreq/boost";
+    if (!cpb_state.empty()) {
+        // Priority 1: per-CPU Core Performance Boost flag (acpi-cpufreq, Ryzen). Authoritative.
+        turbo_field  = (cpb_state == "on") ? "true" : "false";
+        turbo_source = "cpb";
+    } else if (freq_max_available > 0 && freq_base > 0) {
+        // Priority 2: scaling_available_frequencies top vs amd_pstate base.
+        // If top > base*1.05 the boost P-states are reachable → boost on.
+        const bool avail_says_boosted = (freq_max_available > freq_base * 105 / 100);
+        turbo_field  = avail_says_boosted ? "true" : "false";
+        turbo_source = "scaling_avail_freq";
     } else if (!boost_sysfs.empty()) {
+        // Priority 3: global /sys/.../cpufreq/boost (absent on this rig; kept for others).
         turbo_field  = (boost_sysfs == "on") ? "true" : "false";
         turbo_source = "cpufreq/boost";
     } else {
@@ -248,10 +297,11 @@ inline std::string machine_info_json() {
         "\"compiler\":\""             + compiler  + "\","
         "\"kernel\":\""               + kernel   + "\","
         "\"governor\":\""             + governor + "\","
-        "\"turbo\":"                  + turbo_field + ","
-        "\"turbo_source\":\""         + turbo_source + "\","
-        "\"freq_max_mhz\":"           + (freq_max  > 0 ? std::to_string(freq_max)  : "null") + ","
-        "\"freq_base_mhz\":"          + (freq_base > 0 ? std::to_string(freq_base) : "null") + ","
+        "\"turbo\":"                        + turbo_field + ","
+        "\"turbo_source\":\""               + turbo_source + "\","
+        "\"freq_max_advertised_mhz\":"      + (freq_max_advertised > 0 ? std::to_string(freq_max_advertised) : "null") + ","
+        "\"freq_max_available_mhz\":"       + (freq_max_available  > 0 ? std::to_string(freq_max_available)  : "null") + ","
+        "\"freq_base_mhz\":"                + (freq_base > 0 ? std::to_string(freq_base) : "null") + ","
         "\"isolated_cpus\":\""              + iso_cpus      + "\","
         "\"isolated_cpus_requested\":\""    + iso_requested + "\","
         + (iso_effective.empty() ? "" : "\"isolated_cpus_effective\":\"" + iso_effective + "\",")

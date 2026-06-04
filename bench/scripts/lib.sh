@@ -65,8 +65,9 @@ detect_turbo_state() {
     esac
 }
 
-# assert_boost_off: detect turbo state, cross-check via amd_pstate MAXMHZ,
-# then abort if boost is on. Not bypassable via --skipchecks.
+# assert_boost_off: gate on real sysfs boost signals, not MAXMHZ.
+# Priority: (1) per-CPU cpb, (2) global cpufreq/boost, (3) scaling_available_frequencies vs base.
+# Degrades safely — if no signal is present (Pi/ARM) the gate passes rather than fails closed.
 # Override (boost-on captures only): export CRUCIBLE_ALLOW_BOOST=1 before calling.
 assert_boost_off() {
     if [[ "${CRUCIBLE_ALLOW_BOOST:-}" == "1" ]]; then
@@ -74,30 +75,73 @@ assert_boost_off() {
         return 0
     fi
 
-    detect_turbo_state
-    echo "CRUCIBLE_TURBO=$CRUCIBLE_TURBO (verified)" >&2
+    local max_mhz
+    max_mhz=$(lscpu 2>/dev/null | awk '/CPU max MHz/{gsub(/\..*/, "", $NF); print $NF+0}') || true
 
-    # Cross-check via amd_pstate base_frequency: if MAXMHZ > base*1.05, BIOS CPB is active.
-    local max_mhz base_khz base_mhz
-    max_mhz=$(lscpu 2>/dev/null | awk '/CPU max MHz/{gsub(/\..*/, "", $NF); print $NF+0}')
-    base_khz=$(cat /sys/devices/system/cpu/cpu0/cpufreq/base_frequency 2>/dev/null || echo "0")
-    if [[ "${max_mhz:-0}" -gt 0 && "${base_khz:-0}" -gt 0 ]]; then
-        base_mhz=$(( base_khz / 1000 ))
-        if [[ "${max_mhz}" -gt $(( base_mhz * 105 / 100 )) ]]; then
-            echo "FATAL: MAXMHZ=${max_mhz} MHz exceeds base ${base_mhz} MHz by >5%." >&2
-            echo "  BIOS Core Performance Boost appears active despite software toggle off." >&2
-            echo "  Disable in BIOS: Ai Tweaker → Core Performance Boost → Disabled." >&2
-            echo "  Verify: lscpu | grep 'max MHz'  (expect ~${base_mhz}, not ${max_mhz})" >&2
+    # 1. Per-CPU cpb (acpi-cpufreq, Ryzen). Most reliable signal on this rig.
+    local cpb_found=0 cpb_on=0 cpb_off=0 cpb_path val
+    for cpb_path in /sys/devices/system/cpu/cpu*/cpufreq/cpb; do
+        [[ -r "$cpb_path" ]] || continue
+        cpb_found=1
+        val=$(<"$cpb_path")
+        if [[ "$val" == "1" ]]; then
+            cpb_on=$(( cpb_on + 1 ))
+        else
+            cpb_off=$(( cpb_off + 1 ))
+        fi
+    done
+
+    if [[ "$cpb_found" -eq 1 ]]; then
+        if [[ "$cpb_on" -gt 0 ]]; then
+            echo "FATAL: Core Performance Boost is enabled (cpb=1 on ${cpb_on} CPU(s))." >&2
+            echo "  Disable in BIOS: Core Performance Boost → Disabled." >&2
+            echo "  Verify: cat /sys/devices/system/cpu/cpu0/cpufreq/cpb  (expect 0)" >&2
+            echo "  Override (boost-on captures only): export CRUCIBLE_ALLOW_BOOST=1" >&2
             exit 1
         fi
+        echo "CRUCIBLE_TURBO=off  (cpb=0 on ${cpb_off} CPU(s); MAXMHZ=${max_mhz:-?} MHz — advisory)" >&2
+        return 0
     fi
 
-    if [[ "${CRUCIBLE_TURBO}" == "on" ]]; then
-        echo "FATAL: Core Performance Boost is enabled (CRUCIBLE_TURBO=on)." >&2
-        echo "  Disable in BIOS: Ai Tweaker → Core Performance Boost → Disabled (master switch)." >&2
-        echo "  PBO-off alone is insufficient — use the CPB master switch." >&2
-        echo "  Verify: lscpu | grep 'max MHz'  (expect ~3900, not 4560)" >&2
+    # 2. Global cpufreq/boost (absent on this rig; present on some acpi-cpufreq boards).
+    local boost_sysfs
+    boost_sysfs=$(cat /sys/devices/system/cpu/cpufreq/boost 2>/dev/null || echo "")
+    if [[ "$boost_sysfs" == "1" ]]; then
+        echo "FATAL: Core Performance Boost is enabled (cpufreq/boost=1)." >&2
+        echo "  Disable in BIOS: Core Performance Boost → Disabled." >&2
         echo "  Override (boost-on captures only): export CRUCIBLE_ALLOW_BOOST=1" >&2
         exit 1
+    elif [[ "$boost_sysfs" == "0" ]]; then
+        echo "CRUCIBLE_TURBO=off  (cpufreq/boost=0)" >&2
+        return 0
     fi
+
+    # 3. scaling_available_frequencies top vs amd_pstate base (where both are present).
+    local avail_raw avail_top_khz base_khz
+    avail_raw=$(cat /sys/devices/system/cpu/cpufreq/policy0/scaling_available_frequencies 2>/dev/null || echo "")
+    base_khz=$(cat /sys/devices/system/cpu/cpu0/cpufreq/base_frequency 2>/dev/null || echo "0")
+    avail_top_khz=0
+    if [[ -n "$avail_raw" ]]; then
+        avail_top_khz=$(echo "$avail_raw" | awk '{m=0; for(i=1;i<=NF;i++) if($i+0>m) m=$i+0; print m}')
+        avail_top_khz=${avail_top_khz:-0}
+    fi
+    if [[ "${avail_top_khz:-0}" -gt 0 && "${base_khz:-0}" -gt 0 ]]; then
+        if [[ "$avail_top_khz" -gt $(( base_khz * 105 / 100 )) ]]; then
+            local avail_top_mhz base_mhz
+            avail_top_mhz=$(( avail_top_khz / 1000 ))
+            base_mhz=$(( base_khz / 1000 ))
+            echo "FATAL: scaling_available top=${avail_top_mhz} MHz exceeds base ${base_mhz} MHz by >5%." >&2
+            echo "  Core Performance Boost appears active." >&2
+            echo "  Override (boost-on captures only): export CRUCIBLE_ALLOW_BOOST=1" >&2
+            exit 1
+        fi
+        local avail_top_mhz base_mhz
+        avail_top_mhz=$(( avail_top_khz / 1000 ))
+        base_mhz=$(( base_khz / 1000 ))
+        echo "CRUCIBLE_TURBO=off  (scaling_avail_top=${avail_top_mhz} MHz ≤ base=${base_mhz} MHz)" >&2
+        return 0
+    fi
+
+    # No signal found: pass safely (Pi/ARM, unknown driver — no fail-closed).
+    echo "CRUCIBLE_TURBO=unknown  (no boost signal detected; MAXMHZ=${max_mhz:-?} MHz — passing)" >&2
 }

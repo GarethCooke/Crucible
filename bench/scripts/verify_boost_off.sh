@@ -5,18 +5,15 @@
 # supplied JSON (or all Machine 1 perf/*.json when called with no args), a demo
 # PASSES only if ALL of:
 #   1. JSON is well-formed (jq parse succeeds)
-#   2. machine.turbo == false                       (not true / null / missing)
-#   3. machine.freq_max_mhz present AND < 4000       (missing => FAIL: not recaptured
-#                                                      with the fixed header)
-#   4. machine.turbo_source present and != "unavailable"
-#                                                    (a real signal verified it;
-#                                                     "unavailable" => detection failed)
-#   5. machine.lscpu_extended contains no MAXMHZ column value >= 4500 (the 4560 ceiling)
+#   2. machine.turbo == false
+#   3. machine.turbo_source ∈ {cpb, scaling_avail_freq, cpufreq/boost}
+#      (a real signal verified it; "unavailable"/missing => detection failed)
+#   4. machine.freq_max_available_mhz present AND < 4000
+#      (the P-state ceiling that tracks CPB state; ~3900 on this rig with CPB off)
 #
-# freq_base_mhz is informational only and may legitimately be null (acpi-cpufreq does
-# not expose base_frequency); it is NOT gated on. turbo_source is printed for each demo
-# so you can see which signal verified it: "freq_compare*" = MAXMHZ ground-truth active
-# (amd_pstate); "cpufreq/boost" = software-toggle fallback (acpi-cpufreq).
+# Note: freq_max_advertised_mhz (lscpu MAXMHZ, ~4560) is advisory only — it stays at
+# the silicon boost ceiling on acpi-cpufreq regardless of CPB state; it is NOT gated on.
+# freq_base_mhz may legitimately be null (acpi-cpufreq does not expose base_frequency).
 #
 # Usage:
 #   bench/scripts/verify_boost_off.sh                       # all Machine 1 JSONs
@@ -92,8 +89,9 @@ for f in "${FILES[@]}"; do
     # would report a genuine `false` as MISSING. Use has() + tostring instead.
     turbo=$(jq -r 'if (.machine|has("turbo")) and (.machine.turbo != null)
                    then (.machine.turbo|tostring) else "MISSING" end' "$f")
-    freq_max=$(jq -r '.machine.freq_max_mhz // "MISSING"' "$f")
     tsource=$(jq -r '.machine.turbo_source // "MISSING"' "$f")
+    freq_max_available=$(jq -r '.machine.freq_max_available_mhz // "MISSING"' "$f")
+    freq_max_advertised=$(jq -r '.machine.freq_max_advertised_mhz // "MISSING"' "$f")
     fbase=$(jq -r '.machine.freq_base_mhz // "null"' "$f")
 
     # 2. turbo == false
@@ -102,35 +100,26 @@ for f in "${FILES[@]}"; do
         ok=0
     fi
 
-    # 3. freq_max_mhz present and < 4000
-    if [[ "$freq_max" == "MISSING" || "$freq_max" == "null" ]]; then
-        reasons+=("freq_max_mhz absent (not recaptured with fixed header)")
-        ok=0
-    elif [[ "$freq_max" -ge 4000 ]]; then
-        reasons+=("freq_max_mhz=${freq_max} >= 4000 (boost active)")
-        ok=0
-    fi
-
-    # 4. turbo_source present and a real signal
-    if [[ "$tsource" == "MISSING" || "$tsource" == "unavailable" ]]; then
-        reasons+=("turbo_source=${tsource} (no real signal verified boost state)")
-        ok=0
-    fi
-
-    # 5. lscpu_extended: no MAXMHZ column value >= 4500
-    lscpu_ext=$(jq -r '.machine.lscpu_extended // ""' "$f")
-    if [[ -n "$lscpu_ext" ]]; then
-        boosted_mhz=$(echo "$lscpu_ext" \
-            | grep -oE '[0-9]{4}\.[0-9]+' \
-            | awk -F. '$1 >= 4500 {print $1"."$2}' || true)
-        if [[ -n "$boosted_mhz" ]]; then
-            reasons+=("lscpu_extended MAXMHZ >= 4500: ${boosted_mhz}")
+    # 3. turbo_source must be a trustworthy signal
+    case "$tsource" in
+        cpb|scaling_avail_freq|"cpufreq/boost") ;;
+        *)
+            reasons+=("turbo_source=${tsource} (expected cpb, scaling_avail_freq, or cpufreq/boost)")
             ok=0
-        fi
+            ;;
+    esac
+
+    # 4. freq_max_available_mhz present and < 4000 (P-state ceiling that tracks CPB state)
+    if [[ "$freq_max_available" == "MISSING" || "$freq_max_available" == "null" ]]; then
+        reasons+=("freq_max_available_mhz absent (not recaptured with fixed header)")
+        ok=0
+    elif [[ "$freq_max_available" -ge 4000 ]]; then
+        reasons+=("freq_max_available_mhz=${freq_max_available} >= 4000 (boost-range P-state available)")
+        ok=0
     fi
 
     if [[ "$ok" -eq 1 ]]; then
-        echo "PASS [$label]: turbo=false  freq_max_mhz=${freq_max}  freq_base_mhz=${fbase}  via ${tsource}"
+        echo "PASS [$label]: turbo=false  turbo_source=${tsource}  freq_max_available_mhz=${freq_max_available}  freq_max_advertised_mhz=${freq_max_advertised} (advisory)"
         PASS=$(( PASS + 1 ))
     else
         for r in "${reasons[@]}"; do
