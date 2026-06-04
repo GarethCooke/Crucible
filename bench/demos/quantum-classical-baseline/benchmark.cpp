@@ -106,7 +106,7 @@ BENCHMARK(BM_LinearScan)->DenseRange(3, 20)
 int main(int argc, char** argv) {
     for (int i = 1; i < argc; ++i) {
         if (std::string_view(argv[i]) == "--machine-info") {
-            print_machine_info();
+            std::cout << "{" << crucible::machine_info_json() << "}\n";
             return 0;
         }
     }
