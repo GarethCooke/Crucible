@@ -687,7 +687,7 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    const double ns_per_cycle = calibrate_tsc();
+    const double ns_per_cycle = crucible::calibrate_tsc();
     std::fprintf(stderr, "TSC calibration: %.6f ns/cycle\n", ns_per_cycle);
 
     crucible::WarmupVerify wv;
@@ -708,7 +708,7 @@ int main(int argc, char* argv[]) {
             std::fprintf(stderr, "  sweep step %d/%d: %.0f Hz\n", s + 1, n, static_cast<double>(rate));
 
             const RunResult r = run_variant(variant, ns_per_cycle, rate, &wv);
-            const double ns_per_cycle_step = calibrate_tsc();
+            const double ns_per_cycle_step = crucible::calibrate_tsc();
             const double drift = std::abs(ns_per_cycle_step - ns_per_cycle) / ns_per_cycle * 100.0;
 
             output += emit_json_string(argv[1], "sweep", rate, r, drift);
@@ -722,7 +722,7 @@ int main(int argc, char* argv[]) {
 
         const RunResult r = run_variant(variant, ns_per_cycle, rate, &wv);
 
-        const double ns_per_cycle_post = calibrate_tsc();
+        const double ns_per_cycle_post = crucible::calibrate_tsc();
         const double drift_pct = std::abs(ns_per_cycle_post - ns_per_cycle) / ns_per_cycle * 100.0;
         if (drift_pct > 0.1)
             std::fprintf(stderr, "WARN: TSC drift %.4f%% (threshold 0.1%%)\n", drift_pct);
