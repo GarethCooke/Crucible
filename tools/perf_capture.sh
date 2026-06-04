@@ -88,7 +88,7 @@ echo "    perf JSON  → $PERF_OUT"
 echo "    bench JSON → $BENCH_OUT"
 
 perf stat \
-    --event=cache-misses,cache-references,instructions,cycles,l1d.replacement \
+    --event=cache-misses,cache-references,instructions,cycles,L1-dcache-load-misses \
     --json \
     --output="$PERF_OUT" \
     -- \
