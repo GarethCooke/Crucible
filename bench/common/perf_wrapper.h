@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <sys/ioctl.h>
 #include <sys/syscall.h>
 #include <unistd.h>
@@ -45,9 +46,12 @@ public:
         fd_instrs_     = open_hw(PERF_COUNT_HW_INSTRUCTIONS);
         fd_cycles_     = open_hw(PERF_COUNT_HW_CPU_CYCLES);
 
-        if (fd_branches_ < 0 || fd_misses_ < 0 || fd_instrs_ < 0 || fd_cycles_ < 0)
+        if (fd_branches_ < 0 || fd_misses_ < 0 || fd_instrs_ < 0 || fd_cycles_ < 0) {
+            for (int fd : {fd_branches_, fd_misses_, fd_instrs_, fd_cycles_})
+                if (fd >= 0) ::close(fd);
             throw std::runtime_error(
                 "perf_event_open failed — run: sysctl kernel.perf_event_paranoid=1");
+        }
     }
 
     ~PerfCounters() {
@@ -55,9 +59,16 @@ public:
             if (fd >= 0) ::close(fd);
     }
 
-    // Non-copyable, non-movable (file descriptors)
+    // Non-copyable; movable (transfers fd ownership)
     PerfCounters(const PerfCounters&)            = delete;
     PerfCounters& operator=(const PerfCounters&) = delete;
+    PerfCounters& operator=(PerfCounters&&)      = delete;
+
+    PerfCounters(PerfCounters&& o) noexcept
+        : fd_branches_(std::exchange(o.fd_branches_, -1)),
+          fd_misses_  (std::exchange(o.fd_misses_,   -1)),
+          fd_instrs_  (std::exchange(o.fd_instrs_,   -1)),
+          fd_cycles_  (std::exchange(o.fd_cycles_,   -1)) {}
 
     void start() noexcept {
         for (int fd : {fd_branches_, fd_misses_, fd_instrs_, fd_cycles_}) {

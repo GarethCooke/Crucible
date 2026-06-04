@@ -1,8 +1,8 @@
 #include "inputs.h"
 
 #include <benchmark/benchmark.h>
+#include <bs_bench_harness.h>
 #include <machine_info.h>
-#include <perf_wrapper.h>
 
 #include <xmmintrin.h>  // _MM_SET_FLUSH_ZERO_MODE
 #include <pmmintrin.h>  // _MM_SET_DENORMALS_ZERO_MODE
@@ -23,6 +23,9 @@ extern void price_options_sse2(
 extern void price_options_avx2_fma(
     const float*, const float*, const float*, const float*, const float*, float*, int64_t);
 
+// ─── Variant index mapping ────────────────────────────────────────────────────
+enum Variant : int { kScalarLibm = 0, kScalarPoly = 1, kSSE2 = 2, kAVX2FMA = 3, kVariantCount = 4 };
+
 // ─── Input / output arrays ────────────────────────────────────────────────────
 // alignas(32): SIMD loads require 32-byte alignment; harness aborts on violation.
 static constexpr int64_t MAX_N = 1 << 20; // 1M options
@@ -35,26 +38,11 @@ alignas(32) static float gSigma[MAX_N];
 alignas(32) static float gC    [MAX_N]; // shared output scratch
 
 // Per-variant max absolute error against scalar_libm (computed once at start).
-static float g_max_abs_err[4] = {};
+static float g_max_abs_err[kVariantCount] = {};
 
 // ─── Alignment check ─────────────────────────────────────────────────────────
-[[noreturn]] static void abort_misaligned(const char* name, const void* ptr) {
-    std::cerr << "FATAL: " << name << " at " << ptr
-              << " is not 32-byte aligned\n";
-    std::abort();
-}
-
 static void check_alignment() {
-    auto chk = [](const char* n, const void* p) {
-        if (reinterpret_cast<uintptr_t>(p) % 32 != 0)
-            abort_misaligned(n, p);
-    };
-    chk("gS",     gS);
-    chk("gK",     gK);
-    chk("gT",     gT);
-    chk("gR",     gR);
-    chk("gSigma", gSigma);
-    chk("gC",     gC);
+    crucible::bs_check_alignment({gS, gK, gT, gR, gSigma, gC});
 }
 
 // ─── Correctness check ───────────────────────────────────────────────────────
@@ -72,56 +60,30 @@ static void compute_errors() {
         return e;
     };
 
-    g_max_abs_err[0] = 0.0f; // scalar_libm vs itself
+    g_max_abs_err[kScalarLibm] = 0.0f; // scalar_libm vs itself
 
     price_options_scalar_poly(gS, gK, gT, gR, gSigma, gC, MAX_N);
-    g_max_abs_err[1] = max_err(gC);
+    g_max_abs_err[kScalarPoly] = max_err(gC);
 
     price_options_sse2(gS, gK, gT, gR, gSigma, gC, MAX_N);
-    g_max_abs_err[2] = max_err(gC);
+    g_max_abs_err[kSSE2] = max_err(gC);
 
     price_options_avx2_fma(gS, gK, gT, gR, gSigma, gC, MAX_N);
-    g_max_abs_err[3] = max_err(gC);
-}
-
-// ─── Benchmark helper ─────────────────────────────────────────────────────────
-using PriceFn = void(*)(const float*, const float*, const float*, const float*, const float*, float*, int64_t);
-
-static void run_bm(benchmark::State& state, PriceFn fn, int var_idx) {
-    const int64_t n = state.range(0);
-
-    crucible::PerfCounters perf;
-    crucible::PerfCounters::Counts total{};
-
-    for (auto _ : state) {
-        perf.start();
-        fn(gS, gK, gT, gR, gSigma, gC, n);
-        benchmark::DoNotOptimize(gC[0]);
-        perf.stop();
-        total += perf.read();
-    }
-
-    const int64_t ops = static_cast<int64_t>(state.iterations()) * n;
-    state.counters["ipc"]           = total.ipc();
-    state.counters["max_abs_error"] = g_max_abs_err[var_idx];
-    state.SetItemsProcessed(ops);
+    g_max_abs_err[kAVX2FMA] = max_err(gC);
 }
 
 // ─── Benchmark registrations ──────────────────────────────────────────────────
-static void BM_ScalarLibm(benchmark::State& s) { run_bm(s, price_options_scalar_libm, 0); }
-static void BM_ScalarPoly(benchmark::State& s) { run_bm(s, price_options_scalar_poly, 1); }
-static void BM_SSE2      (benchmark::State& s) { run_bm(s, price_options_sse2,        2); }
-static void BM_AVX2FMA   (benchmark::State& s) { run_bm(s, price_options_avx2_fma,    3); }
+static const crucible::BsArrayRefs g_arrs{gS, gK, gT, gR, gSigma, gC};
 
-static void sizes(benchmark::internal::Benchmark* b) {
-    for (int64_t n : {1024LL, 16384LL, 262144LL, 1048576LL})
-        b->Arg(n)->MinTime(0.5);
-}
+static void BM_ScalarLibm(benchmark::State& s) { crucible::bs_run_bm(s, price_options_scalar_libm, kScalarLibm, g_arrs, g_max_abs_err); }
+static void BM_ScalarPoly(benchmark::State& s) { crucible::bs_run_bm(s, price_options_scalar_poly, kScalarPoly, g_arrs, g_max_abs_err); }
+static void BM_SSE2      (benchmark::State& s) { crucible::bs_run_bm(s, price_options_sse2,        kSSE2,       g_arrs, g_max_abs_err); }
+static void BM_AVX2FMA   (benchmark::State& s) { crucible::bs_run_bm(s, price_options_avx2_fma,    kAVX2FMA,   g_arrs, g_max_abs_err); }
 
-BENCHMARK(BM_ScalarLibm)->Apply(sizes);
-BENCHMARK(BM_ScalarPoly)->Apply(sizes);
-BENCHMARK(BM_SSE2      )->Apply(sizes);
-BENCHMARK(BM_AVX2FMA   )->Apply(sizes);
+BENCHMARK(BM_ScalarLibm)->Apply(crucible::bs_register_sizes);
+BENCHMARK(BM_ScalarPoly)->Apply(crucible::bs_register_sizes);
+BENCHMARK(BM_SSE2      )->Apply(crucible::bs_register_sizes);
+BENCHMARK(BM_AVX2FMA   )->Apply(crucible::bs_register_sizes);
 
 // ─── Custom main ─────────────────────────────────────────────────────────────
 int main(int argc, char** argv) {

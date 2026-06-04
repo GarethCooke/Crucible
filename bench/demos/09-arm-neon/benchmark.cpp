@@ -1,8 +1,8 @@
 #include "inputs.h"
 
 #include <benchmark/benchmark.h>
+#include <bs_bench_harness.h>
 #include <machine_info.h>
-#include <perf_wrapper.h>
 
 #include <algorithm>
 #include <cmath>
@@ -21,8 +21,6 @@ extern void price_options_neon(
     const float*, const float*, const float*, const float*, const float*, float*, int64_t);
 
 // ─── Variant index mapping ────────────────────────────────────────────────────
-// TODO(post-ship): check_alignment, run_bm, sizes, and PriceFn are also in
-// demo 03's benchmark.cpp — extract to bench/common/bs_bench_harness.h.
 enum Variant : int { kScalarLibm = 0, kScalarPoly = 1, kAutovec = 2, kNeon = 3, kVariantCount = 4 };
 
 // ─── Input / output arrays ────────────────────────────────────────────────────
@@ -41,23 +39,8 @@ alignas(32) static float gC    [MAX_N];
 static float g_max_abs_err[kVariantCount] = {};
 
 // ─── Alignment check ─────────────────────────────────────────────────────────
-[[noreturn]] static void abort_misaligned(const char* name, const void* ptr) {
-    std::cerr << "FATAL: " << name << " at " << ptr
-              << " is not 32-byte aligned\n";
-    std::abort();
-}
-
 static void check_alignment() {
-    auto chk = [](const char* n, const void* p) {
-        if (reinterpret_cast<uintptr_t>(p) % 32 != 0)
-            abort_misaligned(n, p);
-    };
-    chk("gS",     gS);
-    chk("gK",     gK);
-    chk("gT",     gT);
-    chk("gR",     gR);
-    chk("gSigma", gSigma);
-    chk("gC",     gC);
+    crucible::bs_check_alignment({gS, gK, gT, gR, gSigma, gC});
 }
 
 // ─── Correctness check ───────────────────────────────────────────────────────
@@ -85,44 +68,18 @@ static void compute_errors() {
     g_max_abs_err[kNeon] = max_err(gC);
 }
 
-// ─── Benchmark helper ─────────────────────────────────────────────────────────
-using PriceFn = void(*)(const float*, const float*, const float*, const float*, const float*, float*, int64_t);
-
-static void run_bm(benchmark::State& state, PriceFn fn, int var_idx) {
-    const int64_t n = state.range(0);
-
-    crucible::PerfCounters perf;
-    crucible::PerfCounters::Counts total{};
-
-    for (auto _ : state) {
-        perf.start();
-        fn(gS, gK, gT, gR, gSigma, gC, n);
-        benchmark::DoNotOptimize(gC[0]);
-        perf.stop();
-        total += perf.read();
-    }
-
-    const int64_t ops = static_cast<int64_t>(state.iterations()) * n;
-    state.counters["ipc"]           = total.ipc();
-    state.counters["max_abs_error"] = g_max_abs_err[var_idx];
-    state.SetItemsProcessed(ops);
-}
-
 // ─── Benchmark registrations ──────────────────────────────────────────────────
-static void BM_ScalarLibm(benchmark::State& s) { run_bm(s, price_options_scalar_libm, kScalarLibm); }
-static void BM_ScalarPoly(benchmark::State& s) { run_bm(s, price_options_scalar_poly, kScalarPoly); }
-static void BM_Autovec   (benchmark::State& s) { run_bm(s, price_options_autovec,     kAutovec);    }
-static void BM_Neon      (benchmark::State& s) { run_bm(s, price_options_neon,        kNeon);       }
+static const crucible::BsArrayRefs g_arrs{gS, gK, gT, gR, gSigma, gC};
 
-static void sizes(benchmark::internal::Benchmark* b) {
-    for (int64_t n : {1024LL, 16384LL, 262144LL, 1048576LL})
-        b->Arg(n)->MinTime(0.5);
-}
+static void BM_ScalarLibm(benchmark::State& s) { crucible::bs_run_bm(s, price_options_scalar_libm, kScalarLibm, g_arrs, g_max_abs_err); }
+static void BM_ScalarPoly(benchmark::State& s) { crucible::bs_run_bm(s, price_options_scalar_poly, kScalarPoly, g_arrs, g_max_abs_err); }
+static void BM_Autovec   (benchmark::State& s) { crucible::bs_run_bm(s, price_options_autovec,     kAutovec,    g_arrs, g_max_abs_err); }
+static void BM_Neon      (benchmark::State& s) { crucible::bs_run_bm(s, price_options_neon,        kNeon,       g_arrs, g_max_abs_err); }
 
-BENCHMARK(BM_ScalarLibm)->Apply(sizes);
-BENCHMARK(BM_ScalarPoly)->Apply(sizes);
-BENCHMARK(BM_Autovec   )->Apply(sizes);
-BENCHMARK(BM_Neon      )->Apply(sizes);
+BENCHMARK(BM_ScalarLibm)->Apply(crucible::bs_register_sizes);
+BENCHMARK(BM_ScalarPoly)->Apply(crucible::bs_register_sizes);
+BENCHMARK(BM_Autovec   )->Apply(crucible::bs_register_sizes);
+BENCHMARK(BM_Neon      )->Apply(crucible::bs_register_sizes);
 
 // ─── Custom main ─────────────────────────────────────────────────────────────
 int main(int argc, char** argv) {

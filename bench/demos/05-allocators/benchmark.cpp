@@ -23,9 +23,12 @@
 #include "allocators/freelist_return_allocator.h"
 #include "allocators/arena_batch_allocator.h"
 
+#include "affinity.h"
 #include "histogram.h"
 #include "machine_info.h"
 #include "spsc_queue.h"
+#include "tsc_utils.h"
+#include "warmup_verify.h"
 
 #include <algorithm>
 #include <atomic>
@@ -89,71 +92,8 @@ struct BenchConfig {
 
 // ─── TSC helpers ─────────────────────────────────────────────────────────────
 
-static inline uint64_t rdtscp_ordered() noexcept {
-    unsigned aux;
-    uint64_t t = __rdtscp(&aux);
-    _mm_lfence();
-    return t;
-}
-
 static inline uint64_t tsc_to_ns_u64(uint64_t cycles, double ns_per_cycle) noexcept {
     return static_cast<uint64_t>(static_cast<double>(cycles) * ns_per_cycle);
-}
-
-// Calibrate TSC against CLOCK_MONOTONIC_RAW over a 100 ms window.
-// Verifies constant_tsc and nonstop_tsc; aborts on missing flags.
-static double calibrate_tsc() {
-    bool has_constant = false, has_nonstop = false;
-    if (FILE* f = std::fopen("/proc/cpuinfo", "r")) {
-        char line[256];
-        while (std::fgets(line, sizeof(line), f)) {
-            if (std::strstr(line, "constant_tsc"))  has_constant = true;
-            if (std::strstr(line, "nonstop_tsc"))   has_nonstop  = true;
-        }
-        std::fclose(f);
-    }
-    if (!has_constant || !has_nonstop) {
-        std::fprintf(stderr,
-            "ERROR: TSC stability flags missing in /proc/cpuinfo.\n"
-            "  constant_tsc: %s\n  nonstop_tsc:  %s\n",
-            has_constant ? "present" : "MISSING",
-            has_nonstop  ? "present" : "MISSING");
-        std::exit(1);
-    }
-
-    auto mono_ns = []() -> uint64_t {
-        struct timespec ts{};
-        clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
-        return static_cast<uint64_t>(ts.tv_sec) * 1'000'000'000ULL
-             + static_cast<uint64_t>(ts.tv_nsec);
-    };
-
-    const uint64_t t0_ns  = mono_ns();
-    const uint64_t t0_cyc = rdtscp_ordered();
-    while (mono_ns() - t0_ns < 100'000'000ULL) {}
-    const uint64_t t1_cyc = rdtscp_ordered();
-    const uint64_t t1_ns  = mono_ns();
-    return static_cast<double>(t1_ns - t0_ns) / static_cast<double>(t1_cyc - t0_cyc);
-}
-
-// ─── Thread affinity ─────────────────────────────────────────────────────────
-
-static void pin_to_core(int core) {
-    cpu_set_t cpuset;
-    CPU_ZERO(&cpuset);
-    CPU_SET(core, &cpuset);
-    if (pthread_setaffinity_np(pthread_self(), sizeof(cpuset), &cpuset) != 0) {
-        std::fprintf(stderr, "ERROR: pthread_setaffinity_np to core %d failed\n", core);
-        std::exit(1);
-    }
-    std::this_thread::yield();
-    // Verify affinity at thread start; mismatch aborts (brief requirement).
-    const int actual = sched_getcpu();
-    if (actual != core) {
-        std::fprintf(stderr,
-            "ERROR: affinity mismatch — expected core %d, running on %d\n", core, actual);
-        std::exit(1);
-    }
 }
 
 // ─── RNG helpers ─────────────────────────────────────────────────────────────
@@ -179,22 +119,6 @@ struct RunResult {
     uint64_t            arena_wait_count = 0;
 };
 
-// ─── Warmup verification ─────────────────────────────────────────────────────
-
-struct WarmupVerify {
-    bool                enabled = false;
-    crucible::Histogram early;   // items 0..9_999 of measurement
-    crucible::Histogram late;    // items 100_000+ of measurement
-};
-
-// ─── Pacing helper ───────────────────────────────────────────────────────────
-
-static inline uint64_t pacing_period_cycles(uint64_t rate_hz,
-                                             double ns_per_cycle) noexcept {
-    if (rate_hz == 0) return 0;
-    return static_cast<uint64_t>(1.0e9 / (static_cast<double>(rate_hz) * ns_per_cycle));
-}
-
 // ─── Core benchmark loop (templated on allocator type) ────────────────────────
 
 template <typename Alloc>
@@ -204,10 +128,10 @@ static RunResult run_one(Alloc& alloc,
                          uint64_t bg_pressure_hz,
                          int consumer_core,
                          size_t num_iterations,
-                         WarmupVerify* warmup_verify,
+                         crucible::WarmupVerify* warmup_verify,
                          const PressureConfig& pressure) {
 
-    const uint64_t period_cycles = pacing_period_cycles(offered_rate_hz, ns_per_cycle);
+    const uint64_t period_cycles = crucible::pacing_period_cycles(offered_rate_hz, ns_per_cycle);
 
     RunResult result;
 
@@ -224,7 +148,7 @@ static RunResult run_one(Alloc& alloc,
 
         // ── Consumer thread (T_c) ──
         std::thread consumer([&] {
-            pin_to_core(consumer_core);
+            crucible::pin_to_core(consumer_core);
             consumer_ready.store(true, std::memory_order_release);
             while (!start_signal.load(std::memory_order_acquire)) { _mm_pause(); }
 
@@ -249,11 +173,11 @@ static RunResult run_one(Alloc& alloc,
                 Order* o = nullptr;
                 if (!queue.try_pop(o)) { _mm_pause(); continue; }
 
-                const uint64_t now_ns = tsc_to_ns_u64(rdtscp_ordered(), ns_per_cycle);
+                const uint64_t now_ns = tsc_to_ns_u64(crucible::rdtscp_ordered(), ns_per_cycle);
                 risk_state.check(o, now_ns);
 
                 const uint64_t latency_ns =
-                    tsc_to_ns_u64(rdtscp_ordered() - o->ts_create_tsc, ns_per_cycle);
+                    tsc_to_ns_u64(crucible::rdtscp_ordered() - o->ts_create_tsc, ns_per_cycle);
 
                 if (warmup_verify && warmup_verify->enabled) {
                     if (measured < 10'000)        warmup_verify->early.record(latency_ns);
@@ -278,7 +202,7 @@ static RunResult run_one(Alloc& alloc,
                 const int core    = BG_CORE + t;
                 const uint32_t sd = static_cast<uint32_t>(42 + t);
                 bg_thread_list.emplace_back([&, core, sd] {
-                    pin_to_core(core);
+                    crucible::pin_to_core(core);
                     background_pressure_loop(bg_pressure_hz, ns_per_cycle, bg_stop,
                                              pressure.bg_live_allocs,
                                              pressure.bg_size_classes, sd);
@@ -287,7 +211,7 @@ static RunResult run_one(Alloc& alloc,
         }
 
         // ── Producer (T_p — main thread) ──
-        pin_to_core(PRODUCER_CORE);
+        crucible::pin_to_core(PRODUCER_CORE);
         while (!consumer_ready.load(std::memory_order_acquire)) { _mm_pause(); }
         start_signal.store(true, std::memory_order_release);
 
@@ -320,7 +244,7 @@ static RunResult run_one(Alloc& alloc,
         clock_gettime(CLOCK_MONOTONIC_RAW, &t0);
 
         // Measurement — paced at offered_rate_hz.
-        uint64_t next_release = rdtscp_ordered();
+        uint64_t next_release = crucible::rdtscp_ordered();
         for (size_t i = 0; i < ITEMS_MEASURED; ++i) {
             if (period_cycles > 0) {
                 while (__rdtsc() < next_release) { _mm_pause(); }
@@ -328,7 +252,7 @@ static RunResult run_one(Alloc& alloc,
             }
 
             Order* o = alloc.allocate();
-            fill_order(o, i, rdtscp_ordered(), i);
+            fill_order(o, i, crucible::rdtscp_ordered(), i);
             // arena_idx is set by allocate() for variant 3; zeroed by new/freelist.
             while (!queue.try_push(o)) { _mm_pause(); }
         }
@@ -366,7 +290,7 @@ static RunResult run_variant_arena(ArenaBatchAllocator& alloc,
                                     uint64_t bg_pressure_hz,
                                     int consumer_core,
                                     size_t num_iterations,
-                                    WarmupVerify* warmup_verify,
+                                    crucible::WarmupVerify* warmup_verify,
                                     const PressureConfig& pressure) {
     RunResult r = run_one(alloc, ns_per_cycle, offered_rate_hz, bg_pressure_hz,
                           consumer_core, num_iterations, warmup_verify, pressure);
@@ -526,14 +450,7 @@ static std::string emit_run_json(const char* variant,
     trailer += knobs_json;
     trailer += "}";
 
-    std::string result;
-    result.reserve(1024 + crucible::HISTOGRAM_BUCKET_COUNT * 8 + 256);
-    result += hdr;
-    result += h.counts_json();
-    result += ",\"stats\":";
-    result += h.stats_json();
-    result += trailer;
-    return result;
+    return crucible::assemble_histogram_json(hdr, h, trailer);
 }
 
 // ─── Dispatch ────────────────────────────────────────────────────────────────
@@ -550,7 +467,7 @@ static RunOutput dispatch(std::string_view variant,
                            int consumer_core,
                            const char* mode_str,
                            size_t num_iterations,
-                           WarmupVerify* warmup_verify,
+                           crucible::WarmupVerify* warmup_verify,
                            const PressureConfig& pressure) {
     // consumer_work_target_ns: measured during calibration; see README.
     // Set to 200 as the calibrated target; update after measurement confirms it.
@@ -559,7 +476,7 @@ static RunOutput dispatch(std::string_view variant,
     // Compute drift once; re-running calibrate_tsc() per variant would waste
     // up to 300 ms per dispatch call (one 100 ms spin per variant branch).
     const double calibration_drift_pct =
-        std::abs(calibrate_tsc() - ns_per_cycle) / ns_per_cycle * 100.0;
+        std::abs(crucible::calibrate_tsc() - ns_per_cycle) / ns_per_cycle * 100.0;
 
     RunOutput out;
 
@@ -614,7 +531,7 @@ int main(int argc, char* argv[]) {
 
     // ── Machine info ─────────────────────────────────────────────────────────
     if (std::string_view(argv[1]) == "--machine-info") {
-        const double ns_per_cycle = calibrate_tsc();
+        const double ns_per_cycle = crucible::calibrate_tsc();
         std::printf("{%s,\"tsc_ns_per_cycle\":%.6f}\n",
             crucible::machine_info_json().c_str(), ns_per_cycle);
         return 0;
@@ -728,10 +645,10 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    const double ns_per_cycle = calibrate_tsc();
+    const double ns_per_cycle = crucible::calibrate_tsc();
     std::fprintf(stderr, "TSC calibration: %.6f ns/cycle\n", ns_per_cycle);
 
-    WarmupVerify warmup_verify;
+    crucible::WarmupVerify warmup_verify;
     warmup_verify.enabled = cfg.verify_warmup;
 
     std::string output;
@@ -781,16 +698,7 @@ int main(int argc, char* argv[]) {
     std::printf("%s\n", output.c_str());
 
     // ── Warmup verification report ───────────────────────────────────────────
-    if (warmup_verify.enabled) {
-        std::fprintf(stderr,
-            "\n=== Warmup verification ===\n"
-            "Items 0-9,999   (early): p50=%llu ns  p99=%llu ns\n"
-            "Items 100,000+  (late):  p50=%llu ns  p99=%llu ns\n",
-            (unsigned long long)warmup_verify.early.percentile(50.0),
-            (unsigned long long)warmup_verify.early.percentile(99.0),
-            (unsigned long long)warmup_verify.late.percentile(50.0),
-            (unsigned long long)warmup_verify.late.percentile(99.0));
-    }
+    warmup_verify.report();
 
     return 0;
 }

@@ -16,10 +16,13 @@
 // Timestamps: rdtscp with lfence, calibrated against CLOCK_MONOTONIC_RAW.
 // Histogram bins happen post-run; the hot loop only writes raw cycle counts.
 
+#include "affinity.h"
 #include "histogram.h"
 #include "machine_info.h"
 #include "spsc_queue.h"
 #include "tick.h"
+#include "tsc_utils.h"
+#include "warmup_verify.h"
 
 #include <boost/lockfree/spsc_queue.hpp>
 
@@ -68,72 +71,6 @@ struct BenchConfig {
     bool     verify_warmup = false;
 };
 
-// ─── TSC helpers ─────────────────────────────────────────────────────────────
-
-static inline uint64_t rdtscp_ordered() noexcept {
-    unsigned aux;
-    uint64_t t = __rdtscp(&aux);
-    _mm_lfence();  // prevent subsequent instructions from executing before rdtscp retires
-    return t;
-}
-
-// Calibrate TSC against CLOCK_MONOTONIC_RAW over a 100 ms window.
-// Verifies constant_tsc and nonstop_tsc in /proc/cpuinfo before running.
-static double calibrate_tsc() {
-    bool has_constant = false, has_nonstop = false;
-    if (FILE* f = std::fopen("/proc/cpuinfo", "r")) {
-        char line[256];
-        while (std::fgets(line, sizeof(line), f)) {
-            if (std::strstr(line, "constant_tsc"))  has_constant = true;
-            if (std::strstr(line, "nonstop_tsc"))   has_nonstop  = true;
-        }
-        std::fclose(f);
-    }
-    if (!has_constant || !has_nonstop) {
-        std::fprintf(stderr,
-            "ERROR: TSC stability flags missing in /proc/cpuinfo.\n"
-            "  constant_tsc: %s\n  nonstop_tsc:  %s\n"
-            "  rdtscp-based timing requires both flags.\n",
-            has_constant ? "present" : "MISSING",
-            has_nonstop  ? "present" : "MISSING");
-        std::exit(1);
-    }
-
-    auto mono_ns = []() -> uint64_t {
-        struct timespec ts{};
-        clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
-        return static_cast<uint64_t>(ts.tv_sec) * 1'000'000'000ULL
-             + static_cast<uint64_t>(ts.tv_nsec);
-    };
-
-    const uint64_t t0_ns  = mono_ns();
-    const uint64_t t0_cyc = rdtscp_ordered();
-    while (mono_ns() - t0_ns < 100'000'000ULL) { /* busy-wait 100 ms */ }
-    const uint64_t t1_cyc = rdtscp_ordered();
-    const uint64_t t1_ns  = mono_ns();
-
-    return static_cast<double>(t1_ns - t0_ns) / static_cast<double>(t1_cyc - t0_cyc);
-}
-
-// ─── Thread affinity ─────────────────────────────────────────────────────────
-
-static void pin_to_core(int core) {
-    cpu_set_t cpuset;
-    CPU_ZERO(&cpuset);
-    CPU_SET(core, &cpuset);
-    if (pthread_setaffinity_np(pthread_self(), sizeof(cpuset), &cpuset) != 0) {
-        std::fprintf(stderr, "ERROR: pthread_setaffinity_np to core %d failed\n", core);
-        std::exit(1);
-    }
-    std::this_thread::yield();
-    const int actual = sched_getcpu();
-    if (actual != core) {
-        std::fprintf(stderr,
-            "ERROR: affinity mismatch — expected core %d, running on %d\n", core, actual);
-        std::exit(1);
-    }
-}
-
 // ─── Run result ──────────────────────────────────────────────────────────────
 
 struct RunResult {
@@ -142,30 +79,13 @@ struct RunResult {
     size_t              top_bucket_count = 0;
 };
 
-// ─── Warmup verification ─────────────────────────────────────────────────────
-
-struct WarmupVerify {
-    bool                enabled = false;
-    crucible::Histogram early;  // items 0..9_999 of measurement
-    crucible::Histogram late;   // items 100_000+ of measurement
-};
-
-// ─── Pacing helper ───────────────────────────────────────────────────────────
-
-// Compute the TSC period for a given offered rate.
-// Returns 0 for saturated mode (no pacing).
-static inline uint64_t pacing_period_cycles(uint64_t rate_hz, double ns_per_cycle) noexcept {
-    if (rate_hz == 0) return 0;
-    return static_cast<uint64_t>(1.0e9 / (static_cast<double>(rate_hz) * ns_per_cycle));
-}
-
 // ─── Binning helper ──────────────────────────────────────────────────────────
 
 static void bin_run(const std::vector<uint64_t>& enq_ts,
                     const std::vector<uint64_t>& deq_ts,
                     double ns_per_cycle,
                     RunResult& result,
-                    WarmupVerify* wv,
+                    crucible::WarmupVerify* wv,
                     const char* variant_name,
                     uint64_t offered_rate_hz);
 
@@ -268,7 +188,7 @@ static void bin_run(const std::vector<uint64_t>& enq_ts,
                     const std::vector<uint64_t>& deq_ts,
                     double ns_per_cycle,
                     RunResult& result,
-                    WarmupVerify* wv,
+                    crucible::WarmupVerify* wv,
                     const char* variant_name,
                     uint64_t offered_rate_hz) {
     crucible::Histogram run_hist;
@@ -315,9 +235,9 @@ static inline void accumulate_wall_time(RunResult& r,
 
 template <typename Policy>
 static RunResult run_spsc_variant(double ns_per_cycle, uint64_t rate_hz,
-                                   WarmupVerify* wv, Policy policy,
+                                   crucible::WarmupVerify* wv, Policy policy,
                                    const char* variant_name) {
-    const uint64_t period_cycles = pacing_period_cycles(rate_hz, ns_per_cycle);
+    const uint64_t period_cycles = crucible::pacing_period_cycles(rate_hz, ns_per_cycle);
 
     RunResult result;
     std::vector<uint64_t> enq_ts(ITEMS_MEASURED);
@@ -332,13 +252,13 @@ static RunResult run_spsc_variant(double ns_per_cycle, uint64_t rate_hz,
         std::atomic<size_t> warmup_consumed{0};
 
         std::thread consumer([&] {
-            pin_to_core(CONSUMER_CORE);
+            crucible::pin_to_core(CONSUMER_CORE);
             consumer_ready.store(true, std::memory_order_release);
             while (!start_signal.load(std::memory_order_acquire)) {}
             policy.consume(deq_ts, warmup_consumed);
         });
 
-        pin_to_core(PRODUCER_CORE);
+        crucible::pin_to_core(PRODUCER_CORE);
         while (!consumer_ready.load(std::memory_order_acquire)) {}
         start_signal.store(true, std::memory_order_release);
 
@@ -402,7 +322,7 @@ struct LockfreePolicy {
         while (measured < ITEMS_MEASURED) {
             MarketTick t;
             if (Adapter::try_pop(*q, t)) {
-                deq_ts[t.seq] = rdtscp_ordered();
+                deq_ts[t.seq] = crucible::rdtscp_ordered();
                 ++measured;
             }
         }
@@ -416,14 +336,14 @@ struct LockfreePolicy {
     }
 
     void produce_measured(std::vector<uint64_t>& enq_ts, uint64_t period_cycles) {
-        uint64_t next_release = rdtscp_ordered();
+        uint64_t next_release = crucible::rdtscp_ordered();
         for (size_t i = 0; i < ITEMS_MEASURED; ++i) {
             if (period_cycles > 0) {
                 while (__rdtsc() < next_release) { _mm_pause(); }
                 next_release += period_cycles;
             }
             MarketTick t{uint32_t(i & 0xFFFF), 1, uint64_t(i)};
-            enq_ts[i] = rdtscp_ordered();
+            enq_ts[i] = crucible::rdtscp_ordered();
             while (!Adapter::try_push(*q, t)) {}
         }
     }
@@ -468,7 +388,7 @@ struct MutexCondvarPolicy {
             s->cv_not_full.notify_one();
 
             if (t.seq < ITEMS_MEASURED) {
-                deq_ts[t.seq] = rdtscp_ordered();
+                deq_ts[t.seq] = crucible::rdtscp_ordered();
             } else {
                 ++warmup_done;
                 warmup_consumed.store(warmup_done, std::memory_order_release);
@@ -489,14 +409,14 @@ struct MutexCondvarPolicy {
     }
 
     void produce_measured(std::vector<uint64_t>& enq_ts, uint64_t period_cycles) {
-        uint64_t next_release = rdtscp_ordered();
+        uint64_t next_release = crucible::rdtscp_ordered();
         for (size_t i = 0; i < ITEMS_MEASURED; ++i) {
             if (period_cycles > 0) {
                 while (__rdtsc() < next_release) { _mm_pause(); }
                 next_release += period_cycles;
             }
             MarketTick t{uint32_t(i & 0xFFFF), 1, uint64_t(i)};
-            enq_ts[i] = rdtscp_ordered();
+            enq_ts[i] = crucible::rdtscp_ordered();
             {
                 std::unique_lock<std::mutex> lk(s->mtx);
                 s->cv_not_full.wait(lk, [&] { return s->q.size() < QUEUE_DEPTH; });
@@ -518,24 +438,24 @@ struct MutexCondvarPolicy {
 // ─── Variant dispatch functions ───────────────────────────────────────────────
 
 static RunResult run_lockfree_handrolled(double ns_per_cycle, uint64_t rate_hz,
-                                          WarmupVerify* wv) {
+                                          crucible::WarmupVerify* wv) {
     return run_spsc_variant(ns_per_cycle, rate_hz, wv, HandrolledPolicy{}, "lockfree-handrolled");
 }
 
 static RunResult run_lockfree_boost(double ns_per_cycle, uint64_t rate_hz,
-                                     WarmupVerify* wv) {
+                                     crucible::WarmupVerify* wv) {
     return run_spsc_variant(ns_per_cycle, rate_hz, wv, BoostPolicy{}, "lockfree-boost");
 }
 
 static RunResult run_mutex_condvar(double ns_per_cycle, uint64_t rate_hz,
-                                    WarmupVerify* wv) {
+                                    crucible::WarmupVerify* wv) {
     return run_spsc_variant(ns_per_cycle, rate_hz, wv, MutexCondvarPolicy{}, "mutex-condvar");
 }
 
 // ─── Dispatch ────────────────────────────────────────────────────────────────
 
 static RunResult run_variant(std::string_view variant, double ns_per_cycle,
-                              uint64_t rate_hz, WarmupVerify* wv) {
+                              uint64_t rate_hz, crucible::WarmupVerify* wv) {
     if (variant == "lockfree-handrolled") return run_lockfree_handrolled(ns_per_cycle, rate_hz, wv);
     if (variant == "lockfree-boost")      return run_lockfree_boost(ns_per_cycle, rate_hz, wv);
     /* mutex-condvar */                   return run_mutex_condvar(ns_per_cycle, rate_hz, wv);
@@ -547,9 +467,7 @@ static std::string emit_json_string(const char* variant,
                                      const char* mode_str,
                                      uint64_t offered_rate_hz,
                                      const RunResult& r,
-                                     double ns_per_cycle,
                                      double calibration_drift_pct) {
-    (void)ns_per_cycle;
     const auto& h = r.hist;
     const double total_items = static_cast<double>(ITEMS_MEASURED) * NUM_RUNS;
     const double ops_per_sec = total_items / (r.wall_ns_total * 1e-9);
@@ -565,7 +483,7 @@ static std::string emit_json_string(const char* variant,
 
     // Build into dynamic std::string: counts_json() alone is ~769 chars for 384 buckets,
     // which silently truncated the old hdr[1024] and produced invalid JSON.
-    char hdr[512];  // scalar fields only — bounded; 384 chars worst-case
+    char hdr[512];  // scalar fields only — bounded; ~200 chars worst-case
     std::snprintf(hdr, sizeof(hdr),
         "{"
         "\"variant\":\"%s\","
@@ -603,14 +521,7 @@ static std::string emit_json_string(const char* variant,
         r.top_bucket_count,
         calibration_drift_pct);
 
-    std::string result;
-    result.reserve(512 + crucible::HISTOGRAM_BUCKET_COUNT * 8 + 256);
-    result += hdr;
-    result += h.counts_json();
-    result += ",\"stats\":";
-    result += h.stats_json();
-    result += trailer;
-
+    std::string result = crucible::assemble_histogram_json(hdr, h, trailer);
     assert(!result.empty() && result.back() == '}');
     return result;
 }
@@ -634,14 +545,14 @@ static bool run_lockfree_stress(size_t n) {
     std::vector<uint64_t> received(n, UINT64_MAX);
 
     std::thread cons([&] {
-        pin_to_core(CONSUMER_CORE);
+        crucible::pin_to_core(CONSUMER_CORE);
         size_t got = 0;
         while (got < n) {
             MarketTick t;
             if (Adapter::try_pop(q, t)) received[got++] = t.seq;
         }
     });
-    pin_to_core(PRODUCER_CORE);
+    crucible::pin_to_core(PRODUCER_CORE);
     for (size_t i = 0; i < n; ++i) {
         MarketTick t{uint32_t(i), 1, uint64_t(i)};
         while (!Adapter::try_push(q, t)) {}
@@ -665,7 +576,7 @@ int main(int argc, char* argv[]) {
 
     // ── Machine info ─────────────────────────────────────────────────────────
     if (std::string_view(argv[1]) == "--machine-info") {
-        double ns_per_cycle = calibrate_tsc();
+        double ns_per_cycle = crucible::calibrate_tsc();
         std::printf("{%s,\"tsc_ns_per_cycle\":%.6f}\n",
             crucible::machine_info_json().c_str(), ns_per_cycle);
         return 0;
@@ -693,7 +604,7 @@ int main(int argc, char* argv[]) {
             std::vector<uint64_t> received(STRESS_ITEMS, UINT64_MAX);
 
             std::thread cons([&] {
-                pin_to_core(CONSUMER_CORE);
+                crucible::pin_to_core(CONSUMER_CORE);
                 size_t got = 0;
                 while (got < STRESS_ITEMS) {
                     MarketTick t;
@@ -708,7 +619,7 @@ int main(int argc, char* argv[]) {
                     received[got++] = t.seq;
                 }
             });
-            pin_to_core(PRODUCER_CORE);
+            crucible::pin_to_core(PRODUCER_CORE);
             for (size_t i = 0; i < STRESS_ITEMS; ++i) {
                 {
                     std::unique_lock<std::mutex> lk(mtx);
@@ -779,7 +690,7 @@ int main(int argc, char* argv[]) {
     const double ns_per_cycle = calibrate_tsc();
     std::fprintf(stderr, "TSC calibration: %.6f ns/cycle\n", ns_per_cycle);
 
-    WarmupVerify wv;
+    crucible::WarmupVerify wv;
     wv.enabled = cfg.verify_warmup;
 
     std::string output;
@@ -800,7 +711,7 @@ int main(int argc, char* argv[]) {
             const double ns_per_cycle_step = calibrate_tsc();
             const double drift = std::abs(ns_per_cycle_step - ns_per_cycle) / ns_per_cycle * 100.0;
 
-            output += emit_json_string(argv[1], "sweep", rate, r, ns_per_cycle, drift);
+            output += emit_json_string(argv[1], "sweep", rate, r, drift);
             if (s + 1 < n) output += ",\n";
         }
         output += "\n]";
@@ -816,22 +727,13 @@ int main(int argc, char* argv[]) {
         if (drift_pct > 0.1)
             std::fprintf(stderr, "WARN: TSC drift %.4f%% (threshold 0.1%%)\n", drift_pct);
 
-        output = "[\n" + emit_json_string(argv[1], mode_str, rate, r, ns_per_cycle, drift_pct) + "\n]";
+        output = "[\n" + emit_json_string(argv[1], mode_str, rate, r, drift_pct) + "\n]";
     }
 
     std::printf("%s\n", output.c_str());
 
     // ── Warmup verification report (stderr only, not in JSON) ────────────────
-    if (wv.enabled) {
-        std::fprintf(stderr,
-            "\n=== Warmup verification ===\n"
-            "Items 0-9,999   (early): p50=%llu ns  p99=%llu ns\n"
-            "Items 100,000+  (late):  p50=%llu ns  p99=%llu ns\n",
-            (unsigned long long)wv.early.percentile(50.0),
-            (unsigned long long)wv.early.percentile(99.0),
-            (unsigned long long)wv.late.percentile(50.0),
-            (unsigned long long)wv.late.percentile(99.0));
-    }
+    wv.report();
 
     return 0;
 }

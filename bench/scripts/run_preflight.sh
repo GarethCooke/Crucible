@@ -30,36 +30,7 @@ trap cleanup EXIT
 
 sudo -v
 
-if [ -z "${CRUCIBLE_TURBO:-}" ]; then
-    boost_sysfs=$(cat /sys/devices/system/cpu/cpufreq/boost 2>/dev/null || echo "")
-    case "$boost_sysfs" in
-        "0") export CRUCIBLE_TURBO=off ;;
-        "1") export CRUCIBLE_TURBO=on  ;;
-        *)
-            boost=$(cpupower frequency-info 2>/dev/null \
-                | awk '/boost state support/{flag=1; next} flag && /Active/{print tolower($2); exit}')
-            case "$boost" in
-                no)  export CRUCIBLE_TURBO=off ;;
-                yes) export CRUCIBLE_TURBO=on  ;;
-                *)
-                    echo "FATAL: cannot determine boost state from sysfs or cpupower." >&2
-                    echo "  Set CRUCIBLE_TURBO=on|off manually." >&2
-                    exit 1
-                    ;;
-            esac
-            ;;
-    esac
-fi
-echo "CRUCIBLE_TURBO=$CRUCIBLE_TURBO (verified)" >&2
-
-# BOOST GATE — hard precondition, same as run_one.sh.
-if [[ "${CRUCIBLE_TURBO}" == "on" ]] && [[ "${CRUCIBLE_ALLOW_BOOST:-}" != "1" ]]; then
-    echo "FATAL: Core Performance Boost is enabled (CRUCIBLE_TURBO=on)." >&2
-    echo "  Disable in BIOS: Ai Tweaker → Core Performance Boost → Disabled (master switch)." >&2
-    echo "  Verify: lscpu | grep 'max MHz'  (expect ~3900, not 4560)" >&2
-    echo "  Override: export CRUCIBLE_ALLOW_BOOST=1" >&2
-    exit 1
-fi
+assert_boost_off
 
 assert_smt_off
 assert_isolated_cores

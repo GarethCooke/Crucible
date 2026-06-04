@@ -40,10 +40,33 @@ set_governor_performance() {
     [[ "$actual" == "performance" ]] || { echo "ERROR: governor not performance: $actual" >&2; exit 1; }
 }
 
-# Hard gate: abort if Core Performance Boost is enabled.
-# Primary signal: /sys/devices/system/cpu/cpufreq/boost (acpi-cpufreq, "1"=on).
-# Cross-check: lscpu MAXMHZ vs amd_pstate base_frequency — BIOS CPB on raises MAXMHZ
-# above the base clock even when the software toggle is off.
+# detect_turbo_state: sets/exports CRUCIBLE_TURBO (on|off) unless already set.
+# Primary: /sys/.../cpufreq/boost sysfs. Fallback: cpupower frequency-info.
+detect_turbo_state() {
+    if [ -n "${CRUCIBLE_TURBO:-}" ]; then return; fi
+    local boost_sysfs
+    boost_sysfs=$(cat /sys/devices/system/cpu/cpufreq/boost 2>/dev/null || echo "")
+    case "$boost_sysfs" in
+        "0") export CRUCIBLE_TURBO=off ;;
+        "1") export CRUCIBLE_TURBO=on  ;;
+        *)
+            local boost
+            boost=$(cpupower frequency-info 2>/dev/null \
+                | awk '/boost state support/{flag=1; next} flag && /Active/{print tolower($2); exit}')
+            case "$boost" in
+                no)  export CRUCIBLE_TURBO=off ;;
+                yes) export CRUCIBLE_TURBO=on  ;;
+                *)
+                    echo "FATAL: cannot determine boost state from sysfs or cpupower." >&2
+                    echo "  Set CRUCIBLE_TURBO=on|off manually, or check driver:" >&2
+                    echo "  lsmod | grep cpufreq; cpupower frequency-info" >&2
+                    exit 1 ;;
+            esac ;;
+    esac
+}
+
+# assert_boost_off: detect turbo state, cross-check via amd_pstate MAXMHZ,
+# then abort if boost is on. Not bypassable via --skipchecks.
 # Override (boost-on captures only): export CRUCIBLE_ALLOW_BOOST=1 before calling.
 assert_boost_off() {
     if [[ "${CRUCIBLE_ALLOW_BOOST:-}" == "1" ]]; then
@@ -51,22 +74,13 @@ assert_boost_off() {
         return 0
     fi
 
-    local boost_sysfs
-    boost_sysfs=$(cat /sys/devices/system/cpu/cpufreq/boost 2>/dev/null || echo "")
-
-    if [[ "${boost_sysfs}" == "1" ]]; then
-        echo "FATAL: Core Performance Boost is enabled (cpufreq/boost=1)." >&2
-        echo "  Disable in BIOS: Ai Tweaker → Core Performance Boost → Disabled (master switch)." >&2
-        echo "  Verify: lscpu | grep 'max MHz'  (expect base clock, not 4560)" >&2
-        echo "  Override (boost-on captures only): export CRUCIBLE_ALLOW_BOOST=1" >&2
-        exit 1
-    fi
+    detect_turbo_state
+    echo "CRUCIBLE_TURBO=$CRUCIBLE_TURBO (verified)" >&2
 
     # Cross-check via amd_pstate base_frequency: if MAXMHZ > base*1.05, BIOS CPB is active.
     local max_mhz base_khz base_mhz
     max_mhz=$(lscpu 2>/dev/null | awk '/CPU max MHz/{gsub(/\..*/, "", $NF); print $NF+0}')
     base_khz=$(cat /sys/devices/system/cpu/cpu0/cpufreq/base_frequency 2>/dev/null || echo "0")
-
     if [[ "${max_mhz:-0}" -gt 0 && "${base_khz:-0}" -gt 0 ]]; then
         base_mhz=$(( base_khz / 1000 ))
         if [[ "${max_mhz}" -gt $(( base_mhz * 105 / 100 )) ]]; then
@@ -76,5 +90,14 @@ assert_boost_off() {
             echo "  Verify: lscpu | grep 'max MHz'  (expect ~${base_mhz}, not ${max_mhz})" >&2
             exit 1
         fi
+    fi
+
+    if [[ "${CRUCIBLE_TURBO}" == "on" ]]; then
+        echo "FATAL: Core Performance Boost is enabled (CRUCIBLE_TURBO=on)." >&2
+        echo "  Disable in BIOS: Ai Tweaker → Core Performance Boost → Disabled (master switch)." >&2
+        echo "  PBO-off alone is insufficient — use the CPB master switch." >&2
+        echo "  Verify: lscpu | grep 'max MHz'  (expect ~3900, not 4560)" >&2
+        echo "  Override (boost-on captures only): export CRUCIBLE_ALLOW_BOOST=1" >&2
+        exit 1
     fi
 }

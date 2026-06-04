@@ -45,4 +45,22 @@ inline double minimum(const std::vector<double>& v) {
     return *std::min_element(v.begin(), v.end());
 }
 
+struct MultiPercentile {
+    double p25, p50, p75, p99, min, max;
+};
+
+// Compute p25/p50/p75/p99/min/max in a single sort. v must not be empty.
+inline MultiPercentile multi_percentile(std::vector<double> v) {
+    if (v.empty()) throw std::invalid_argument("stats::multi_percentile — empty input");
+    std::sort(v.begin(), v.end());
+    return {
+        detail::pct_impl(v, 25.0),
+        detail::pct_impl(v, 50.0),
+        detail::pct_impl(v, 75.0),
+        detail::pct_impl(v, 99.0),
+        v.front(),
+        v.back(),
+    };
+}
+
 } // namespace crucible

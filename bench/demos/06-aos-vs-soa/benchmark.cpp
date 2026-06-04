@@ -12,9 +12,11 @@
 // TSC:     calibrated against CLOCK_MONOTONIC_RAW (100 ms window).
 //          constant_tsc + nonstop_tsc checked; abort on missing flags.
 
+#include "affinity.h"
 #include "kernels.h"
 #include "machine_info.h"
 #include "stats.h"
+#include "tsc_utils.h"
 
 #include <algorithm>
 #include <cassert>
@@ -51,70 +53,6 @@ static constexpr int    WARMUP_MS         = 500;
 static constexpr int    STRUCT_SIZE_BYTES  = 128;
 static constexpr int    STRUCT_FIELD_COUNT = 16;
 static constexpr int    FIELD_TYPE_BYTES   =   8;
-
-// ─── TSC helpers ─────────────────────────────────────────────────────────────
-
-static inline uint64_t rdtscp_ordered() noexcept {
-    unsigned aux;
-    uint64_t t = __rdtscp(&aux);
-    _mm_lfence();
-    return t;
-}
-
-static double calibrate_tsc() {
-    bool has_constant = false, has_nonstop = false, has_invariant = false;
-    if (FILE* f = std::fopen("/proc/cpuinfo", "r")) {
-        char line[256];
-        while (std::fgets(line, sizeof(line), f)) {
-            if (std::strstr(line, "constant_tsc"))  has_constant  = true;
-            if (std::strstr(line, "nonstop_tsc"))   has_nonstop   = true;
-            if (std::strstr(line, "invariant_tsc")) has_invariant = true;
-        }
-        std::fclose(f);
-    }
-    if (!has_constant || !has_nonstop) {
-        std::fprintf(stderr,
-            "ERROR: TSC stability flags missing in /proc/cpuinfo.\n"
-            "  constant_tsc:  %s\n  nonstop_tsc:   %s\n  invariant_tsc: %s\n",
-            has_constant  ? "present" : "MISSING",
-            has_nonstop   ? "present" : "MISSING",
-            has_invariant ? "present" : "absent (non-fatal)");
-        std::exit(1);
-    }
-
-    auto mono_ns = []() -> uint64_t {
-        struct timespec ts{};
-        clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
-        return static_cast<uint64_t>(ts.tv_sec) * 1'000'000'000ULL
-             + static_cast<uint64_t>(ts.tv_nsec);
-    };
-
-    const uint64_t t0_ns  = mono_ns();
-    const uint64_t t0_cyc = rdtscp_ordered();
-    while (mono_ns() - t0_ns < 100'000'000ULL) {}
-    const uint64_t t1_cyc = rdtscp_ordered();
-    const uint64_t t1_ns  = mono_ns();
-    return static_cast<double>(t1_ns - t0_ns) / static_cast<double>(t1_cyc - t0_cyc);
-}
-
-// ─── Thread affinity ─────────────────────────────────────────────────────────
-
-static void pin_and_verify(int core) {
-    cpu_set_t cpuset;
-    CPU_ZERO(&cpuset);
-    CPU_SET(core, &cpuset);
-    if (pthread_setaffinity_np(pthread_self(), sizeof(cpuset), &cpuset) != 0) {
-        std::fprintf(stderr, "ERROR: pthread_setaffinity_np to core %d failed\n", core);
-        std::exit(1);
-    }
-    sched_yield();
-    const int actual = sched_getcpu();
-    if (actual != core) {
-        std::fprintf(stderr,
-            "ERROR: affinity mismatch — expected core %d, running on %d\n", core, actual);
-        std::exit(1);
-    }
-}
 
 // ─── THP helper ──────────────────────────────────────────────────────────────
 
@@ -264,14 +202,14 @@ static double run_kernel(std::string_view variant,
                          int              k,
                          double           ns_per_cycle) {
     volatile double sink;
-    const uint64_t t0 = rdtscp_ordered();
+    const uint64_t t0 = crucible::rdtscp_ordered();
     if (variant == "aos-scalar")
         sink = scan_aos(aos, n, k);
     else if (variant == "soa-scalar")
         sink = scan_soa_scalar(*soa, n, k);
     else
         sink = scan_soa_autovec(*soa, n, k);
-    const uint64_t t1 = rdtscp_ordered();
+    const uint64_t t1 = crucible::rdtscp_ordered();
     (void)sink;
     return static_cast<double>(t1 - t0) * ns_per_cycle / static_cast<double>(n);
 }
@@ -331,10 +269,11 @@ static std::string emit_run_json(std::string_view variant,
                                   const std::string& thp) {
     const auto& v = r.ns_per_iter;
 
-    const double med  = crucible::median(std::vector<double>(v));
-    const double mn   = crucible::minimum(std::vector<double>(v));
-    const double p99  = crucible::percentile(std::vector<double>(v), 99.0);
-    const double iqr_ = crucible::iqr(std::vector<double>(v));
+    const auto mp    = crucible::multi_percentile(std::vector<double>(v));
+    const double med  = mp.p50;
+    const double mn   = mp.min;
+    const double p99  = mp.p99;
+    const double iqr_ = mp.p75 - mp.p25;
 
     const double ops_per_sec = 1.0e9 / med;
 
@@ -578,7 +517,7 @@ int main(int argc, char* argv[]) {
 
     // ── Machine info ─────────────────────────────────────────────────────────
     if (std::string_view(argv[1]) == "--machine-info") {
-        const double ns_per_cycle = calibrate_tsc();
+        const double ns_per_cycle = crucible::calibrate_tsc();
         const std::string thp = thp_setting();
         std::printf("{%s,"
                     "\"tsc_ns_per_cycle\":%.6f,"
@@ -641,15 +580,15 @@ int main(int argc, char* argv[]) {
     }
 
     // ── Pin to benchmark core ────────────────────────────────────────────────
-    pin_and_verify(BENCH_CORE);
+    crucible::pin_to_core(BENCH_CORE);
     std::fprintf(stderr, "Pinned to core %d\n", BENCH_CORE);
 
     // ── TSC calibration ──────────────────────────────────────────────────────
-    const double ns_per_cycle = calibrate_tsc();
+    const double ns_per_cycle = crucible::calibrate_tsc();
     std::fprintf(stderr, "TSC calibration: %.6f ns/cycle\n", ns_per_cycle);
 
     // Calibration drift check: re-calibrate once to measure drift.
-    const double ns_per_cycle2 = calibrate_tsc();
+    const double ns_per_cycle2 = crucible::calibrate_tsc();
     const double drift_pct =
         std::abs(ns_per_cycle2 - ns_per_cycle) / ns_per_cycle * 100.0;
     std::fprintf(stderr, "Calibration drift: %.4f%%\n", drift_pct);

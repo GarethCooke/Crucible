@@ -3,6 +3,7 @@ import type { AxisScale } from 'd3-axis'
 import type { NumberValue } from 'd3-scale'
 import type { Selection } from 'd3-selection'
 import { select } from 'd3-selection'
+import { line } from 'd3-shape'
 import { getColors, typography } from './theme'
 
 type NumericScale = AxisScale<NumberValue>
@@ -207,6 +208,32 @@ export function appendYLabel(
     .attr('fill', colors.textMuted)
     .attr('font-family', typography.fontMono)
     .text(text)
+}
+
+// ─── Line series ─────────────────────────────────────────────────────────────
+
+// Appends a line path + dot circles for a single series.
+// dotClass must be unique per series (used as a CSS selector).
+export function appendLineSeries<T>(
+  g: Selection<SVGGElement, unknown, null, undefined>,
+  data: T[],
+  dotClass: string,
+  xFn: (d: T) => number,
+  yFn: (d: T) => number,
+  color: string,
+  dash = 'none',
+): void {
+  const lineGen = line<T>().x(xFn).y(yFn)
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  g.append('path').datum(data).attr('fill', 'none').attr('stroke', color)
+    .attr('stroke-width', 2).attr('stroke-dasharray', dash)
+    .attr('opacity', 0.85).attr('d', lineGen as any)
+
+  g.selectAll(`.${dotClass}`).data(data).join('circle')
+    .attr('class', dotClass)
+    .attr('cx', xFn as any).attr('cy', yFn as any)
+    .attr('r', 3.5).attr('fill', color).attr('opacity', 0.9)
 }
 
 // ─── Legend position ──────────────────────────────────────────────────────────

@@ -20,6 +20,7 @@ Usage (called by run_one.sh):
 
 import json
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -46,7 +47,6 @@ def parse_name(name: str) -> dict | None:
     """
     # Strip any trailing '_<digits>' repetition suffix before parsing.
     # GB names iteration reps as "<name>_0", "<name>_1", etc.
-    import re
     base = re.sub(r"_\d+$", "", name)
 
     parts = base.split("/")

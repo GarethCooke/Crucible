@@ -137,17 +137,16 @@ function renderLegacy(
   const { svg, g, inner, colors } = setupSVG(el, W, H, margin, title ?? DEFAULT_TITLE_LEGACY)
 
   const useOps = metric === 'ops_per_sec'
+  const getValue = (d: LegacyRun) => useOps ? d.ops_per_sec : (d.ns_per_op[stat] ?? d.ns_per_op.median)
 
   svg.append('desc').text(
     useOps
       ? data.map((d) => `${d.variant}: ${fmtOps(d.ops_per_sec)}`).join('. ')
-      : data.map((d) => `${d.variant}: ${(d.ns_per_op[stat] ?? d.ns_per_op.median).toFixed(2)} ns/op`).join('. ')
+      : data.map((d) => `${d.variant}: ${getValue(d).toFixed(2)} ns/op`).join('. ')
   )
 
   const x = scaleBand().domain(data.map((d) => d.variant)).range([0, inner.w]).padding(0.45)
-  const vals = useOps
-    ? data.map((d) => d.ops_per_sec)
-    : data.map((d) => d.ns_per_op[stat] ?? d.ns_per_op.median)
+  const vals = data.map(getValue)
   const y = scaleLinear().domain([0, max(vals)! * 1.25]).range([inner.h, 0]).nice()
 
   appendGrid(g, y, inner, { gridline: colors.border })
@@ -157,9 +156,9 @@ function renderLegacy(
     .join('rect')
     .attr('class', 'bar')
     .attr('x', (d) => x(d.variant)!)
-    .attr('y', (d) => y(useOps ? d.ops_per_sec : (d.ns_per_op[stat] ?? d.ns_per_op.median)))
+    .attr('y', (d) => y(getValue(d)))
     .attr('width', x.bandwidth())
-    .attr('height', (d) => inner.h - y(useOps ? d.ops_per_sec : (d.ns_per_op[stat] ?? d.ns_per_op.median)))
+    .attr('height', (d) => inner.h - y(getValue(d)))
     .attr('fill', (d) => variantColor(d.variant))
     .attr('rx', 4)
     .attr('opacity', 0.9)
@@ -169,14 +168,11 @@ function renderLegacy(
     .join('text')
     .attr('class', 'bar-label')
     .attr('x', (d) => x(d.variant)! + x.bandwidth() / 2)
-    .attr('y', (d) => y(useOps ? d.ops_per_sec : (d.ns_per_op[stat] ?? d.ns_per_op.median)) - 8)
+    .attr('y', (d) => y(getValue(d)) - 8)
     .attr('text-anchor', 'middle')
     .attr('font-size', typography.labelSize)
     .attr('fill', colors.textPrimary)
-    .text((d) => useOps
-      ? fmtOps(d.ops_per_sec)
-      : `${(d.ns_per_op[stat] ?? d.ns_per_op.median).toFixed(2)} ns/op`
-    )
+    .text((d) => useOps ? fmtOps(d.ops_per_sec) : `${getValue(d).toFixed(2)} ns/op`)
 
   g.selectAll('.miss-label')
     .data(data.filter((d) => d.branch_misses_per_op != null))

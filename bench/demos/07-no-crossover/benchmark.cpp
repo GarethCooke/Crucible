@@ -320,14 +320,14 @@ struct NsStats {
 static NsStats compute_stats(std::vector<double> v) {
     NsStats s{};
     s.n_reps = static_cast<int>(v.size());
-    std::sort(v.begin(), v.end());
-    s.min    = v.front();
-    s.max    = v.back();
-    s.median = crucible::detail::pct_impl(v, 50.0);
-    s.p99    = crucible::detail::pct_impl(v, 99.0);
-    s.iqr_lo = crucible::detail::pct_impl(v, 25.0);
-    s.iqr_hi = crucible::detail::pct_impl(v, 75.0);
-    s.iqr    = s.iqr_hi - s.iqr_lo;
+    const auto mp = crucible::multi_percentile(std::move(v));
+    s.min    = mp.min;
+    s.max    = mp.max;
+    s.median = mp.p50;
+    s.p99    = mp.p99;
+    s.iqr_lo = mp.p25;
+    s.iqr_hi = mp.p75;
+    s.iqr    = mp.p75 - mp.p25;
     return s;
 }
 

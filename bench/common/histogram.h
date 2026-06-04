@@ -121,4 +121,20 @@ struct Histogram {
     }
 };
 
+// Assemble a complete latency_ns JSON field from a header prefix, histogram,
+// and trailer suffix. Avoids repeating the three-step assembly across benchmark
+// emit_json functions. hdr must end with "\"counts\":" ready to receive the array.
+inline std::string assemble_histogram_json(const std::string& hdr,
+                                            const Histogram&   h,
+                                            const std::string& trailer) {
+    std::string result;
+    result.reserve(hdr.size() + HISTOGRAM_BUCKET_COUNT * 8 + trailer.size() + 64);
+    result += hdr;
+    result += h.counts_json();
+    result += ",\"stats\":";
+    result += h.stats_json();
+    result += trailer;
+    return result;
+}
+
 } // namespace crucible

@@ -21,12 +21,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 from stats_utils import bench_stats, build_groups
-
-# Flops per option — documented in poly.h.
-# scalar variants: 98 (treating libm log/sqrt as 1 flop each).
-# SIMD variants: 125 (fast_logf replaces libm log, adding ~27 constituent ops).
-FLOPS_SCALAR = 98
-FLOPS_SIMD   = 125
+from bs_utils import FLOPS_SCALAR, FLOPS_SIMD, normalise_variant
 
 VARIANT_META = {
     "scalarlibm": {
@@ -50,11 +45,6 @@ VARIANT_META = {
         "flops":         FLOPS_SIMD,
     },
 }
-
-def normalise_variant(raw: str) -> str:
-    """BM_ScalarLibm → scalarlibm, BM_SSE2 → sse2, BM_AVX2FMA → avx2fma."""
-    return raw.lower().replace("_", "")
-
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__,

@@ -54,6 +54,3 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_SYSTEM_PROCESSOR MATCHES "aarch6
 endif()
 
 option(CRUCIBLE_BUILD_PILOTS "Build throwaway pilot benches under bench/pilots/" OFF)
-if(CRUCIBLE_BUILD_PILOTS)
-
-endif()

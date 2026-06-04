@@ -3,10 +3,9 @@
 import { scaleLog, scaleLinear, scalePoint } from 'd3-scale'
 import { axisBottom, axisLeft } from 'd3-axis'
 import { max } from 'd3-array'
-import { line } from 'd3-shape'
 import { typography, variantColor } from './theme'
 import {
-  appendGrid, appendLegendLines,
+  appendGrid, appendLegendLines, appendLineSeries,
   setupSVG, appendXAxis, appendYAxis, appendXLabel, appendYLabel,
 } from './d3helpers'
 import { capitalize, uniqueSortedNs } from '@/lib/format'
@@ -158,33 +157,11 @@ function renderNAxis(
     }))
   }
 
-  const lineGen = line<TimeVsNRun>()
-    .x((d) => x(d.n))
-    .y((d) => y(nsPerElem(d)))
-
   seriesList.forEach(({ variant, k, runs: sRuns }) => {
     const col = variantColor(variant)
     const dash = k != null ? (K_DASH[k] ?? 'none') : 'none'
-    const safeKey = `${variant}-${k ?? 'x'}`
-
-    g.append('path')
-      .datum(sRuns)
-      .attr('fill', 'none')
-      .attr('stroke', col)
-      .attr('stroke-width', 2)
-      .attr('stroke-dasharray', dash)
-      .attr('opacity', 0.85)
-      .attr('d', lineGen)
-
-    g.selectAll(`.dot-${safeKey}`)
-      .data(sRuns)
-      .join('circle')
-      .attr('class', `dot-${safeKey}`)
-      .attr('cx', (d) => x(d.n))
-      .attr('cy', (d) => y(nsPerElem(d)))
-      .attr('r', 3.5)
-      .attr('fill', col)
-      .attr('opacity', 0.9)
+    const safeKey = `dot-${variant}-${k ?? 'x'}`
+    appendLineSeries(g, sRuns, safeKey, (d) => x(d.n), (d) => y(nsPerElem(d)), col, dash)
   })
 
   if (annotateMaxGap) {
@@ -303,36 +280,14 @@ function renderModifyPctAxis(
 
   appendGrid(g, y, inner, { gridline: colors.border })
 
-  const lineGen = line<TimeVsNRun>()
-    .x((d) => x(d.modify_pct ?? 0))
-    .y((d) => y(nsPerElem(d)))
-
   const nValues = Array.from(new Set(seriesList.map((s) => s.n))).sort((a, b) => a - b)
 
   seriesList.forEach(({ variant, n, runs: sRuns }) => {
     const col = variantColor(variant)
     const nIdx = nValues.indexOf(n)
     const dash = nValues.length > 1 ? (K_DASH[nIdx + 1] ?? 'none') : 'none'
-    const safeKey = `${variant}-${n}`
-
-    g.append('path')
-      .datum(sRuns)
-      .attr('fill', 'none')
-      .attr('stroke', col)
-      .attr('stroke-width', 2)
-      .attr('stroke-dasharray', dash)
-      .attr('opacity', 0.85)
-      .attr('d', lineGen)
-
-    g.selectAll(`.dot-mp-${safeKey}`)
-      .data(sRuns)
-      .join('circle')
-      .attr('class', `dot-mp-${safeKey}`)
-      .attr('cx', (d) => x(d.modify_pct ?? 0))
-      .attr('cy', (d) => y(nsPerElem(d)))
-      .attr('r', 3.5)
-      .attr('fill', col)
-      .attr('opacity', 0.9)
+    appendLineSeries(g, sRuns, `dot-mp-${variant}-${n}`,
+      (d) => x(d.modify_pct ?? 0), (d) => y(nsPerElem(d)), col, dash)
   })
 
   appendXAxis(g, inner, colors, axisBottom(x).tickValues(pcts).tickSize(0).tickFormat((v) => `${+v}%`), true)
@@ -408,31 +363,10 @@ function renderKAxis(
 
   appendGrid(g, y, inner, { gridline: colors.border })
 
-  const lineGen = line<TimeVsNRun>()
-    .x((d) => toX(d.k ?? 0))
-    .y((d) => y(nsPerElem(d)))
-
   variants.forEach((v) => {
     const vRuns = runs.filter((r) => r.variant === v).sort((a, b) => (a.k ?? 0) - (b.k ?? 0))
-    const col = variantColor(v)
-
-    g.append('path')
-      .datum(vRuns)
-      .attr('fill', 'none')
-      .attr('stroke', col)
-      .attr('stroke-width', 2)
-      .attr('opacity', 0.85)
-      .attr('d', lineGen)
-
-    g.selectAll(`.dot-k-${v}`)
-      .data(vRuns)
-      .join('circle')
-      .attr('class', `dot-k-${v}`)
-      .attr('cx', (d) => toX(d.k ?? 0))
-      .attr('cy', (d) => y(nsPerElem(d)))
-      .attr('r', 3.5)
-      .attr('fill', col)
-      .attr('opacity', 0.9)
+    appendLineSeries(g, vRuns, `dot-k-${v}`,
+      (d) => toX(d.k ?? 0), (d) => y(nsPerElem(d)), variantColor(v))
   })
 
   appendKXAxis()
