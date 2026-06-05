@@ -1,13 +1,13 @@
 ---
 title: "Black-Scholes: same model, four implementations, ~10× spread"
 date: "2026-05-14"
-summary: "Polynomial approximations buy 12% on their own — but they're the gate to a 9× SIMD win that libm's erfc can't reach."
+summary: "Polynomial approximations buy 11% on their own — but they're the gate to a 9× SIMD win that libm's erfc can't reach."
 ---
 
 Same pricing model. Same input chain. Same machine. Four implementations — and the
 spread from slowest to fastest is around 10×. The interesting part: most of the gap
 is SIMD, but you can't get there from libm. `std::erfc` doesn't vectorise. Swapping
-it for a polynomial approximation buys a modest 12% on its own — and is the gate
+it for a polynomial approximation buys a modest 11% on its own — and is the gate
 that makes the SIMD wins reachable at all.
 
 ## The workload
@@ -130,8 +130,8 @@ L2-resident case.
 ## Decomposing the speedup
 
 **Step 1 → 2: the algorithm gate.** Replacing `std::exp` / `std::erfc` with
-polynomial approximations gives a modest 12% standalone speedup (47.7 ns/option →
-42.7 ns/option at N=1M). On its own that's unremarkable. What it actually does is
+polynomial approximations gives a modest 11% standalone speedup (47.7 ns/option →
+43.1 ns/option at N=1M). On its own that's unremarkable. What it actually does is
 open the door to the SIMD wins below — there is no `_mm256_erfc_ps`. libm's `erfc`
 is a branch-and-lookup-table dispatch that doesn't translate to a SIMD register;
 you have to switch to a polynomial form before you can widen to four or eight
@@ -224,10 +224,11 @@ once those exist, vectorising them is a small step. Using Sleef only for variant
   flops if libm did the same math as the polynomial variant," not a measurement
   of libm's actual flop rate. Treat it as a *throughput* number, not a
   *computational density* number.
-- **Per-iteration harness overhead.** At N=1024 every variant runs ~5–6× slower
-  per option than at N=1M because the perf-counter start/stop and function-call
-  cost per iteration is fixed and amortises across N. Small-N numbers are
-  measurement-floor-bound, not compute-bound. The charts above use N≥16k for
+- **Per-iteration harness overhead.** The per-iteration cost (perf-counter
+  start/stop, function-call entry) is fixed, so at N=1024 it inflates per-option
+  time in proportion to how fast the kernel is: AVX2 runs ~5× slower per option
+  than at N=1M, SSE ~3×, and the scalar variants ~25–40% slower. Small-N numbers
+  are measurement-floor-bound, not compute-bound. The charts above use N≥16k for
   this reason; the full sweep including N=1024 is in the JSON for
   reproducibility.
 - **% of theoretical peak.** Zen 2 base-clock theoretical peak for 256-bit FMA
@@ -247,8 +248,8 @@ once those exist, vectorising them is a small step. Using Sleef only for variant
 ## Takeaway
 
 A 10× spread across four implementations of the same model decomposes cleanly:
-12% from swapping libm's `erfc` for a polynomial approximation, then 9× from
-widening to 8 lanes of AVX2 + FMA. The 12% step is unremarkable in isolation —
+11% from swapping libm's `erfc` for a polynomial approximation, then 9× from
+widening to 8 lanes of AVX2 + FMA. The 11% step is unremarkable in isolation —
 but it's the gate. There is no `_mm256_erfc_ps`, so the SIMD wins are
 unreachable until the algorithm step happens first.
 
@@ -267,6 +268,6 @@ The same kernel on a Cortex-A76 — 128-bit NEON, no wider unit to reach for —
 
 ---
 
-*AMD Ryzen 7 3800X, Zen 2 (SMT off), 3.9 GHz base, governor = performance, turbo disabled (BIOS Core Performance Boost off), cores 0–7 isolated, benchmarks pinned to 4–7. Headless Ubuntu 24.04. GCC 13.3, per-variant ISA flags as documented in CMakeLists.txt. 20 outer repetitions, median reported (throughput convention).*
+*AMD Ryzen 7 3800X, Zen 2 (SMT off), 3.9 GHz base, governor = performance, turbo disabled (BIOS Core Performance Boost off), cores 1–7 isolated, benchmarks pinned to 4–7. Headless Ubuntu 24.04. GCC 13.3, per-variant ISA flags as documented in CMakeLists.txt. 20 outer repetitions, median reported (throughput convention).*
 
 *[Methodology →](/methodology)*

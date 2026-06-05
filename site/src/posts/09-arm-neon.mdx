@@ -93,7 +93,7 @@ At N = 1 048 576 (1M options, ~20 MB input): NEON holds at 13.7 ns; scalar (poly
 
 There are two wins stacked on top of each other, and they need to be accounted separately.
 
-**Algorithm win: ~6% (scalar libm → scalar poly).** Replacing `std::exp` and the libm normal CDF with inline polynomial approximations reduces ns/option by 6.4% at N=16k (65.4 → 61.2 ns) and 6.2% at N=1M. On Zen 2 the same step delivered 12%; on the A76 it's narrower, because the AArch64 glibc `libm` carries less `exp`/`erfc` dispatch overhead than the x86 one. The step still matters: it is the gate to vectorisation, since there is no `vexpq_f32` or any NEON equivalent of libm's `erfc` — you cannot vectorise a loop containing a PLT call.
+**Algorithm win: ~6% (scalar libm → scalar poly).** Replacing `std::exp` and the libm normal CDF with inline polynomial approximations reduces ns/option by 6.4% at N=16k (65.4 → 61.2 ns) and 6.2% at N=1M. On Zen 2 the same step delivered 11%; on the A76 it's narrower, because the AArch64 glibc `libm` carries less `exp`/`erfc` dispatch overhead than the x86 one. The step still matters: it is the gate to vectorisation, since there is no `vexpq_f32` or any NEON equivalent of libm's `erfc` — you cannot vectorise a loop containing a PLT call.
 
 **Width win: ~4.3–4.8× (scalar poly → NEON).** The hand-written `float32x4_t` kernel prices four options per loop iteration. It shares scalar_poly's polynomial `exp` and `N(x)`, but does two things scalar_poly doesn't: it replaces libm `log` with a polynomial `log` (`vec_logf_neon`, no PLT call) and scalar `sqrt` with a vector `fsqrt`. So the ratio is not lane width alone, and the two differences pull in opposite directions. First, the polynomial `log` _adds_ arithmetic: NEON evaluates ~125 flops per option against scalar_poly's ~98 — about 28% more work — and still finishes 4.3× ahead, which is the clearest evidence the lanes are doing real parallel work. Second, the libm `log` in the scalar baseline is slower than the polynomial `log` NEON uses, so the denominator is inflated, lifting the measured ratio on this machine to the top of the 4-wide band and slightly past it (the per-call overhead above pulls the other way at small N — which is why the SSE row's 16k point sits a touch under 4×). The pure-lane component is ~4×; the remainder is the `log` substitution plus the per-call overhead the wide loop amortises. The architectural ceiling the headline names is that ~4× lane factor — there is no wider unit to reach for — and the measured 4.3–4.8× is that factor plus these two effects, not a wider unit at work.
 
@@ -155,7 +155,7 @@ All ratios below are within-machine `scalar_poly → SIMD`, derived from the JSO
 | --------------------- | ----------------- | ----------- | --------------------------------- | --------------- |
 | Zen 2 / Ryzen 3800X   | SSE2 (4-wide)     | 128-bit     | 3.8×                              | 4.1×            |
 | **Cortex-A76 / Pi 5** | **NEON (4-wide)** | **128-bit** | **4.3×**                          | **4.8×**        |
-| Zen 2 / Ryzen 3800X   | AVX2+FMA (8-wide) | 256-bit     | 7.5×                              | 9.3×            |
+| Zen 2 / Ryzen 3800X   | AVX2+FMA (8-wide) | 256-bit     | 7.6×                              | 9.3×            |
 
 _(Zen 2 ratios: SSE2 = scalarpoly / sse2 at each N; AVX2 = scalarpoly / avx2fma. Source: [`03-simd-blackscholes.json`](https://github.com/GarethCooke/Crucible/blob/master/site/src/data/perf/03-simd-blackscholes.json).)_
 
