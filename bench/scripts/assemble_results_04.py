@@ -26,6 +26,50 @@ from stats_utils import validate_run
 VARIANTS = ["lockfree-handrolled", "lockfree-boost", "mutex-condvar"]
 MODES    = ["paced", "saturated", "sweep"]
 
+BUCKET_COUNT = 384
+
+
+def histogram_bucket_lower(i: int) -> int:
+    """Python port of histogram_bucket_lower from histogram.h."""
+    if i < 16:
+        return i
+    idx = i - 16
+    hb  = (idx // 16) + 4
+    sub = idx % 16
+    return (1 << hb) | (sub << (hb - 4))
+
+
+def compute_mean_ns(counts: list[int]) -> float:
+    """Mean from histogram bucket midpoints: sum(midpoint_i * count_i) / total."""
+    total = sum(counts)
+    if total == 0:
+        return 0.0
+    s = 0.0
+    for i, c in enumerate(counts):
+        if c == 0:
+            continue
+        lo = histogram_bucket_lower(i)
+        hi = histogram_bucket_lower(i + 1) if i + 1 < BUCKET_COUNT else lo
+        midpoint = (lo + hi) / 2.0
+        s += midpoint * c
+    return s / total
+
+
+def inject_derived_stats(run: dict) -> None:
+    """Add mean_ns and depth_mean to run's latency_ns.stats (in-place)."""
+    lat = run.get("latency_ns", {})
+    stats = lat.get("stats")
+    counts = lat.get("counts")
+    if stats is None or counts is None:
+        return
+    if "mean_ns" in stats:
+        return  # already present
+    mean_ns = compute_mean_ns(counts)
+    ops_per_sec = run.get("ops_per_sec", 0)
+    depth_mean = ops_per_sec * mean_ns * 1e-9 if ops_per_sec else 0.0
+    stats["mean_ns"]    = round(mean_ns, 1)
+    stats["depth_mean"] = round(depth_mean, 2)
+
 
 def load_runs(vpath: Path, tag: str) -> list:
     """Load a JSON array from a file, emitting warnings on sanity failures."""
@@ -86,6 +130,9 @@ def main() -> None:
         for mode in MODES:
             vpath = variant_dir / f"{variant}-{mode}.json"
             runs.extend(load_runs(vpath, f"{variant}/{mode}"))
+
+    for run in runs:
+        inject_derived_stats(run)
 
     if not runs:
         print("ERROR: no run data found in variant_dir", file=sys.stderr)

@@ -1,6 +1,6 @@
 ---
 title: "Same queue API. Different tail by orders of magnitude."
-date: "2026-05-18"
+date: "2026-06-05"
 summary: "End-to-end enqueue→dequeue, market-data thread to strategy thread. Lock-free SPSC vs mutex + condvar. At moderate offered load, all three variants look similar at the median. The tail and the breakdown rate are where they diverge."
 ---
 
@@ -142,21 +142,65 @@ lock-free; the tail is what separates them.
   variants={["lockfree-handrolled", "lockfree-boost", "mutex-condvar"]}
 />
 
-Each line shows p50, p99, and p99.9 across twelve log-spaced offered-load points from 100 kHz to 50 MHz (x-axis: offered/requested load). Each curve is drawn only through the regime where the variant's achieved throughput tracks the offered rate — past the saturation knee, the offered-load x-coordinate is no longer a meaningful independent variable and those points are clipped from the default view. There are two different saturation mechanisms visible on this chart, and they're worth separating.
+Each line shows p50, p99, and p99.9 across twelve log-spaced offered-load points
+from 100 kHz to 50 MHz (x-axis: offered/requested load). The curve is drawn only
+through the **sub-saturation** regime, where achieved throughput tracks the offered
+rate and latency is a single well-defined function of load. Below saturation the
+story is simple and reproducible: all three stay near their per-op floors — the
+lock-free pair around 120–140 ns, the mutex a few hundred ns above — and the lines
+are flat. Past the saturation knee the chart stops on purpose, because past
+saturation there is no single line to draw.
 
-Two failure modes. Mutex and Boost fail by *latency wall*: queue fills toward capacity, residency time becomes `queue_depth × consumer_period`, p50 jumps by orders of magnitude. The hand-rolled variant fails by *throughput ceiling*: its producer caps at 14.7 M/s — below Boost's 28 MHz saturation point — and the queue never gets a chance to fill. Hand-rolled staying low at the right of the chart isn't because it's uniformly faster on every operation; its bottleneck moved sides. Same root cause in all three cases (consumer can't drain at the offered rate), three different surfaces it shows up on.
+### Past saturation: two equilibria, not one curve
 
-**Mutex saturates around 9 MHz the way classical queueing theory predicts.** The consumer can't drain fast enough, the queue fills toward its 1024-entry capacity, and latency climbs to `queue_depth × consumer_period` — about 190 µs once depth pins at the ceiling. The mutex p50 line above 9 MHz is a near-horizontal plateau because depth is also a near-horizontal plateau at capacity.
+When the offered rate exceeds what a variant can drain, the queue does not settle
+into one steady state. It settles into one of two, and which one a run lands in is
+fixed when the process starts and holds for that run. Repeating each
+over-saturation point 50 times (10 processes × 5 timed runs, performance governor,
+shielded) makes the split explicit:
 
-**Boost saturates around 28 MHz offered by the same mechanism**, just further to the right because its consumer is faster. That 28 MHz is *offered* (requested) load; the variant's achieved throughput ceiling is ~14.9 M/s — that is what the saturated-throughput run measures and what the consumer can actually drain. Past the saturation knee the producer spends its time blocked on a full queue rather than pushing items through. At the 28 MHz offered-load knee, p50 peaks at ~19 µs — roughly 280 items deep at the ~14.9 M/s (~67 ns) drain period, well short of the 1024-entry cap residency of ~69 µs. Boost's faster consumer means the producer cannot sustain enough overload to pin the queue at capacity; the Boost curve is drawn only to this knee, because the offered-load x-coordinate is no longer a meaningful variable past it. The Boost consumer is roughly 3× slower than the hand-rolled one — the standard gap between a portable header-only library and ~50 lines tuned for one machine. `boost::lockfree::spsc_queue` templates on arbitrary `T` and is defensive about ordering. The hand-rolled variant pads `head_` and `tail_` to separate 64-byte cache lines (so the consumer's tail-load doesn't trigger coherence traffic from the producer's tail-write), picks `acquire`/`release` semantics with exactly one writer per atomic, uses a mask instead of modulo for power-of-two capacity, and assumes POD items. A 2-3× consumer-period gap between a portable lock-free ring and a hand-tuned one is the standard result in SPSC microbenchmarks, not a Boost defect.
+| variant | offered | shallow p50 | deep p50 | processes deep / shallow |
+| --- | --- | --- | --- | --- |
+| mutex-condvar | 28 MHz | 1.3 µs | 225 µs | ~5% deep |
+| lockfree-boost | 28 MHz | 0.38 µs | 42 µs | ~40% deep |
+| lockfree-boost | saturated | — | 68 µs | ~95% deep |
 
-**The hand-rolled variant doesn't saturate this way at all.** Throughput caps at ~14.7 M/s starting around 16 MHz offered load, but p50 stays near its 132 ns floor across the entire sweep — at 50 MHz target, p50 is still 264 ns and queue depth is still ~4. Its consumer drains items so quickly that the queue never deepens. The bottleneck is the producer side: each `try_push` plus the surrounding spin and timestamp costs more than the inter-arrival period the pacer is requesting, so the achieved rate caps at the producer's own throughput. Same outcome as the others — the variant can't keep up with the offered load — but expressed as a throughput ceiling rather than a latency wall.
+In the **shallow** equilibrium the queue stays a handful of items deep: producer
+and consumer hand off in lock-step, the bottleneck is per-operation cost, and p50
+sits near the sub-saturation floor. In the **deep** equilibrium the queue fills
+toward its 1024-entry capacity and residency becomes `queue_depth × consumer_period`
+— hundreds of microseconds for the mutex, tens for Boost. The two are separated by
+~100× with nothing between them; a run is in one or the other.
 
-The practical implication is the same in all three cases: offering more than the system can sustain produces dropped or delayed items. The mutex and Boost variants signal it through latency that climbs by orders of magnitude. The hand-rolled variant signals it through a hard throughput cap with latency that barely moves. Either way, sizing the consumer below the actual offered load matters more than implementation choice.
+The selection is per *process*. At a fixed over-saturation load, 8–10 of every 10
+processes are internally uniform — all five timed runs in the same mode — so a
+process picks an equilibrium in the first rounds of the producer/consumer race and
+stays there. Boost at 28 MHz is the clearest case: roughly 40% of processes run
+deep and 60% shallow at the *same* offered load.
 
-One artefact worth naming, because it's instructive rather than incidental: the hand-rolled p99.9 line has a single spike at the 16 MHz sweep point — about 42 µs, roughly 200× its neighbours, which sit between 170 and 590 ns across the rest of the sweep. A 200× jump at one offered load looks like a property of that load. It isn't. The arithmetic rules out the producer: 42 µs of residency is several hundred items deep, and the hand-rolled consumer drains faster than the producer can fill — that's why this variant is producer-bound, with a near-empty queue — so the producer cannot build that backlog. Only the consumer pausing can. Instrumenting the dequeue stream confirms it directly: at the spike the consumer shows a tens-of-microseconds gap with no matching gap on the producer side, so the producer kept stamping items while the consumer briefly went dark. On a pinned, spinning, isolated core that's an external stall — a cross-core IPI or an SMI — and neither cares about offered load.
+This is the methodological point of the demo. The published percentile for an
+over-saturation point comes from one process — one draw from this distribution.
+Capture the benchmark once and mutex's overload p50 is 1 µs; capture it again and
+it is 200 µs. Neither is wrong; neither is *the* number. The split itself is not
+even fixed: changing the CPU governor from performance to schedutil flips mutex
+from mostly-shallow to mostly-deep. The honest statement is that past saturation
+these queues are bistable, and any benchmark reporting a single over-saturation
+latency is reporting a coin toss.
 
-What pins it to one point is sampling, not 16 MHz. Re-running that point shows the stall is intermittent — it surfaces in roughly half of five-run samples — and each sweep point here is only five runs, so whether a point catches a stall is close to a coin flip. It shows up near saturation specifically because of amplification: below ~9 MHz the producer feeds slowly enough that a stalled consumer clears the small backlog before it matters, but once the producer is flat-out, the same stall backs up hundreds of items and the residency lands in the tail. The honest reading is that the lock-free path's tail is stall-sensitive near saturation on real hardware, and this sweep happened to catch one instance of it at 16 MHz — 28 and 50 MHz are equally exposed and simply drew clean here. We leave the spike in and label it rather than re-rolling for a tidier curve.
+The hand-rolled variant has a third behaviour that is *not* one of these
+equilibria. Its over-saturation runs are never internally uniform — the latency
+flips item-to-item within a single run — because hand-rolled's deep excursions are
+not a queue equilibrium but an intermittent consumer stall: a tens-of-microseconds
+gap on the dequeue side with no matching gap on the producer side, the producer
+stamping items while the consumer briefly goes dark. On a pinned, spinning,
+isolated core that is an external event — a cross-core IPI or an SMI — and it does
+not care about offered load. It surfaces as a tail spike only near saturation,
+where the producer is flat-out and the stalled interval backs up hundreds of items
+before the consumer resumes; below ~9 MHz the same stall clears before it matters.
+Across repeated runs it appears in roughly half of them, landing at whatever sweep
+point happens to catch it — which is why one capture showed it at one offered load
+and another showed it elsewhere. It is real, environmental, and not a property of
+any rate.
 
 One wrinkle visible on the left of the chart: the mutex p99.9 curve has a hump at
 very low offered load — its tail is _worse_ at 100 kHz than at 1 MHz. This is the
@@ -177,32 +221,17 @@ against them for sporadic workloads.
   title="Saturated throughput (ops/sec, producer flat-out — higher is better)"
 />
 
-Saturated throughput: the producer runs flat-out with no pacing. Hand-rolled and
-Boost cap at near-identical rates — 14.7 M/s and 14.9 M/s respectively, within
-1.4% — but for opposite reasons, and the near-match is a coincidence. Hand-rolled
-is **producer-bound**: its consumer drains faster than the producer can push, the
-queue stays near empty, and the ceiling is the producer's own per-iteration cost
-(timestamp, `try_push`, spin). Boost is **consumer-bound**: its consumer is the ~3×
-slower one (see the load-sweep section above), so the queue fills, `try_push` starts
-failing and spinning, and the producer is throttled down to Boost's consumer drain
-rate. The 14.7-vs-14.9 agreement is two unrelated numbers — one producer rate, one
-consumer rate — happening to land close together, not evidence of a shared
-bottleneck. That difference is exactly what the queue-depth gap shows: Boost runs
-with its queue near capacity at saturation, hand-rolled with it near empty, so an
-item resident in Boost's queue waits ~200× longer end-to-end. Same throughput, very
-different residency — and very different reason for the ceiling.
+Saturated throughput, producer flat-out. The lock-free pair cap in the same
+neighbourhood — hand-rolled ~14–16 M/s, Boost ~15–18 M/s — but both figures are
+mode-dependent draws from the same bistability as the latency: a process that
+settles deep and one that settles shallow report different achieved rates, so a
+single saturated-throughput number carries the same coin-toss caveat as the
+over-saturation latency. Mutex caps lower, ~4–5 M/s, bound by condvar wake-up cost.
 
-Mutex caps lower, at ~5.7 M/s — about 2.6× slower than lock-free. That's the
-"small multiple" rate gap: small enough that a throughput-only view would
-undersell how different these queues actually are. The tail-latency view
-above is where the gap explodes by orders of magnitude.
-
-A nuance for the Boost number: the steady-state ~14.9 M/s shown here is slightly
-below its transient peak — the load sweep shows Boost briefly reaching ~19.8 M/s
-when the queue is at intermediate depth, before settling lower as the queue fills.
-Hand-rolled doesn't show this gap because its queue never fills. Mutex doesn't
-show it because both steady-state and transient rates are bound by condvar
-wake-up cost, which is depth-independent.
+A throughput-only view misleads in both directions. It makes the lock-free pair
+look interchangeable — they are not; their tails differ by ~100× and their overload
+behaviour is bistable — and it undersells the mutex gap, which is a small multiple
+in rate but orders of magnitude in tail.
 
 **The lock-free win is about determinism, not raw rate.**
 
@@ -219,13 +248,13 @@ wait. When `cv.wait` blocks:
 None of that happens on the lock-free path. The consumer spins until it sees the
 producer's `tail_` store, then loads the item. On Zen 2, with both cores on the
 same CCX sharing an L3, that cache-coherence round-trip plus the buffer load and
-store completes in roughly 130 ns — the floor visible in the p50 numbers above.
+store completes in roughly 120 ns — the floor visible in the p50 numbers above.
 
-At high offered load, the tail grows further for a different reason: once the
-queue saturates, the effective latency is `queue_depth × consumer_period`. This
-is the mechanism behind the hockey-stick in the load-sweep chart above, not a
-change in the per-op cost. The two saturation regimes are genuinely different and
-worth labelling separately.
+At high offered load the tail is the bistable picture above: a run that settles
+into the deep equilibrium has latency `queue_depth × consumer_period` — the
+hundreds-of-microseconds residency — while a run that settles shallow stays near
+the per-op floor. A hockey-stick in any single sweep is whichever equilibrium that
+capture's process happened to occupy, not a smooth function of load.
 
 ## Boost comparison
 
@@ -233,8 +262,8 @@ worth labelling separately.
 structural properties as the hand-rolled version: power-of-2 capacity, `acquire`/`release`
 atomics, cache-line-aware layout. Under 1 MHz paced load — the queue stays effectively empty, so latency is
 dominated by per-op cost rather than drain rate — the hand-rolled implementation
-comes in at 132 ns p50 against Boost's 140 ns, and 164 ns vs 172 ns at p99. At
-p99.9 the two are identical at 172 ns. These percentiles are quantised to the
+comes in at 122 ns p50 against Boost's 140 ns, and 164 ns vs 172 ns at p99. At
+p99.9 the two are identical at 180 ns. These percentiles are quantised to the
 histogram's log-spaced buckets (~5 ns wide in this range), so the p50 and p99
 gaps are about one bucket each — a small, consistent edge to the hand-rolled
 version, not a decisive one, and below what the load-sweep chart can resolve on a
@@ -249,9 +278,10 @@ table, and neither is doing anything clever in its hot path that the other misse
   traffic crosses the Infinity Fabric; latency increases. Deferred to a future
   topology post.
 - **MPSC / MPMC**: single-producer single-consumer only.
-- **Offered loads near saturation exhaustively**: the load-sweep section covers a
-  500× range from well below to well past saturation. Behaviour between sweep
-  points is interpolated, not measured.
+- **Over-saturation as a single curve**: past the saturation knee the per-point
+  behaviour is bistable (see above), so the over-saturation region is characterised
+  by its mode distribution, not one interpolated curve. Sub-saturation behaviour
+  between sweep points is interpolated, not measured.
 - **Fixed item size**: 16-byte `MarketTick`. Queue behaviour may differ with
   larger items (cache-line straddling, prefetch patterns).
 - **The spin-check-without-condvar mutex variant**: separating wake-up cost from
@@ -264,14 +294,16 @@ the lock-free variants leave the queue effectively empty; even the mutex variant
 carries ~1.8 items on average, so the tens-of-microseconds latency gap is
 kernel-boundary cost, not queue depth. The mutex fast path is fast — its cold path
 involves a syscall and a scheduler decision, and those outliers appear precisely when
-the market is moving fastest. The load-sweep chart shows where that breakdown begins:
-the mutex p99 turns upward well before the lock-free variants, because the scheduler
-can't keep pace with the producer long before the lock-free consumer reaches its own ceiling.
+the market is moving fastest. The load-sweep chart shows where that breakdown begins — and past saturation it
+shows something subtler: the queue is bistable, settling deep or shallow per run,
+so a single overload number is a coin toss. The reproducible result is the
+sub-saturation tail: at moderate load the lock-free path's tail runs tens of
+microseconds tighter than the mutex's, every run.
 
 ---
 
 _Percentile values shown in charts above are computed from raw histograms in the corresponding JSON entries: log₂-subbucket-16 binning, bucket-midpoint percentile convention. Top-bucket counts and TSC drift across all 5 runs were zero. See [Methodology](/methodology) for the rdtscp calibration path._
 
-*AMD Ryzen 7 3800X, Zen 2 (SMT off), 3.9 GHz base, governor = performance, turbo disabled (BIOS Core Performance Boost off), cores 0–7 isolated. Producer core 4 + consumer core 5 (same CCX1). Headless Ubuntu 24.04. GCC 13.3, -O3 -march=native. 5 outer runs × 1M timed samples per run, percentiles from merged histograms (tail-latency-distribution convention).*
+*AMD Ryzen 7 3800X, Zen 2 (SMT off), 3.9 GHz base, governor = performance, turbo disabled (BIOS Core Performance Boost off), cores 1–7 isolated. Producer core 4 + consumer core 5 (same CCX1). Headless Ubuntu 24.04. GCC 13.3, -O3 -march=native. 5 outer runs × 1M timed samples per run, percentiles from merged histograms (tail-latency-distribution convention).*
 
 *[Methodology →](/methodology)*

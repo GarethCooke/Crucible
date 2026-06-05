@@ -95,28 +95,63 @@ struct Histogram {
         return s;
     }
 
+    // Mean latency derived from bucket midpoints: sum(midpoint_i * count_i) / total.
+    double mean_ns_from_buckets() const noexcept {
+        if (total == 0) return 0.0;
+        double sum = 0.0;
+        for (size_t i = 0; i < HISTOGRAM_BUCKET_COUNT; ++i) {
+            if (counts[i] == 0) continue;
+            const uint64_t lo = histogram_bucket_lower(i);
+            const uint64_t hi = (i + 1 < HISTOGRAM_BUCKET_COUNT)
+                ? histogram_bucket_lower(i + 1)
+                : maxval;
+            const double midpoint = static_cast<double>(lo + hi) / 2.0;
+            sum += midpoint * static_cast<double>(counts[i]);
+        }
+        return sum / static_cast<double>(total);
+    }
+
     // Serialise the stats sub-object.
     // max is guaranteed >= any reported percentile.
-    std::string stats_json() const {
+    // depth_mean: if >= 0, appended as "depth_mean" field (Little's law: ops/s * mean_ns * 1e-9).
+    std::string stats_json(double depth_mean = -1.0) const {
         const uint64_t p50   = percentile(50.0);
         const uint64_t p90   = percentile(90.0);
         const uint64_t p99   = percentile(99.0);
         const uint64_t p99_9 = percentile(99.9);
+        const double   mean  = mean_ns_from_buckets();
         // Clamp max upward to ensure max >= any reported percentile.
         const uint64_t raw_max = total ? maxval : 0;
         const uint64_t reported_max = std::max({raw_max, p50, p90, p99, p99_9});
 
         char buf[512];
-        std::snprintf(buf, sizeof(buf),
-            "{\"count\":%llu,\"min\":%llu,\"max\":%llu"
-            ",\"p50\":%llu,\"p90\":%llu,\"p99\":%llu,\"p99_9\":%llu}",
-            (unsigned long long)total,
-            (unsigned long long)(total ? minval : 0),
-            (unsigned long long)reported_max,
-            (unsigned long long)p50,
-            (unsigned long long)p90,
-            (unsigned long long)p99,
-            (unsigned long long)p99_9);
+        if (depth_mean >= 0.0) {
+            std::snprintf(buf, sizeof(buf),
+                "{\"count\":%llu,\"min\":%llu,\"max\":%llu"
+                ",\"p50\":%llu,\"p90\":%llu,\"p99\":%llu,\"p99_9\":%llu"
+                ",\"mean_ns\":%.1f,\"depth_mean\":%.2f}",
+                (unsigned long long)total,
+                (unsigned long long)(total ? minval : 0),
+                (unsigned long long)reported_max,
+                (unsigned long long)p50,
+                (unsigned long long)p90,
+                (unsigned long long)p99,
+                (unsigned long long)p99_9,
+                mean, depth_mean);
+        } else {
+            std::snprintf(buf, sizeof(buf),
+                "{\"count\":%llu,\"min\":%llu,\"max\":%llu"
+                ",\"p50\":%llu,\"p90\":%llu,\"p99\":%llu,\"p99_9\":%llu"
+                ",\"mean_ns\":%.1f}",
+                (unsigned long long)total,
+                (unsigned long long)(total ? minval : 0),
+                (unsigned long long)reported_max,
+                (unsigned long long)p50,
+                (unsigned long long)p90,
+                (unsigned long long)p99,
+                (unsigned long long)p99_9,
+                mean);
+        }
         return std::string(buf);
     }
 };
@@ -124,15 +159,17 @@ struct Histogram {
 // Assemble a complete latency_ns JSON field from a header prefix, histogram,
 // and trailer suffix. Avoids repeating the three-step assembly across benchmark
 // emit_json functions. hdr must end with "\"counts\":" ready to receive the array.
+// depth_mean: if >= 0, included in the stats sub-object.
 inline std::string assemble_histogram_json(const std::string& hdr,
                                             const Histogram&   h,
-                                            const std::string& trailer) {
+                                            const std::string& trailer,
+                                            double             depth_mean = -1.0) {
     std::string result;
     result.reserve(hdr.size() + HISTOGRAM_BUCKET_COUNT * 8 + trailer.size() + 64);
     result += hdr;
     result += h.counts_json();
     result += ",\"stats\":";
-    result += h.stats_json();
+    result += h.stats_json(depth_mean);
     result += trailer;
     return result;
 }

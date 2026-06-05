@@ -1,0 +1,306 @@
+{
+  "meta": {
+    "governor": "unknown",
+    "kernel": "unknown",
+    "shielded": false,
+    "invocations_per_cell": 10,
+    "runs_per_invocation": 5,
+    "source_log": "bimode_raw_20260605T161247Z.log"
+  },
+  "cells": [
+    {
+      "variant": "lockfree-boost",
+      "point": "saturated",
+      "offered_hz": 0,
+      "total_runs": 50,
+      "process_uniformity_of_10": 9,
+      "process_uniformity_fraction": 0.9,
+      "modes": {
+        "deep": {
+          "n": 47,
+          "p50_median_ns": 67584,
+          "p99_9_median_ns": 79872,
+          "achieved_median_mhz": 15.5
+        },
+        "indet": {
+          "n": 3,
+          "p50_median_ns": 1312,
+          "p99_9_median_ns": 2880,
+          "achieved_median_mhz": 18.0
+        }
+      }
+    },
+    {
+      "variant": "lockfree-boost",
+      "point": "@16MHz",
+      "offered_hz": 16152813,
+      "total_runs": 50,
+      "process_uniformity_of_10": 10,
+      "process_uniformity_fraction": 1.0,
+      "modes": {
+        "shallow": {
+          "n": 5,
+          "p50_median_ns": 392,
+          "p99_9_median_ns": 1696,
+          "achieved_median_mhz": 16.2
+        },
+        "deep": {
+          "n": 45,
+          "p50_median_ns": 62464,
+          "p99_9_median_ns": 64512,
+          "achieved_median_mhz": 16.2
+        }
+      }
+    },
+    {
+      "variant": "lockfree-boost",
+      "point": "@28MHz",
+      "offered_hz": 28419019,
+      "total_runs": 50,
+      "process_uniformity_of_10": 8,
+      "process_uniformity_fraction": 0.8,
+      "modes": {
+        "shallow": {
+          "n": 28,
+          "p50_median_ns": 376,
+          "p99_9_median_ns": 1096,
+          "achieved_median_mhz": 17.3
+        },
+        "deep": {
+          "n": 20,
+          "p50_median_ns": 41984,
+          "p99_9_median_ns": 58368,
+          "achieved_median_mhz": 18.8
+        },
+        "indet": {
+          "n": 2,
+          "p50_median_ns": 368,
+          "p99_9_median_ns": 32000,
+          "achieved_median_mhz": 17.9
+        }
+      }
+    },
+    {
+      "variant": "lockfree-boost",
+      "point": "@50MHz",
+      "offered_hz": 50000000,
+      "total_runs": 50,
+      "process_uniformity_of_10": 4,
+      "process_uniformity_fraction": 0.4,
+      "modes": {
+        "shallow": {
+          "n": 33,
+          "p50_median_ns": 360,
+          "p99_9_median_ns": 1184,
+          "achieved_median_mhz": 17.3
+        },
+        "deep": {
+          "n": 8,
+          "p50_median_ns": 29184,
+          "p99_9_median_ns": 57344,
+          "achieved_median_mhz": 18.8
+        },
+        "indet": {
+          "n": 9,
+          "p50_median_ns": 392,
+          "p99_9_median_ns": 29184,
+          "achieved_median_mhz": 18.0
+        }
+      }
+    },
+    {
+      "variant": "lockfree-handrolled",
+      "point": "saturated",
+      "offered_hz": 0,
+      "total_runs": 50,
+      "process_uniformity_of_10": 0,
+      "process_uniformity_fraction": 0.0,
+      "modes": {
+        "shallow": {
+          "n": 12,
+          "p50_median_ns": 560,
+          "p99_9_median_ns": 3136,
+          "achieved_median_mhz": 14.3
+        },
+        "deep": {
+          "n": 22,
+          "p50_median_ns": 64512,
+          "p99_9_median_ns": 71680,
+          "achieved_median_mhz": 15.7
+        },
+        "indet": {
+          "n": 16,
+          "p50_median_ns": 848,
+          "p99_9_median_ns": 3264,
+          "achieved_median_mhz": 14.2
+        }
+      }
+    },
+    {
+      "variant": "lockfree-handrolled",
+      "point": "@16MHz",
+      "offered_hz": 16152813,
+      "total_runs": 50,
+      "process_uniformity_of_10": 0,
+      "process_uniformity_fraction": 0.0,
+      "modes": {
+        "shallow": {
+          "n": 27,
+          "p50_median_ns": 344,
+          "p99_9_median_ns": 560,
+          "achieved_median_mhz": 14.3
+        },
+        "deep": {
+          "n": 1,
+          "p50_median_ns": 1248,
+          "p99_9_median_ns": 58368,
+          "achieved_median_mhz": 16.2
+        },
+        "indet": {
+          "n": 22,
+          "p50_median_ns": 1120,
+          "p99_9_median_ns": 2560,
+          "achieved_median_mhz": 16.1
+        }
+      }
+    },
+    {
+      "variant": "lockfree-handrolled",
+      "point": "@28MHz",
+      "offered_hz": 28419019,
+      "total_runs": 50,
+      "process_uniformity_of_10": 0,
+      "process_uniformity_fraction": 0.0,
+      "modes": {
+        "shallow": {
+          "n": 28,
+          "p50_median_ns": 344,
+          "p99_9_median_ns": 592,
+          "achieved_median_mhz": 14.4
+        },
+        "deep": {
+          "n": 2,
+          "p50_median_ns": 1248,
+          "p99_9_median_ns": 48128,
+          "achieved_median_mhz": 17.1
+        },
+        "indet": {
+          "n": 20,
+          "p50_median_ns": 1248,
+          "p99_9_median_ns": 3456,
+          "achieved_median_mhz": 17.0
+        }
+      }
+    },
+    {
+      "variant": "lockfree-handrolled",
+      "point": "@50MHz",
+      "offered_hz": 50000000,
+      "total_runs": 50,
+      "process_uniformity_of_10": 0,
+      "process_uniformity_fraction": 0.0,
+      "modes": {
+        "shallow": {
+          "n": 27,
+          "p50_median_ns": 344,
+          "p99_9_median_ns": 560,
+          "achieved_median_mhz": 14.3
+        },
+        "deep": {
+          "n": 1,
+          "p50_median_ns": 32256,
+          "p99_9_median_ns": 41984,
+          "achieved_median_mhz": 17.7
+        },
+        "indet": {
+          "n": 22,
+          "p50_median_ns": 1184,
+          "p99_9_median_ns": 3520,
+          "achieved_median_mhz": 17.0
+        }
+      }
+    },
+    {
+      "variant": "mutex-condvar",
+      "point": "saturated",
+      "offered_hz": 0,
+      "total_runs": 50,
+      "process_uniformity_of_10": 8,
+      "process_uniformity_fraction": 0.8,
+      "modes": {
+        "deep": {
+          "n": 5,
+          "p50_median_ns": 208896,
+          "p99_9_median_ns": 286720,
+          "achieved_median_mhz": 4.7
+        },
+        "indet": {
+          "n": 45,
+          "p50_median_ns": 2880,
+          "p99_9_median_ns": 10496,
+          "achieved_median_mhz": 4.8
+        }
+      }
+    },
+    {
+      "variant": "mutex-condvar",
+      "point": "@16MHz",
+      "offered_hz": 16152813,
+      "total_runs": 50,
+      "process_uniformity_of_10": 10,
+      "process_uniformity_fraction": 1.0,
+      "modes": {
+        "shallow": {
+          "n": 50,
+          "p50_median_ns": 1152,
+          "p99_9_median_ns": 7808,
+          "achieved_median_mhz": 4.0
+        }
+      }
+    },
+    {
+      "variant": "mutex-condvar",
+      "point": "@28MHz",
+      "offered_hz": 28419019,
+      "total_runs": 50,
+      "process_uniformity_of_10": 9,
+      "process_uniformity_fraction": 0.9,
+      "modes": {
+        "shallow": {
+          "n": 48,
+          "p50_median_ns": 1312,
+          "p99_9_median_ns": 7680,
+          "achieved_median_mhz": 4.0
+        },
+        "deep": {
+          "n": 2,
+          "p50_median_ns": 225280,
+          "p99_9_median_ns": 268288,
+          "achieved_median_mhz": 4.5
+        }
+      }
+    },
+    {
+      "variant": "mutex-condvar",
+      "point": "@50MHz",
+      "offered_hz": 50000000,
+      "total_runs": 50,
+      "process_uniformity_of_10": 9,
+      "process_uniformity_fraction": 0.9,
+      "modes": {
+        "shallow": {
+          "n": 47,
+          "p50_median_ns": 1248,
+          "p99_9_median_ns": 7808,
+          "achieved_median_mhz": 4.0
+        },
+        "deep": {
+          "n": 3,
+          "p50_median_ns": 225280,
+          "p99_9_median_ns": 270336,
+          "achieved_median_mhz": 4.4
+        }
+      }
+    }
+  ]
+}

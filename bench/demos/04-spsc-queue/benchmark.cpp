@@ -561,7 +561,12 @@ static std::string emit_json_string(const char* variant,
         r.top_bucket_count,
         calibration_drift_pct);
 
-    std::string result = crucible::assemble_histogram_json(hdr, h, trailer);
+    const double mean_ns   = h.mean_ns_from_buckets();
+    const double depth_mean = (r.wall_ns_total > 0.0)
+        ? ops_per_sec * mean_ns * 1e-9
+        : -1.0;
+
+    std::string result = crucible::assemble_histogram_json(hdr, h, trailer, depth_mean);
     assert(!result.empty() && result.back() == '}');
     return result;
 }
