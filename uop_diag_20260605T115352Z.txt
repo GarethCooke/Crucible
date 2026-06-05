@@ -1,0 +1,137 @@
+=== µop diagnostic  20260605T115352Z ===
+host:    iguanabunt
+binary:  ./bench/build/demos/03-simd-blackscholes/bench_03_simd_blackscholes
+core:    4   N=1048576   reps=20   events=instructions,ex_ret_cops
+
+governor: performance
+paranoid: 0
+
+--- avx2fma  (filter: BM_AVX2FMA/1048576) ---
+2026-06-05T12:53:53+01:00
+Running ./bench/build/demos/03-simd-blackscholes/bench_03_simd_blackscholes
+Run on (8 X 3604.09 MHz CPU s)
+CPU Caches:
+  L1 Data 32 KiB (x8)
+  L1 Instruction 32 KiB (x8)
+  L2 Unified 512 KiB (x8)
+  L3 Unified 16384 KiB (x2)
+Load Average: 0.15, 0.08, 0.07
+---------------------------------------------------------------------------------------------------
+Benchmark                                         Time             CPU   Iterations UserCounters...
+---------------------------------------------------------------------------------------------------
+BM_AVX2FMA/1048576/min_time:0.500           4853041 ns      4852947 ns          144 ipc=0.909022 items_per_second=216.07M/s max_abs_error=58.1741u
+BM_AVX2FMA/1048576/min_time:0.500           4853279 ns      4853183 ns          144 ipc=0.909022 items_per_second=216.059M/s max_abs_error=58.1741u
+BM_AVX2FMA/1048576/min_time:0.500           4852614 ns      4852517 ns          144 ipc=0.909042 items_per_second=216.089M/s max_abs_error=58.1741u
+BM_AVX2FMA/1048576/min_time:0.500           4853207 ns      4853110 ns          144 ipc=0.909023 items_per_second=216.063M/s max_abs_error=58.1741u
+BM_AVX2FMA/1048576/min_time:0.500           4853547 ns      4853452 ns          144 ipc=0.909032 items_per_second=216.047M/s max_abs_error=58.1741u
+BM_AVX2FMA/1048576/min_time:0.500           4853818 ns      4853723 ns          144 ipc=0.908947 items_per_second=216.035M/s max_abs_error=58.1741u
+BM_AVX2FMA/1048576/min_time:0.500           4853975 ns      4853880 ns          144 ipc=0.908992 items_per_second=216.028M/s max_abs_error=58.1741u
+BM_AVX2FMA/1048576/min_time:0.500           4854017 ns      4853921 ns          144 ipc=0.909027 items_per_second=216.027M/s max_abs_error=58.1741u
+BM_AVX2FMA/1048576/min_time:0.500           4854221 ns      4854126 ns          144 ipc=0.909031 items_per_second=216.017M/s max_abs_error=58.1741u
+BM_AVX2FMA/1048576/min_time:0.500           4853579 ns      4853481 ns          144 ipc=0.909013 items_per_second=216.046M/s max_abs_error=58.1741u
+BM_AVX2FMA/1048576/min_time:0.500           4854258 ns      4854164 ns          144 ipc=0.909034 items_per_second=216.016M/s max_abs_error=58.1741u
+BM_AVX2FMA/1048576/min_time:0.500           4854090 ns      4853636 ns          144 ipc=0.909016 items_per_second=216.039M/s max_abs_error=58.1741u
+BM_AVX2FMA/1048576/min_time:0.500           4853476 ns      4853379 ns          144 ipc=0.908993 items_per_second=216.051M/s max_abs_error=58.1741u
+BM_AVX2FMA/1048576/min_time:0.500           4854453 ns      4854034 ns          144 ipc=0.908986 items_per_second=216.022M/s max_abs_error=58.1741u
+BM_AVX2FMA/1048576/min_time:0.500           4853000 ns      4852902 ns          144 ipc=0.90904 items_per_second=216.072M/s max_abs_error=58.1741u
+BM_AVX2FMA/1048576/min_time:0.500           4852964 ns      4852867 ns          144 ipc=0.909002 items_per_second=216.073M/s max_abs_error=58.1741u
+BM_AVX2FMA/1048576/min_time:0.500           4854418 ns      4854320 ns          144 ipc=0.908999 items_per_second=216.009M/s max_abs_error=58.1741u
+BM_AVX2FMA/1048576/min_time:0.500           4853433 ns      4853337 ns          144 ipc=0.909018 items_per_second=216.053M/s max_abs_error=58.1741u
+BM_AVX2FMA/1048576/min_time:0.500           4854297 ns      4854200 ns          144 ipc=0.908997 items_per_second=216.014M/s max_abs_error=58.1741u
+BM_AVX2FMA/1048576/min_time:0.500           4853779 ns      4853679 ns          144 ipc=0.90902 items_per_second=216.037M/s max_abs_error=58.1741u
+BM_AVX2FMA/1048576/min_time:0.500_mean      4853673 ns      4853543 ns           20 ipc=0.909013 items_per_second=216.043M/s max_abs_error=58.1741u
+BM_AVX2FMA/1048576/min_time:0.500_median    4853679 ns      4853558 ns           20 ipc=0.909019 items_per_second=216.043M/s max_abs_error=58.1741u
+BM_AVX2FMA/1048576/min_time:0.500_stddev        542 ns          513 ns           20 ipc=22.5866u items_per_second=22.8161k/s max_abs_error=444.691f
+BM_AVX2FMA/1048576/min_time:0.500_cv           0.01 %          0.01 %            20 ipc=0.00% items_per_second=0.01% max_abs_error=0.00%
+51945436195,,instructions,14606307185,100.00,,
+51667991496,,ex_ret_cops,14606307185,100.00,,
+
+--- sse2  (filter: BM_SSE2/1048576) ---
+2026-06-05T12:54:07+01:00
+Running ./bench/build/demos/03-simd-blackscholes/bench_03_simd_blackscholes
+Run on (8 X 3595.85 MHz CPU s)
+CPU Caches:
+  L1 Data 32 KiB (x8)
+  L1 Instruction 32 KiB (x8)
+  L2 Unified 512 KiB (x8)
+  L3 Unified 16384 KiB (x2)
+Load Average: 0.34, 0.13, 0.09
+------------------------------------------------------------------------------------------------
+Benchmark                                      Time             CPU   Iterations UserCounters...
+------------------------------------------------------------------------------------------------
+BM_SSE2/1048576/min_time:0.500          10908238 ns     10908024 ns           64 ipc=1.21287 items_per_second=96.1289M/s max_abs_error=64.8499u
+BM_SSE2/1048576/min_time:0.500          10907142 ns     10906923 ns           64 ipc=1.21287 items_per_second=96.1386M/s max_abs_error=64.8499u
+BM_SSE2/1048576/min_time:0.500          10908861 ns     10907692 ns           64 ipc=1.21286 items_per_second=96.1318M/s max_abs_error=64.8499u
+BM_SSE2/1048576/min_time:0.500          10909983 ns     10908807 ns           64 ipc=1.21285 items_per_second=96.122M/s max_abs_error=64.8499u
+BM_SSE2/1048576/min_time:0.500          10909272 ns     10908337 ns           64 ipc=1.21284 items_per_second=96.1261M/s max_abs_error=64.8499u
+BM_SSE2/1048576/min_time:0.500          10907937 ns     10907718 ns           64 ipc=1.21283 items_per_second=96.1316M/s max_abs_error=64.8499u
+BM_SSE2/1048576/min_time:0.500          10909796 ns     10909574 ns           64 ipc=1.21285 items_per_second=96.1152M/s max_abs_error=64.8499u
+BM_SSE2/1048576/min_time:0.500          10907801 ns     10907578 ns           64 ipc=1.21283 items_per_second=96.1328M/s max_abs_error=64.8499u
+BM_SSE2/1048576/min_time:0.500          10909602 ns     10909376 ns           64 ipc=1.2128 items_per_second=96.117M/s max_abs_error=64.8499u
+BM_SSE2/1048576/min_time:0.500          10909741 ns     10908281 ns           64 ipc=1.21285 items_per_second=96.1266M/s max_abs_error=64.8499u
+BM_SSE2/1048576/min_time:0.500          10907625 ns     10907403 ns           64 ipc=1.21286 items_per_second=96.1343M/s max_abs_error=64.8499u
+BM_SSE2/1048576/min_time:0.500          10908680 ns     10908457 ns           64 ipc=1.21284 items_per_second=96.1251M/s max_abs_error=64.8499u
+BM_SSE2/1048576/min_time:0.500          10908404 ns     10908186 ns           64 ipc=1.21282 items_per_second=96.1274M/s max_abs_error=64.8499u
+BM_SSE2/1048576/min_time:0.500          10907553 ns     10907330 ns           64 ipc=1.21283 items_per_second=96.135M/s max_abs_error=64.8499u
+BM_SSE2/1048576/min_time:0.500          10909910 ns     10909148 ns           64 ipc=1.21282 items_per_second=96.119M/s max_abs_error=64.8499u
+BM_SSE2/1048576/min_time:0.500          10907629 ns     10907414 ns           64 ipc=1.21284 items_per_second=96.1342M/s max_abs_error=64.8499u
+BM_SSE2/1048576/min_time:0.500          10908601 ns     10908378 ns           64 ipc=1.21282 items_per_second=96.1257M/s max_abs_error=64.8499u
+BM_SSE2/1048576/min_time:0.500          10907971 ns     10907750 ns           64 ipc=1.21284 items_per_second=96.1313M/s max_abs_error=64.8499u
+BM_SSE2/1048576/min_time:0.500          10907562 ns     10907345 ns           64 ipc=1.21282 items_per_second=96.1349M/s max_abs_error=64.8499u
+BM_SSE2/1048576/min_time:0.500          10907700 ns     10907480 ns           64 ipc=1.21283 items_per_second=96.1337M/s max_abs_error=64.8499u
+BM_SSE2/1048576/min_time:0.500_mean     10908500 ns     10908060 ns           20 ipc=1.21284 items_per_second=96.1286M/s max_abs_error=64.8499u
+BM_SSE2/1048576/min_time:0.500_median   10908321 ns     10907887 ns           20 ipc=1.21284 items_per_second=96.1301M/s max_abs_error=64.8499u
+BM_SSE2/1048576/min_time:0.500_stddev        927 ns          735 ns           20 ipc=17.4243u items_per_second=6.47922k/s max_abs_error=495.721f
+BM_SSE2/1048576/min_time:0.500_cv           0.01 %          0.01 %            20 ipc=0.00% items_per_second=0.01% max_abs_error=0.00%
+67256090137,,instructions,14195313389,100.00,,
+66986856266,,ex_ret_cops,14195313389,100.00,,
+
+--- scalarpoly  (filter: BM_ScalarPoly/1048576) ---
+2026-06-05T12:54:22+01:00
+Running ./bench/build/demos/03-simd-blackscholes/bench_03_simd_blackscholes
+Run on (8 X 3601.8 MHz CPU s)
+CPU Caches:
+  L1 Data 32 KiB (x8)
+  L1 Instruction 32 KiB (x8)
+  L2 Unified 512 KiB (x8)
+  L3 Unified 16384 KiB (x2)
+Load Average: 0.44, 0.16, 0.10
+------------------------------------------------------------------------------------------------------
+Benchmark                                            Time             CPU   Iterations UserCounters...
+------------------------------------------------------------------------------------------------------
+BM_ScalarPoly/1048576/min_time:0.500          45211668 ns     45210775 ns           15 ipc=1.45665 items_per_second=23.1931M/s max_abs_error=64.8499u
+BM_ScalarPoly/1048576/min_time:0.500          45214611 ns     45213710 ns           15 ipc=1.45666 items_per_second=23.1915M/s max_abs_error=64.8499u
+BM_ScalarPoly/1048576/min_time:0.500          45211238 ns     45210346 ns           15 ipc=1.4567 items_per_second=23.1933M/s max_abs_error=64.8499u
+BM_ScalarPoly/1048576/min_time:0.500          45211492 ns     45210601 ns           15 ipc=1.4567 items_per_second=23.1931M/s max_abs_error=64.8499u
+BM_ScalarPoly/1048576/min_time:0.500          45211987 ns     45211088 ns           15 ipc=1.45666 items_per_second=23.1929M/s max_abs_error=64.8499u
+BM_ScalarPoly/1048576/min_time:0.500          45217982 ns     45217092 ns           15 ipc=1.45656 items_per_second=23.1898M/s max_abs_error=64.8499u
+BM_ScalarPoly/1048576/min_time:0.500          45212435 ns     45211543 ns           15 ipc=1.45662 items_per_second=23.1927M/s max_abs_error=64.8499u
+BM_ScalarPoly/1048576/min_time:0.500          45216351 ns     45215452 ns           15 ipc=1.45649 items_per_second=23.1907M/s max_abs_error=64.8499u
+BM_ScalarPoly/1048576/min_time:0.500          45209361 ns     45208465 ns           15 ipc=1.45674 items_per_second=23.1942M/s max_abs_error=64.8499u
+BM_ScalarPoly/1048576/min_time:0.500          45210722 ns     45209818 ns           15 ipc=1.45665 items_per_second=23.1935M/s max_abs_error=64.8499u
+BM_ScalarPoly/1048576/min_time:0.500          45215133 ns     45214250 ns           15 ipc=1.45657 items_per_second=23.1913M/s max_abs_error=64.8499u
+BM_ScalarPoly/1048576/min_time:0.500          45218116 ns     45217217 ns           15 ipc=1.45651 items_per_second=23.1898M/s max_abs_error=64.8499u
+BM_ScalarPoly/1048576/min_time:0.500          45214096 ns     45213192 ns           15 ipc=1.45655 items_per_second=23.1918M/s max_abs_error=64.8499u
+BM_ScalarPoly/1048576/min_time:0.500          45211792 ns     45210908 ns           15 ipc=1.45668 items_per_second=23.193M/s max_abs_error=64.8499u
+BM_ScalarPoly/1048576/min_time:0.500          45216541 ns     45215658 ns           15 ipc=1.45658 items_per_second=23.1906M/s max_abs_error=64.8499u
+BM_ScalarPoly/1048576/min_time:0.500          45217772 ns     45216865 ns           15 ipc=1.4565 items_per_second=23.1899M/s max_abs_error=64.8499u
+BM_ScalarPoly/1048576/min_time:0.500          45217096 ns     45216192 ns           15 ipc=1.45651 items_per_second=23.1903M/s max_abs_error=64.8499u
+BM_ScalarPoly/1048576/min_time:0.500          45217313 ns     45216433 ns           15 ipc=1.45661 items_per_second=23.1902M/s max_abs_error=64.8499u
+BM_ScalarPoly/1048576/min_time:0.500          45211470 ns     45210567 ns           15 ipc=1.45665 items_per_second=23.1932M/s max_abs_error=64.8499u
+BM_ScalarPoly/1048576/min_time:0.500          45217405 ns     45216494 ns           15 ipc=1.45655 items_per_second=23.1901M/s max_abs_error=64.8499u
+BM_ScalarPoly/1048576/min_time:0.500_mean     45214229 ns     45213333 ns           20 ipc=1.45661 items_per_second=23.1917M/s max_abs_error=64.8499u
+BM_ScalarPoly/1048576/min_time:0.500_median   45214353 ns     45213451 ns           20 ipc=1.45661 items_per_second=23.1917M/s max_abs_error=64.8499u
+BM_ScalarPoly/1048576/min_time:0.500_stddev       2913 ns         2912 ns           20 ipc=74.2603u items_per_second=1.49371k/s max_abs_error=495.721f
+BM_ScalarPoly/1048576/min_time:0.500_cv           0.01 %          0.01 %            20 ipc=0.01% items_per_second=0.01% max_abs_error=0.00%
+80686292793,,instructions,14187860659,100.00,,
+87917244540,,ex_ret_cops,14187860659,100.00,,
+
+=== summary: µops / instruction ===
+kernel           instructions      ex_ret_cops  uops/inst
+avx2fma           51945436195      51667991496     0.9947
+sse2              67256090137      66986856266     0.9960
+scalarpoly        80686292793      87917244540     1.0896
+
+DECISION RULE:
+  avx2fma uops/inst  ≈  sse2 uops/inst  -> Zen 2 native 256-bit (no split). C-1 rewrite proceeds.
+  avx2fma uops/inst  ≈  2× sse2         -> split story stands. C-1 downgraded.
