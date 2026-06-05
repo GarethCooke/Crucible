@@ -1,12 +1,12 @@
 ---
-title: "False sharing: a 15× throughput gap from two missing bytes"
+title: "False sharing: a 13.6× throughput gap from 56 missing bytes"
 date: "2026-05-16"
 summary: "Same algorithm. Same fill stream. Same machine. The only variable is struct layout — and it dominates."
 ---
 
 Same algorithm. Same fill stream. Same machine. Two versions of a single struct — the
 only difference is 56 bytes of padding. At 8 threads, the unpadded version runs at
-3.31 ns/op; the padded version reaches 0.22 ns/op. A 15× gap from a layout choice the
+3.36 ns/op; the padded version reaches 0.25 ns/op. A 13.6× gap from a layout choice the
 compiler never warned about.
 
 ## The setup
@@ -67,11 +67,11 @@ The IPC counter and cache-miss-ratio counter make this visible:
 />
 
 Two counters surface the contention. At 1 thread the layouts are
-indistinguishable: IPC sits near 0.56, miss ratio near 28-30% (the steady-state
+indistinguishable: IPC sits near 0.58, miss ratio near 19–22% (the steady-state
 miss rate of the inner loop, dominated by the volatile reload of `pnl`). At 2
-threads the unpadded miss ratio jumps to 96% — once two cores write to the
-same line, nearly every access misses — and IPC collapses to 0.21. At 4
-threads the miss ratio barely moves (still ~96%, already saturated), but IPC
+threads the unpadded miss ratio jumps to 94% — once two cores write to the
+same line, nearly every access misses — and IPC collapses to 0.20. At 4
+threads the miss ratio barely moves (still ~95%, already saturated), but IPC
 drops further to 0.11. The signal there is subtle: the *rate* of misses can't
 go much higher than ~100%, but the *cost* of each miss grows as more cores
 compete for the same line. Padded holds at IPC ~0.55 and miss ratio under 30%
@@ -116,32 +116,35 @@ latency, no shared cache to absorb the round-trips.
 <Benchmark slug="02-false-sharing-pnl" chart="throughput-bars" placement="cross-ccx" />
 <Benchmark slug="02-false-sharing-pnl" chart="counter-overlay" placement="cross-ccx" metric="instructions_per_cycle" />
 
-At 4 threads, the cross-CCX unpadded result is 4.59 ns/op against intra-CCX 4t unpadded
-at 3.61 ns/op — **a 1.27× additional penalty from crossing the Fabric, on top of the
+At 4 threads, the cross-CCX unpadded result is 4.38 ns/op against intra-CCX 4t unpadded
+at 3.61 ns/op — **a 1.21× additional penalty from crossing the Fabric, on top of the
 5× false-sharing penalty already paid**. The cross-CCX 4t result has IQR/median under
 0.4% across 20 repetitions — reproducible to two significant figures.
 
-## 15× at 8 threads cross-CCX
+## 13.6× at 8 threads cross-CCX
 
 At 8 threads spanning both CCXs, the gap widens. The unpadded variant settles at
-3.31 ns/op; the padded variant reaches 0.22 ns/op — a **15× throughput gap** from a
+3.36 ns/op; the padded variant reaches 0.25 ns/op — a **13.6× throughput gap** from a
 single struct layout decision.
 
 | Configuration         | Median ns/op | Throughput (ops/sec) | IQR/median |
 | --------------------- | ------------ | -------------------- | ---------- |
-| Intra-CCX 4t padded   | 0.71         | 1.40 G/s             | 0.04%      |
-| Intra-CCX 4t unpadded | 3.61         | 277 M/s              | 0.08%      |
-| Cross-CCX 4t padded   | 0.71         | 1.40 G/s             | 0.35%      |
-| Cross-CCX 4t unpadded | 4.59         | 218 M/s              | 0.17%      |
-| Cross-CCX 8t padded   | 0.22         | 4.59 G/s             | 16%        |
-| Cross-CCX 8t unpadded | 3.31         | 302 M/s              | 1.4%       |
+| Intra-CCX 4t padded   | 0.71         | 1.40 G/s             | 0.06%      |
+| Intra-CCX 4t unpadded | 3.61         | 277 M/s              | 0.10%      |
+| Cross-CCX 4t padded   | 0.71         | 1.40 G/s             | 0.18%      |
+| Cross-CCX 4t unpadded | 4.38         | 228 M/s              | 0.18%      |
+| Cross-CCX 8t padded   | 0.25         | 4.04 G/s             | 26%        |
+| Cross-CCX 8t unpadded | 3.36         | 298 M/s              | 1.0%       |
 
 The 8-thread configuration is the only one that includes cpu0, which the kernel
 refuses to isolate (it's the boot CPU and handles unmigrable housekeeping). Run-to-run
 variance is correspondingly higher there. The unpadded number remains robust —
 false-sharing cost dwarfs cpu0 background noise — but the padded baseline has
-IQR/median around 16% rather than the sub-1% seen everywhere else. The 15× headline is
-real; treat the third significant figure with skepticism.
+IQR/median around 26% rather than the sub-1% seen everywhere else. The padded 8t median
+also scales *better* than perfectly against 4t (2.9× throughput from 2× threads), which
+is not physical for this workload — the denominator is optimistic. Under a
+perfect-scaling assumption the gap is still 9.4×; the measured-median figure is 13.6×.
+Treat the headline as "order 10×, plausibly 13×", not a third-significant-figure claim.
 
 ## What this means in practice
 
@@ -175,15 +178,15 @@ notice the throughput collapse.
   multi-socket NUMA systems behave more like cross-CCX. The mechanism is universal; the
   magnitudes depend on the chip.
 - **cpu0 cannot be kernel-isolated.** On the reference machine the 8t result includes
-  cpu0 in the worker pool. The 15× number is robust because the false-sharing signal
+  cpu0 in the worker pool. The headline number is robust in direction and order because the false-sharing signal
   dominates; smaller effects measured at 8t would need different methodology.
 
 ## Takeaway
 
-False sharing is a 15× throughput collapse from two missing bytes of padding — a
+False sharing is a 13.6× throughput collapse from 56 missing bytes of padding — a
 layout regression the compiler will never warn about. The mechanism is universal
 (write-write coherency traffic on a shared cache line) but the magnitudes are
-hardware-specific: 5× within a Zen 2 CCX, 15× once the Infinity Fabric is in
+hardware-specific: 5× within a Zen 2 CCX, 13.6× once the Infinity Fabric is in
 the loop, milder on Intel monolithic dies. The fix is a single `alignas(64)` —
 and a `static_assert` that turns the discipline into a compile-time invariant,
 as [demo 4's `PaddedAtomic<T>`](/posts/04-spsc-queue) does.
@@ -193,6 +196,6 @@ wrong. Pad to a cache line, assert it, move on.
 
 ---
 
-*AMD Ryzen 7 3800X, Zen 2 (SMT off), 3.9 GHz base, governor = performance, turbo disabled (BIOS Core Performance Boost off), cores 0–7 isolated, pinned to 4–7. Headless Ubuntu 24.04. GCC 13.3, -O3 -march=native. 20 outer repetitions, median reported (throughput convention).*
+*AMD Ryzen 7 3800X, Zen 2 (SMT off), 3.9 GHz base, governor = performance, turbo disabled (BIOS Core Performance Boost off), cores 1–7 isolated (cpu0 cannot be kernel-isolated); thread placement per configuration — intra-CCX runs on cores 4–7, cross-CCX spans both CCXs, the 8t run includes cpu0. Headless Ubuntu 24.04. GCC 13.3, -O3 -march=native. 20 outer repetitions, median reported (throughput convention).*
 
 *[Methodology →](/methodology)*
