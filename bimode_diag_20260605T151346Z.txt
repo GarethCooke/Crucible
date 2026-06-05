@@ -1,0 +1,50 @@
+=== Demo 04 bimodality diagnostic  20260605T151346Z ===
+host: iguanabunt   binary: ./bench/build/demos/04-spsc-queue/bench_04_spsc_queue
+invocations/cell: 10   iters/invocation: 5   isolcpus: 1-7
+governor: schedutil
+boost(0=off): ?   paranoid: 0
+kernel: 6.8.0-117-generic
+
+shield: active on 1-7
+--- mutex-condvar  saturated  (10 x 5) ---
+    100 tagged lines so far
+--- mutex-condvar  paced@16M  (10 x 5) ---
+    100 tagged lines so far
+--- mutex-condvar  paced@28M  (10 x 5) ---
+    100 tagged lines so far
+--- mutex-condvar  paced@50M  (10 x 5) ---
+    100 tagged lines so far
+--- lockfree-boost  saturated  (10 x 5) ---
+    200 tagged lines so far
+--- lockfree-boost  paced@16M  (10 x 5) ---
+    200 tagged lines so far
+--- lockfree-boost  paced@28M  (10 x 5) ---
+    200 tagged lines so far
+--- lockfree-boost  paced@50M  (10 x 5) ---
+    200 tagged lines so far
+--- lockfree-handrolled  saturated  (10 x 5) ---
+    300 tagged lines so far
+--- lockfree-handrolled  paced@16M  (10 x 5) ---
+    300 tagged lines so far
+--- lockfree-handrolled  paced@28M  (10 x 5) ---
+    300 tagged lines so far
+--- lockfree-handrolled  paced@50M  (10 x 5) ---
+    300 tagged lines so far
+
+=== classification: depth_mean > 100 = DEEP, < 10 = SHALLOW, else INDET ===
+variant              point          deep  shallow    indet       n
+mutex-condvar        saturated        44        0        6      50
+mutex-condvar        paced@16M        38        0       12      50
+mutex-condvar        paced@28M        38        1       11      50
+mutex-condvar        paced@50M        32        3       15      50
+lockfree-boost       saturated        50        0        0      50
+lockfree-boost       paced@16M        40       10        0      50
+lockfree-boost       paced@28M        15       32        3      50
+lockfree-boost       paced@50M        35       12        3      50
+lockfree-handrolled  saturated        22       11       17      50
+lockfree-handrolled  paced@16M         1       26       23      50
+lockfree-handrolled  paced@28M         1       26       23      50
+lockfree-handrolled  paced@50M         6       27       17      50
+
+Raw tagged ITER/DIAG lines: bimode_raw_20260605T151346Z.log
+Send both bimode_diag_20260605T151346Z.txt and bimode_raw_20260605T151346Z.log back.
