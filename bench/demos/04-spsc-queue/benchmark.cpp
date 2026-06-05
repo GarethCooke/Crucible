@@ -2,7 +2,7 @@
 // Usage:
 //   bench_04_spsc_queue <variant> [--mode paced|saturated|sweep]
 //                       [--rate-hz N] [--rate-from N] [--rate-to N] [--steps K]
-//                       [--verify-warmup]
+//                       [--iterations N] [--verify-warmup]
 //   bench_04_spsc_queue --machine-info
 //   bench_04_spsc_queue --stress-test [variant]
 //
@@ -68,6 +68,7 @@ struct BenchConfig {
     uint64_t rate_from_hz  = 100'000;     // sweep start
     uint64_t rate_to_hz    = 50'000'000;  // sweep end
     int      steps         = 12;          // sweep steps
+    size_t   num_runs      = NUM_RUNS;    // --iterations N
     bool     verify_warmup = false;
 };
 
@@ -87,7 +88,11 @@ static void bin_run(const std::vector<uint64_t>& enq_ts,
                     RunResult& result,
                     crucible::WarmupVerify* wv,
                     const char* variant_name,
-                    uint64_t offered_rate_hz);
+                    uint64_t offered_rate_hz,
+                    size_t iter_k,
+                    size_t num_runs,
+                    double iter_wall_ns,
+                    const char* mode_str);
 
 // ─── Post-run stall diagnostic ────────────────────────────────────────────────
 // Computes max producer/consumer inter-item gaps and the queue backlog at the
@@ -190,8 +195,14 @@ static void bin_run(const std::vector<uint64_t>& enq_ts,
                     RunResult& result,
                     crucible::WarmupVerify* wv,
                     const char* variant_name,
-                    uint64_t offered_rate_hz) {
+                    uint64_t offered_rate_hz,
+                    size_t iter_k,
+                    size_t num_runs,
+                    double iter_wall_ns,
+                    const char* mode_str) {
     crucible::Histogram run_hist;
+    uint64_t sum_latency_ns = 0;
+    size_t   valid_count    = 0;
     for (size_t i = 0; i < ITEMS_MEASURED; ++i) {
         if (deq_ts[i] == 0) {
             std::fprintf(stderr, "WARN: mutex-condvar item %zu not consumed\n", i);
@@ -200,6 +211,8 @@ static void bin_run(const std::vector<uint64_t>& enq_ts,
         const uint64_t latency_ns =
             static_cast<uint64_t>((deq_ts[i] - enq_ts[i]) * ns_per_cycle);
         run_hist.record(latency_ns);
+        sum_latency_ns += latency_ns;
+        ++valid_count;
         if (wv && wv->enabled) {
             if (i < 10'000)        wv->early.record(latency_ns);
             else if (i >= 100'000) wv->late.record(latency_ns);
@@ -214,6 +227,21 @@ static void bin_run(const std::vector<uint64_t>& enq_ts,
     result.hist.merge(run_hist);
     emit_stall_diagnostic(enq_ts, deq_ts, ns_per_cycle, variant_name, offered_rate_hz,
                           run_hist.percentile(99.0), run_hist.percentile(99.9));
+
+    // Per-iteration ITER line (Tasks 0.1 + 0.2): post-run only, no hot-loop touch.
+    const double mean_ns       = valid_count ? static_cast<double>(sum_latency_ns) / valid_count : 0.0;
+    const double achieved_M_s  = (iter_wall_ns > 0.0)
+                                 ? static_cast<double>(ITEMS_MEASURED) * 1e3 / iter_wall_ns
+                                 : 0.0;
+    const double depth_mean    = achieved_M_s * mean_ns / 1000.0;
+    std::fprintf(stderr,
+        "ITER %s mode=%s offered=%lluHz k=%zu/%zu:"
+        "  p50=%llu ns  p99.9=%llu ns  mean=%.0f ns  achieved=%.2f M/s  depth_mean=%.1f\n",
+        variant_name, mode_str, (unsigned long long)offered_rate_hz,
+        iter_k + 1, num_runs,
+        (unsigned long long)run_hist.percentile(50.0),
+        (unsigned long long)run_hist.percentile(99.9),
+        mean_ns, achieved_M_s, depth_mean);
 }
 
 // ─── M8: wall-clock accumulation helper ──────────────────────────────────────
@@ -236,14 +264,15 @@ static inline void accumulate_wall_time(RunResult& r,
 template <typename Policy>
 static RunResult run_spsc_variant(double ns_per_cycle, uint64_t rate_hz,
                                    crucible::WarmupVerify* wv, Policy policy,
-                                   const char* variant_name) {
+                                   const char* variant_name,
+                                   size_t num_runs, const char* mode_str) {
     const uint64_t period_cycles = crucible::pacing_period_cycles(rate_hz, ns_per_cycle);
 
     RunResult result;
     std::vector<uint64_t> enq_ts(ITEMS_MEASURED);
     std::vector<uint64_t> deq_ts(ITEMS_MEASURED);
 
-    for (size_t run = 0; run < NUM_RUNS; ++run) {
+    for (size_t run = 0; run < num_runs; ++run) {
         policy.reset();
         std::fill(deq_ts.begin(), deq_ts.end(), uint64_t{0});
 
@@ -276,9 +305,12 @@ static RunResult run_spsc_variant(double ns_per_cycle, uint64_t rate_hz,
 
         struct timespec t1{};
         clock_gettime(CLOCK_MONOTONIC_RAW, &t1);
+        const double iter_wall_ns = static_cast<double>(
+            (t1.tv_sec - t0.tv_sec) * 1'000'000'000LL + (t1.tv_nsec - t0.tv_nsec));
         accumulate_wall_time(result, t0, t1);
 
-        bin_run(enq_ts, deq_ts, ns_per_cycle, result, wv, variant_name, rate_hz);
+        bin_run(enq_ts, deq_ts, ns_per_cycle, result, wv, variant_name, rate_hz,
+                run, num_runs, iter_wall_ns, mode_str);
     }
     return result;
 }
@@ -438,27 +470,34 @@ struct MutexCondvarPolicy {
 // ─── Variant dispatch functions ───────────────────────────────────────────────
 
 static RunResult run_lockfree_handrolled(double ns_per_cycle, uint64_t rate_hz,
-                                          crucible::WarmupVerify* wv) {
-    return run_spsc_variant(ns_per_cycle, rate_hz, wv, HandrolledPolicy{}, "lockfree-handrolled");
+                                          crucible::WarmupVerify* wv,
+                                          size_t num_runs, const char* mode_str) {
+    return run_spsc_variant(ns_per_cycle, rate_hz, wv, HandrolledPolicy{}, "lockfree-handrolled",
+                            num_runs, mode_str);
 }
 
 static RunResult run_lockfree_boost(double ns_per_cycle, uint64_t rate_hz,
-                                     crucible::WarmupVerify* wv) {
-    return run_spsc_variant(ns_per_cycle, rate_hz, wv, BoostPolicy{}, "lockfree-boost");
+                                     crucible::WarmupVerify* wv,
+                                     size_t num_runs, const char* mode_str) {
+    return run_spsc_variant(ns_per_cycle, rate_hz, wv, BoostPolicy{}, "lockfree-boost",
+                            num_runs, mode_str);
 }
 
 static RunResult run_mutex_condvar(double ns_per_cycle, uint64_t rate_hz,
-                                    crucible::WarmupVerify* wv) {
-    return run_spsc_variant(ns_per_cycle, rate_hz, wv, MutexCondvarPolicy{}, "mutex-condvar");
+                                    crucible::WarmupVerify* wv,
+                                    size_t num_runs, const char* mode_str) {
+    return run_spsc_variant(ns_per_cycle, rate_hz, wv, MutexCondvarPolicy{}, "mutex-condvar",
+                            num_runs, mode_str);
 }
 
 // ─── Dispatch ────────────────────────────────────────────────────────────────
 
 static RunResult run_variant(std::string_view variant, double ns_per_cycle,
-                              uint64_t rate_hz, crucible::WarmupVerify* wv) {
-    if (variant == "lockfree-handrolled") return run_lockfree_handrolled(ns_per_cycle, rate_hz, wv);
-    if (variant == "lockfree-boost")      return run_lockfree_boost(ns_per_cycle, rate_hz, wv);
-    /* mutex-condvar */                   return run_mutex_condvar(ns_per_cycle, rate_hz, wv);
+                              uint64_t rate_hz, crucible::WarmupVerify* wv,
+                              size_t num_runs, const char* mode_str) {
+    if (variant == "lockfree-handrolled") return run_lockfree_handrolled(ns_per_cycle, rate_hz, wv, num_runs, mode_str);
+    if (variant == "lockfree-boost")      return run_lockfree_boost(ns_per_cycle, rate_hz, wv, num_runs, mode_str);
+    /* mutex-condvar */                   return run_mutex_condvar(ns_per_cycle, rate_hz, wv, num_runs, mode_str);
 }
 
 // ─── JSON emission ───────────────────────────────────────────────────────────
@@ -467,9 +506,10 @@ static std::string emit_json_string(const char* variant,
                                      const char* mode_str,
                                      uint64_t offered_rate_hz,
                                      const RunResult& r,
-                                     double calibration_drift_pct) {
+                                     double calibration_drift_pct,
+                                     size_t num_runs) {
     const auto& h = r.hist;
-    const double total_items = static_cast<double>(ITEMS_MEASURED) * NUM_RUNS;
+    const double total_items = static_cast<double>(ITEMS_MEASURED) * num_runs;
     const double ops_per_sec = total_items / (r.wall_ns_total * 1e-9);
 
     const double median = static_cast<double>(h.percentile(50.0));
@@ -507,7 +547,7 @@ static std::string emit_json_string(const char* variant,
         QUEUE_DEPTH,
         ITEMS_MEASURED,
         ITEMS_WARMUP,
-        NUM_RUNS,
+        num_runs,
         median, min_ns, p99, iqr,
         ops_per_sec,
         crucible::HISTOGRAM_BUCKET_COUNT);
@@ -679,6 +719,8 @@ int main(int argc, char* argv[]) {
             cfg.rate_to_hz = static_cast<uint64_t>(std::stoull(argv[++i]));
         } else if (arg == "--steps" && i + 1 < argc) {
             cfg.steps = std::stoi(argv[++i]);
+        } else if (arg == "--iterations" && i + 1 < argc) {
+            cfg.num_runs = static_cast<size_t>(std::stoull(argv[++i]));
         } else if (arg == "--verify-warmup") {
             cfg.verify_warmup = true;
         } else {
@@ -707,11 +749,11 @@ int main(int argc, char* argv[]) {
             const uint64_t rate  = static_cast<uint64_t>(lo * ratio);
             std::fprintf(stderr, "  sweep step %d/%d: %.0f Hz\n", s + 1, n, static_cast<double>(rate));
 
-            const RunResult r = run_variant(variant, ns_per_cycle, rate, &wv);
+            const RunResult r = run_variant(variant, ns_per_cycle, rate, &wv, cfg.num_runs, "sweep");
             const double ns_per_cycle_step = crucible::calibrate_tsc();
             const double drift = std::abs(ns_per_cycle_step - ns_per_cycle) / ns_per_cycle * 100.0;
 
-            output += emit_json_string(argv[1], "sweep", rate, r, drift);
+            output += emit_json_string(argv[1], "sweep", rate, r, drift, cfg.num_runs);
             if (s + 1 < n) output += ",\n";
         }
         output += "\n]";
@@ -720,14 +762,14 @@ int main(int argc, char* argv[]) {
         const uint64_t rate = (cfg.mode == Mode::Saturated) ? 0 : cfg.rate_hz;
         const char* mode_str = (cfg.mode == Mode::Saturated) ? "saturated" : "paced";
 
-        const RunResult r = run_variant(variant, ns_per_cycle, rate, &wv);
+        const RunResult r = run_variant(variant, ns_per_cycle, rate, &wv, cfg.num_runs, mode_str);
 
         const double ns_per_cycle_post = crucible::calibrate_tsc();
         const double drift_pct = std::abs(ns_per_cycle_post - ns_per_cycle) / ns_per_cycle * 100.0;
         if (drift_pct > 0.1)
             std::fprintf(stderr, "WARN: TSC drift %.4f%% (threshold 0.1%%)\n", drift_pct);
 
-        output = "[\n" + emit_json_string(argv[1], mode_str, rate, r, drift_pct) + "\n]";
+        output = "[\n" + emit_json_string(argv[1], mode_str, rate, r, drift_pct, cfg.num_runs) + "\n]";
     }
 
     std::printf("%s\n", output.c_str());
