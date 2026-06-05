@@ -26,6 +26,8 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 PERF_DIR="${REPO_ROOT}/site/src/data/perf"
 
+MISSING=()
+
 # Machine 1 (Ryzen 7 3800X) demos — demo 09 is the Pi rig (no boost), skip it.
 MACHINE1_SLUGS=(
     01-branch-prediction
@@ -130,7 +132,7 @@ for f in "${FILES[@]}"; do
 done
 
 # Count any missing-file failures recorded above (no-arg mode only).
-if [[ "$#" -eq 0 && "${#MISSING[@]:-0}" -gt 0 ]]; then
+if [[ "$#" -eq 0 && "${#MISSING[@]}" -gt 0 ]]; then
     FAIL=$(( FAIL + ${#MISSING[@]} ))
 fi
 

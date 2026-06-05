@@ -57,13 +57,13 @@ above are what keep it a real branch at `-O3`:
 
 ```asm
 ; sum_threshold inner loop — seven instructions, one data-dependent branch
-bbd0:  movslq (%rax),%rdx        ; load x  (sign-extend i32 → i64)
-bbd3:  cmp    $0x7f,%edx         ; x − 127  (sets flags)
-bbd6:  jle    bbdb               ; ← the branch: skip add if x ≤ 127
-bbd8:  add    %rdx,%rsi          ; sum += x
-bbdb:  add    $0x4,%rax          ; advance pointer
-bbdf:  cmp    %rcx,%rax          ; ptr == end?
-bbe2:  jne    bbd0               ; loop
+ba50:  movslq (%rax),%rdx        ; load x  (sign-extend i32 → i64)
+ba53:  cmp    $0x7f,%edx         ; x − 127  (sets flags)
+ba56:  jle    ba5b               ; ← the branch: skip add if x ≤ 127
+ba58:  add    %rdx,%rsi          ; sum += x
+ba5b:  add    $0x4,%rax          ; advance pointer
+ba5f:  cmp    %rcx,%rax          ; ptr == end?
+ba62:  jne    ba50               ; loop
 ```
 
 And here is the corresponding inner loop in `sum_threshold_branchless`.
@@ -71,14 +71,14 @@ The `jle` and the conditional add are replaced by a single `cmovg`:
 
 ```asm
 ; sum_threshold_branchless inner loop — eight instructions, no data-dependent branch
-bc00:  movslq (%rax),%rdx        ; load x  (sign-extend i32 → i64)
-bc03:  mov    %rdx,%rsi          ; save x in rsi for the compare
-bc06:  add    %rcx,%rdx          ; rdx = sum + x  (speculatively compute the new sum)
-bc09:  cmp    $0x7f,%esi         ; x − 127
-bc0c:  cmovg  %rdx,%rcx          ; commit: sum = (sum + x) iff x > 127  ← no jump
-bc10:  add    $0x4,%rax          ; advance pointer
-bc14:  cmp    %rax,%rdi          ; ptr == end?
-bc17:  jne    bc00               ; loop
+ba90:  movslq (%rax),%rdx        ; load x  (sign-extend i32 → i64)
+ba93:  mov    %rdx,%rsi          ; save x in rsi for the compare
+ba96:  add    %rcx,%rdx          ; rdx = sum + x  (speculatively compute the new sum)
+ba99:  cmp    $0x7f,%esi         ; x − 127
+ba9c:  cmovg  %rdx,%rcx          ; commit: sum = (sum + x) iff x > 127  ← no jump
+baa0:  add    $0x4,%rax          ; advance pointer
+baa4:  cmp    %rax,%rdi          ; ptr == end?
+baa7:  jne    ba90               ; loop
 ```
 
 GCC compiles the ternary into a small surprise: rather than zeroing a temp and
@@ -143,7 +143,7 @@ as the pipeline repeatedly flushes and restarts.
 
 ## The gap across the cache hierarchy
 
-The 6.7× headline is measured at N = 32 M (128 MiB), where both variants are
+The 6.8× headline is measured at N = 32 M (128 MiB), where both variants are
 DRAM-bound. Looking across all six sizes reveals a more interesting story. The
 same L3→DRAM cliff visible here — where memory bandwidth becomes the binding
 constraint — is also the headline picture in [Demo 6](/posts/06-aos-vs-soa),
@@ -177,13 +177,13 @@ in the lookup curves are the same story.
   roughly **7×**.
 - **N = 32 M (DRAM-bound)**: both variants are bandwidth-limited; mispredict
   cost overlaps with memory-wait cycles. The absolute gap stays substantial
-  but the ratio settles at **6.7×** — the _floor_ of the effect, not the peak.
+  but the ratio settles at **6.8×** — the _floor_ of the effect, not the peak.
 
 ### "Random" is in the eye of the predictor
 
 The small-N rows in the chart above conceal a finding worth pulling out. At
 N = 1024, the unsorted variant runs at **1.04× of sorted** — essentially no
-gap — with a measured mispredict rate of just **1.27%** and IPC of **1.61**.
+gap — with a measured mispredict rate of just **1.37%** and IPC of **1.70**.
 
 With only 1024 branches in the loop, TAGE has enough history capacity to
 effectively memorise the entire seed-42 shuffle. The same pseudo-random
@@ -193,10 +193,10 @@ effective history depth — somewhere between 10 K and 100 K on this Zen 2 part:
 
 | N         | unsorted miss rate | unsorted IPC | sorted/unsorted ratio |
 | --------- | ------------------ | ------------ | --------------------- |
-| 1,024     | 1.27%              | 1.61         | 1.04×                 |
-| 10,240    | 30.3%              | 0.63         | 1.91×                 |
-| 102,400   | 49.8%              | 0.45         | 5.50×                 |
-| 1,048,576 | 50.0%              | 0.45         | 7.17×                 |
+| 1,024     | 1.37%              | 1.70         | 1.04×                 |
+| 10,240    | 30.4%              | 0.63         | 1.91×                 |
+| 102,400   | 49.8%              | 0.45         | 5.51×                 |
+| 1,048,576 | 50.0%              | 0.45         | 7.19×                 |
 
 "Random" is not a property of the data alone — it is a property of the data
 _relative to the predictor's memory_. Cryptographically random data is random
@@ -240,7 +240,7 @@ predicate is unpredictable, _not_ when it's merely binary.
 
 ## The sort caveat
 
-`std::sort` on 32 M integers takes **~1.0 s** on the reference machine —
+`std::sort` on 32 M integers takes **~1.1 s** on the reference machine —
 measured, not estimated. If the array is consumed once, sorting first is a
 net loss. The technique pays when the same data is scanned many times, when
 a sorted structure can be maintained incrementally, or when ordering falls
@@ -261,7 +261,7 @@ bottleneck, consider removing it rather than feeding it predictable inputs.
 
 ---
 
-*AMD Ryzen 7 3800X, Zen 2 (SMT off), 3.9 GHz base, governor = performance, turbo disabled (BIOS Core Performance Boost off), cores 0–7 isolated, pinned to 4–7. Headless Ubuntu 24.04. GCC 13.3, -O3 -march=native. 20 outer repetitions, median reported (throughput convention).*
+*AMD Ryzen 7 3800X, Zen 2 (SMT off), 3.9 GHz base, governor = performance, turbo disabled (BIOS Core Performance Boost off), cores 1–7 isolated, pinned to 4–7. Headless Ubuntu 24.04. GCC 13.3, -O3 -march=native. 20 outer repetitions, median reported (throughput convention).*
 
 *`sum_threshold` compiled with `no-tree-vectorize`, `no-if-conversion`, `no-if-conversion2` to preserve the conditional jump. `sum_threshold_branchless` compiled with `no-tree-vectorize` to prevent auto-vectorisation (cmov path); both variants do identical scalar arithmetic. Sort cost measured with `PauseTiming()` to exclude the per-iteration copy.*
 
