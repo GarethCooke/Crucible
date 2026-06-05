@@ -31,17 +31,18 @@ if [[ -z "$BIN" || ! -x "$BIN" ]]; then echo "ERROR: bench_04 not found; build f
 } | tee "$OUT"
 
 # --- shield (mirror run_one.sh); fall back to taskset --------------------
+ERRF="$(mktemp)"
 SHIELD=1
 sudo cset shield --reset >/dev/null 2>&1 || true
 if sudo cset shield --cpu="$ISOL_CPUS" --kthread=on >/dev/null 2>&1; then
   echo "shield: active on $ISOL_CPUS" | tee -a "$OUT"
-  run_one(){ sudo -E cset shield --exec -- "$@" 2>&1 | grep -v '^cset:'; }
+  PREFIX=(sudo -E cset shield --exec --)
 else
   SHIELD=0
   echo "shield: UNAVAILABLE — falling back to taskset -c 4-7 (binary self-pins anyway)" | tee -a "$OUT"
-  run_one(){ taskset -c 4-7 "$@" 2>&1; }
+  PREFIX=(taskset -c 4-7)
 fi
-cleanup(){ [[ "$SHIELD" == "1" ]] && sudo cset shield --reset >/dev/null 2>&1 || true; }
+cleanup(){ [[ "$SHIELD" == "1" ]] && sudo cset shield --reset >/dev/null 2>&1 || true; rm -f "$ERRF"; }
 trap cleanup EXIT
 
 : > "$RAW"
@@ -55,11 +56,17 @@ for v in "${VARIANTS[@]}"; do
     echo "--- $v  $label  ($INVOCATIONS x $ITERS) ---" | tee -a "$OUT"
     for ((inv=1; inv<=INVOCATIONS; inv++)); do
       ts="$(date -u +%H:%M:%S)"
-      OUTLINES="$(run_one "$BIN" "$v" "${args[@]}" --iterations "$ITERS" >/dev/null)"
-      # the binary writes ITER/DIAG to stderr, merged into OUTLINES by 2>&1 above
-      echo "$OUTLINES" | grep -E 'ITER|DIAG' | sed "s/^/[$label inv=$inv $ts] /" | tee -a "$RAW" >/dev/null
+      "${PREFIX[@]}" "$BIN" "$v" "${args[@]}" --iterations "$ITERS" >/dev/null 2>"$ERRF"
+      grep -E 'ITER|DIAG' "$ERRF" | sed "s/^/[$label inv=$inv $ts] /" >> "$RAW"
+      # fail fast: if the very first invocation captured nothing, the harness is wrong
+      if [[ "$v" == "${VARIANTS[0]}" && "$pt" == "${POINTS[0]}" && "$inv" -eq 1 && ! -s "$RAW" ]]; then
+        echo "ABORT: first invocation produced no ITER/DIAG lines." | tee -a "$OUT"
+        echo "  stderr sample from the run:" | tee -a "$OUT"
+        head -5 "$ERRF" | sed 's/^/    /' | tee -a "$OUT"
+        exit 1
+      fi
     done
-    echo "    $(grep -c "\[$label inv=" "$RAW" 2>/dev/null | head -1) tagged lines so far" | tee -a "$OUT"
+    echo "    $(grep -c "\[$label inv=" "$RAW" 2>/dev/null || echo 0) tagged lines so far" | tee -a "$OUT"
   done
 done
 
