@@ -157,28 +157,33 @@ and carries loop-overhead and pipeline-fill cost the SIMD variant amortises. The
 cheaper in SSE — their throughput improves with width but the latency-bound
 operations don't disappear.
 
-**Step 3 → 4: AVX2 + FMA — and the Zen 2 µop-split fingerprint.**
+**Step 3 → 4: AVX2 + FMA — width scaling at the lane-count ceiling.**
 
-*Going in:* Zen 2 implements 256-bit AVX2 by splitting each instruction into two
-128-bit µops internally. One `vfmadd256ps` consumes two execution-port slots
-where Zen 3 would consume one. On µop count alone, this halves the theoretical
-width advantage of 8-wide AVX2 over 4-wide SSE. The prediction was that AVX2
-would land *under* 2× SSE on this CPU.
+*Going in:* Zen 2 widened the entire FP datapath to 256 bits, so a 256-bit AVX2
+instruction issues as a single µop — unlike Zen and Zen+, which cracked each
+256-bit op into two 128-bit µops. This is measurable on the reference machine
+with the retired-µop counter (`ex_ret_cops`): the AVX2 kernel retires **0.99 µops
+per instruction**, indistinguishable from SSE's **1.00**, not the ~2× a 128-bit
+split would force. So the honest expectation is plain width scaling — 8 lanes over
+4 is **2×** — with FMA folding each multiply-add into a single instruction on top.
 
 *What actually landed:* at N=16,384 — the cleanest comparison, with the working
-set in L2 and per-iteration overhead amortised — AVX2/SSE is **1.995×**. Right at
-the threshold, exactly as the µop-split argument predicts. At N=1,048,576 the
-ratio rises to **2.252×** as the fixed per-iteration harness cost dissolves
-further.
+set in L2 and per-iteration overhead amortised — AVX2/SSE is **1.991×**, right at
+the lane-width ratio. At N=1,048,576 it rises to **2.252×**, just above 2× as
+FMA's instruction economy shows through and the fixed per-iteration harness cost
+dissolves.
 
-The IPC counters expose the µop split directly: SSE retires 1.21 instructions per
-cycle, AVX2 retires 0.91 — a 0.75 ratio, almost exactly what you'd expect if each
-AVX2 instruction occupies two issue slots. But each retired AVX2 instruction is
-also doing ~2.5× the work of a retired SSE instruction (8 lanes plus FMA's two
-flops per multiply-add, vs 4 lanes of separate mul + add). Multiply those out:
-0.75 × 2.5 ≈ 1.9× — and the rest is small effects (register pressure, scheduling,
-amortisation). The headline ratio doesn't come from AVX2 magically being 2× SSE;
-it comes from FMA reclaiming what µop split costs you.
+The counters show where the win comes from and where it leaks. Per option, the
+AVX2 kernel retires **2.9× fewer instructions** than SSE (≈17 vs ≈50) — roughly 2×
+from width, the rest from FMA fusing the multiply-adds in the Horner cascades.
+That instruction economy is partly handed back by lower IPC: SSE sustains **1.21**
+instructions per cycle against AVX2's **0.91** (a 0.75 ratio), because the
+remaining AVX2 work is dominated by `div` and `sqrt` — which don't get cheaper
+with width — and by the serial polynomial dependency chains, leaving fewer
+independent instructions to fill the issue ports. Net it out: 2.9× fewer
+instructions × 0.75 IPC ≈ **2.2×**, the measured throughput gain. The result is
+honest width scaling plus FMA, not the reclaiming of a hardware tax that does
+not exist on this core.
 
 ## Precision
 
@@ -231,16 +236,18 @@ once those exist, vectorising them is a small step. Using Sleef only for variant
   are measurement-floor-bound, not compute-bound. The charts above use N≥16k for
   this reason; the full sweep including N=1024 is in the JSON for
   reproducibility.
-- **% of theoretical peak.** Zen 2 base-clock theoretical peak for 256-bit FMA
-  is roughly 62 GFLOPS per core (2 FMA pipes × 1 256-bit FMA per 2 cycles × 8
-  lanes × 2 flops × 3.9 GHz). The AVX2 variant lands at 27 GFLOPS = ~44% of
-  peak. Division, square root, and the polynomial cascades (which can't all
-  pipeline as pure FMA) are the gap.
+- **% of theoretical peak.** Zen 2's base-clock peak for 256-bit FMA is roughly
+  125 GFLOPS per core (2 FMA units × one 256-bit FMA each per cycle × 8 lanes ×
+  2 flops × 3.9 GHz). The AVX2 variant lands at 27 GFLOPS = ~22% of peak.
+  Division, square root, and the polynomial cascades (which can't all pipeline as
+  pure FMA) are the gap.
 - **AVX-512**: deferred to a rented-bare-metal post. AVX-512 would allow 16-wide
   float computation in a single instruction and properly single-issue 512-bit ops
   on recent server CPUs. Numbers here won't extrapolate.
-- **Zen 3+**: Zen 3 and Sapphire Rapids dispatch 256-bit ops natively; the AVX2/SSE
-  ratio would be closer to 2× there.
+- **Wider ISA, not a newer core.** Zen 3, Zen 4, and Sapphire Rapids also execute
+  256-bit AVX2 natively (as Zen 2 already does), so the AVX2/SSE ratio stays near
+  the 2× lane-width ceiling on them too. Beating it needs AVX-512's 16 lanes — see
+  the AVX-512 note above — not a newer 256-bit core.
 - **Put options**: trivially derived from put-call parity once you have call prices.
 - **Implied volatility**: the inverse problem — a separate post.
 - **GPU comparison**: deferred.
@@ -253,10 +260,12 @@ widening to 8 lanes of AVX2 + FMA. The 11% step is unremarkable in isolation —
 but it's the gate. There is no `_mm256_erfc_ps`, so the SIMD wins are
 unreachable until the algorithm step happens first.
 
-On Zen 2 the AVX2/SSE ratio lands near 2× rather than a theoretical 4× because
-each 256-bit instruction splits into two 128-bit µops internally — FMA reclaims
-what µop split costs you. On Zen 3+ and Sapphire Rapids, where 256-bit ops
-dispatch natively, the same code path would be closer to a clean 4×.
+On Zen 2 the AVX2/SSE ratio lands near 2× because that is the lane-width ratio —
+8 lanes over 4 — not because of a split tax: Zen 2 executes 256-bit AVX2
+as single µops (measured at ~1 µop per instruction, the same as SSE). FMA nudges
+the ratio just above 2× at large N by cutting instruction count. Zen 3, Zen 4, and
+Sapphire Rapids also execute 256-bit natively, so the lane-width ceiling is the
+same 2× there — going wider needs a wider ISA (AVX-512), not a newer 256-bit core.
 
 The SoA layout that made this vectorisation possible is its own story — when
 the struct is wide and the inner loop touches only a few fields, the layout

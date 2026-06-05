@@ -101,7 +101,7 @@ def main() -> None:
         "notes":       (
             "Four variants of European call option pricing under Black-Scholes. "
             "Speedup decomposed into algorithm win (poly vs libm) and SIMD width win "
-            "(SSE 4-wide → AVX2+FMA 8-wide). Zen 2 μop-split: AVX2/SSE < 2× predicted."
+            "(SSE 4-wide → AVX2+FMA 8-wide). Zen 2 executes 256-bit AVX2 as single μops (verified ex_ret_cops ≈1.0/instr); AVX2/SSE ≈2× = lane-width ratio."
         ),
     }
 
