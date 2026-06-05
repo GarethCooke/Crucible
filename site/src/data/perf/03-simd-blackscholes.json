@@ -9,33 +9,37 @@
     "ram_gb": 31,
     "ram_speed_mhz": null,
     "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
-    "kernel": "6.8.0-111-generic",
+    "kernel": "6.8.0-117-generic",
     "governor": "performance",
     "turbo": false,
+    "turbo_source": "cpb",
+    "freq_max_advertised_mhz": 4560,
+    "freq_max_available_mhz": 3900,
+    "freq_base_mhz": null,
     "isolated_cpus": "1-7",
-    "isolated_cpus_requested": "0-7",
+    "isolated_cpus_requested": "1-7",
     "isolated_cpus_effective": "1-7",
     "isolated_cpus_source": "cmdline+probe",
     "cpu_affinity": "4-7",
-    "lscpu_extended": "CPU NODE SOCKET CORE L1d:L1i:L2:L3 ONLINE    MAXMHZ    MINMHZ       MHZ\n  0    0      0    0 0:0:0:0          yes 4560.0552 2200.0000 3894.7310\n  1    0      0    1 1:1:1:0          yes 4560.0552 2200.0000 3900.0000\n  2    0      0    2 2:2:2:0          yes 4560.0552 2200.0000 3900.0000\n  3    0      0    3 3:3:3:0          yes 4560.0552 2200.0000 3900.0000\n  4    0      0    4 4:4:4:1          yes 4560.0552 2200.0000 3900.0000\n  5    0      0    5 5:5:5:1          yes 4560.0552 2200.0000 3900.0000\n  6    0      0    6 6:6:6:1          yes 4560.0552 2200.0000 3900.0000\n  7    0      0    7 7:7:7:1          yes 4560.0552 2200.0000 3900.0000",
+    "lscpu_extended": "CPU NODE SOCKET CORE L1d:L1i:L2:L3 ONLINE    MAXMHZ    MINMHZ       MHZ\n  0    0      0    0 0:0:0:0          yes 4560.0552 2200.0000 3896.7080\n  1    0      0    1 1:1:1:0          yes 4560.0552 2200.0000 3900.0000\n  2    0      0    2 2:2:2:0          yes 4560.0552 2200.0000 3900.0000\n  3    0      0    3 3:3:3:0          yes 4560.0552 2200.0000 3900.0000\n  4    0      0    4 4:4:4:1          yes 4560.0552 2200.0000 3900.0000\n  5    0      0    5 5:5:5:1          yes 4560.0552 2200.0000 3900.0000\n  6    0      0    6 6:6:6:1          yes 4560.0552 2200.0000 3900.0000\n  7    0      0    7 7:7:7:1          yes 4560.0552 2200.0000 3900.0000",
     "arch": "x86_64",
     "soc": null
   },
-  "captured_at": "2026-05-18T21:11:47Z",
+  "captured_at": "2026-06-05T06:00:37Z",
   "runs": [
     {
       "variant": "avx2fma",
       "n": 1024,
-      "iterations": 28016,
+      "iterations": 27922,
       "ns_per_op": {
-        "median": 24.3729,
-        "min": 24.3175,
-        "p99": 24.4141,
-        "iqr": 0.025475
+        "median": 24.4436,
+        "min": 24.396,
+        "p99": 24.5027,
+        "iqr": 0.0445
       },
-      "ops_per_sec": 41034676,
-      "instructions_per_cycle": 0.91,
-      "gflops": 5.129,
+      "ops_per_sec": 40915000,
+      "instructions_per_cycle": 0.911,
+      "gflops": 5.114,
       "max_abs_error_vs_scalar_libm": 5.817e-05,
       "variant_isa": "avx2+fma",
       "compile_flags": "-O3 -mavx -mavx2 -mfma"
@@ -43,16 +47,16 @@
     {
       "variant": "avx2fma",
       "n": 16384,
-      "iterations": 7328,
+      "iterations": 7336,
       "ns_per_op": {
-        "median": 5.8303,
-        "min": 5.8254,
-        "p99": 5.8319,
-        "iqr": 0.001499
+        "median": 5.8287,
+        "min": 5.8249,
+        "p99": 5.8313,
+        "iqr": 0.0019
       },
-      "ops_per_sec": 171522110,
-      "instructions_per_cycle": 0.91,
-      "gflops": 21.44,
+      "ops_per_sec": 171571614,
+      "instructions_per_cycle": 0.912,
+      "gflops": 21.446,
       "max_abs_error_vs_scalar_libm": 5.817e-05,
       "variant_isa": "avx2+fma",
       "compile_flags": "-O3 -mavx -mavx2 -mfma"
@@ -60,16 +64,16 @@
     {
       "variant": "avx2fma",
       "n": 262144,
-      "iterations": 572,
+      "iterations": 573,
       "ns_per_op": {
-        "median": 4.6652,
-        "min": 4.6641,
-        "p99": 4.6661,
-        "iqr": 0.00086
+        "median": 4.6624,
+        "min": 4.6617,
+        "p99": 4.663,
+        "iqr": 0.0004
       },
-      "ops_per_sec": 214361003,
-      "instructions_per_cycle": 0.909,
-      "gflops": 26.795,
+      "ops_per_sec": 214491079,
+      "instructions_per_cycle": 0.91,
+      "gflops": 26.811,
       "max_abs_error_vs_scalar_libm": 5.817e-05,
       "variant_isa": "avx2+fma",
       "compile_flags": "-O3 -mavx -mavx2 -mfma"
@@ -79,14 +83,14 @@
       "n": 1048576,
       "iterations": 145,
       "ns_per_op": {
-        "median": 4.6161,
-        "min": 4.6153,
-        "p99": 4.617,
-        "iqr": 0.000525
+        "median": 4.6156,
+        "min": 4.6148,
+        "p99": 4.6163,
+        "iqr": 0.0006
       },
-      "ops_per_sec": 216645894,
+      "ops_per_sec": 216679957,
       "instructions_per_cycle": 0.909,
-      "gflops": 27.081,
+      "gflops": 27.085,
       "max_abs_error_vs_scalar_libm": 5.817e-05,
       "variant_isa": "avx2+fma",
       "compile_flags": "-O3 -mavx -mavx2 -mfma"
@@ -94,16 +98,16 @@
     {
       "variant": "scalarlibm",
       "n": 1024,
-      "iterations": 11646,
+      "iterations": 11542,
       "ns_per_op": {
-        "median": 58.8489,
-        "min": 58.7412,
-        "p99": 58.9883,
-        "iqr": 0.073012
+        "median": 59.3124,
+        "min": 59.2089,
+        "p99": 59.3904,
+        "iqr": 0.0608
       },
-      "ops_per_sec": 16993902,
-      "instructions_per_cycle": 1.941,
-      "gflops": 1.665,
+      "ops_per_sec": 16860828,
+      "instructions_per_cycle": 1.922,
+      "gflops": 1.652,
       "max_abs_error_vs_scalar_libm": 0.0,
       "variant_isa": "sse4.2",
       "compile_flags": "-O3 -fno-tree-vectorize -mno-avx -mno-avx2 -mno-fma -msse4.2"
@@ -111,16 +115,16 @@
     {
       "variant": "scalarlibm",
       "n": 16384,
-      "iterations": 876,
+      "iterations": 875,
       "ns_per_op": {
-        "median": 48.792,
-        "min": 48.7806,
-        "p99": 48.802,
-        "iqr": 0.009065
+        "median": 48.8637,
+        "min": 48.8368,
+        "p99": 48.8718,
+        "iqr": 0.0113
       },
-      "ops_per_sec": 20496241,
-      "instructions_per_cycle": 1.628,
-      "gflops": 2.009,
+      "ops_per_sec": 20466073,
+      "instructions_per_cycle": 1.627,
+      "gflops": 2.006,
       "max_abs_error_vs_scalar_libm": 0.0,
       "variant_isa": "sse4.2",
       "compile_flags": "-O3 -fno-tree-vectorize -mno-avx -mno-avx2 -mno-fma -msse4.2"
@@ -130,14 +134,14 @@
       "n": 262144,
       "iterations": 56,
       "ns_per_op": {
-        "median": 47.7188,
-        "min": 47.7106,
-        "p99": 47.7311,
-        "iqr": 0.010405
+        "median": 47.7423,
+        "min": 47.7332,
+        "p99": 47.7588,
+        "iqr": 0.0102
       },
-      "ops_per_sec": 20956509,
-      "instructions_per_cycle": 1.626,
-      "gflops": 2.054,
+      "ops_per_sec": 20947038,
+      "instructions_per_cycle": 1.625,
+      "gflops": 2.053,
       "max_abs_error_vs_scalar_libm": 0.0,
       "variant_isa": "sse4.2",
       "compile_flags": "-O3 -fno-tree-vectorize -mno-avx -mno-avx2 -mno-fma -msse4.2"
@@ -147,14 +151,14 @@
       "n": 1048576,
       "iterations": 14,
       "ns_per_op": {
-        "median": 47.6619,
-        "min": 47.648,
-        "p99": 47.6712,
-        "iqr": 0.006876
+        "median": 47.7048,
+        "min": 47.6977,
+        "p99": 47.7133,
+        "iqr": 0.003
       },
-      "ops_per_sec": 20983161,
+      "ops_per_sec": 20963795,
       "instructions_per_cycle": 1.626,
-      "gflops": 2.056,
+      "gflops": 2.054,
       "max_abs_error_vs_scalar_libm": 0.0,
       "variant_isa": "sse4.2",
       "compile_flags": "-O3 -fno-tree-vectorize -mno-avx -mno-avx2 -mno-fma -msse4.2"
@@ -162,16 +166,16 @@
     {
       "variant": "scalarpoly",
       "n": 1024,
-      "iterations": 11324,
+      "iterations": 11257,
       "ns_per_op": {
-        "median": 60.417,
-        "min": 60.3174,
-        "p99": 60.4977,
-        "iqr": 0.068708
+        "median": 60.738,
+        "min": 60.687,
+        "p99": 60.8013,
+        "iqr": 0.0352
       },
-      "ops_per_sec": 16554104,
-      "instructions_per_cycle": 1.546,
-      "gflops": 1.622,
+      "ops_per_sec": 16465557,
+      "instructions_per_cycle": 1.536,
+      "gflops": 1.614,
       "max_abs_error_vs_scalar_libm": 6.485e-05,
       "variant_isa": "sse4.2",
       "compile_flags": "-O3 -fno-tree-vectorize -mno-avx -mno-avx2 -mno-fma -msse4.2"
@@ -179,16 +183,16 @@
     {
       "variant": "scalarpoly",
       "n": 16384,
-      "iterations": 973,
+      "iterations": 967,
       "ns_per_op": {
-        "median": 43.9179,
-        "min": 43.8887,
-        "p99": 43.9959,
-        "iqr": 0.033363
+        "median": 44.1492,
+        "min": 44.1413,
+        "p99": 44.1602,
+        "iqr": 0.006
       },
-      "ops_per_sec": 22772129,
-      "instructions_per_cycle": 1.472,
-      "gflops": 2.232,
+      "ops_per_sec": 22651564,
+      "instructions_per_cycle": 1.463,
+      "gflops": 2.22,
       "max_abs_error_vs_scalar_libm": 6.485e-05,
       "variant_isa": "sse4.2",
       "compile_flags": "-O3 -fno-tree-vectorize -mno-avx -mno-avx2 -mno-fma -msse4.2"
@@ -198,14 +202,14 @@
       "n": 262144,
       "iterations": 62,
       "ns_per_op": {
-        "median": 42.8877,
-        "min": 42.8715,
-        "p99": 42.9125,
-        "iqr": 0.012257
+        "median": 43.1415,
+        "min": 43.1377,
+        "p99": 43.154,
+        "iqr": 0.0058
       },
-      "ops_per_sec": 23318063,
-      "instructions_per_cycle": 1.466,
-      "gflops": 2.285,
+      "ops_per_sec": 23180091,
+      "instructions_per_cycle": 1.457,
+      "gflops": 2.272,
       "max_abs_error_vs_scalar_libm": 6.485e-05,
       "variant_isa": "sse4.2",
       "compile_flags": "-O3 -fno-tree-vectorize -mno-avx -mno-avx2 -mno-fma -msse4.2"
@@ -213,16 +217,16 @@
     {
       "variant": "scalarpoly",
       "n": 1048576,
-      "iterations": 16,
+      "iterations": 15,
       "ns_per_op": {
-        "median": 42.8419,
-        "min": 42.8181,
-        "p99": 42.8712,
-        "iqr": 0.012433
+        "median": 43.1019,
+        "min": 43.0949,
+        "p99": 43.1155,
+        "iqr": 0.0058
       },
-      "ops_per_sec": 23342931,
-      "instructions_per_cycle": 1.466,
-      "gflops": 2.288,
+      "ops_per_sec": 23202997,
+      "instructions_per_cycle": 1.457,
+      "gflops": 2.274,
       "max_abs_error_vs_scalar_libm": 6.485e-05,
       "variant_isa": "sse4.2",
       "compile_flags": "-O3 -fno-tree-vectorize -mno-avx -mno-avx2 -mno-fma -msse4.2"
@@ -230,16 +234,16 @@
     {
       "variant": "sse2",
       "n": 1024,
-      "iterations": 22631,
+      "iterations": 22650,
       "ns_per_op": {
-        "median": 30.148,
-        "min": 30.0703,
-        "p99": 30.2553,
-        "iqr": 0.046099
+        "median": 30.2199,
+        "min": 30.1751,
+        "p99": 30.2715,
+        "iqr": 0.0525
       },
-      "ops_per_sec": 33179802,
+      "ops_per_sec": 33095569,
       "instructions_per_cycle": 1.212,
-      "gflops": 4.147,
+      "gflops": 4.137,
       "max_abs_error_vs_scalar_libm": 6.485e-05,
       "variant_isa": "sse4.2",
       "compile_flags": "-O3 -msse4.2 -mno-avx -mno-avx2 -mno-fma"
@@ -249,14 +253,14 @@
       "n": 16384,
       "iterations": 3682,
       "ns_per_op": {
-        "median": 11.6033,
-        "min": 11.5994,
-        "p99": 11.6055,
-        "iqr": 0.001941
+        "median": 11.6045,
+        "min": 11.6023,
+        "p99": 11.6078,
+        "iqr": 0.0037
       },
-      "ops_per_sec": 86185314,
+      "ops_per_sec": 86176420,
       "instructions_per_cycle": 1.214,
-      "gflops": 10.773,
+      "gflops": 10.772,
       "max_abs_error_vs_scalar_libm": 6.485e-05,
       "variant_isa": "sse4.2",
       "compile_flags": "-O3 -msse4.2 -mno-avx -mno-avx2 -mno-fma"
@@ -266,14 +270,14 @@
       "n": 262144,
       "iterations": 256,
       "ns_per_op": {
-        "median": 10.4433,
-        "min": 10.4419,
-        "p99": 10.4443,
-        "iqr": 0.000726
+        "median": 10.4415,
+        "min": 10.4398,
+        "p99": 10.4444,
+        "iqr": 0.0012
       },
-      "ops_per_sec": 95757906,
+      "ops_per_sec": 95774372,
       "instructions_per_cycle": 1.213,
-      "gflops": 11.97,
+      "gflops": 11.972,
       "max_abs_error_vs_scalar_libm": 6.485e-05,
       "variant_isa": "sse4.2",
       "compile_flags": "-O3 -msse4.2 -mno-avx -mno-avx2 -mno-fma"
@@ -283,14 +287,14 @@
       "n": 1048576,
       "iterations": 64,
       "ns_per_op": {
-        "median": 10.3961,
-        "min": 10.3925,
-        "p99": 10.3991,
-        "iqr": 0.001542
+        "median": 10.3958,
+        "min": 10.3923,
+        "p99": 10.3977,
+        "iqr": 0.0025
       },
-      "ops_per_sec": 96196277,
+      "ops_per_sec": 96206839,
       "instructions_per_cycle": 1.213,
-      "gflops": 12.025,
+      "gflops": 12.026,
       "max_abs_error_vs_scalar_libm": 6.485e-05,
       "variant_isa": "sse4.2",
       "compile_flags": "-O3 -msse4.2 -mno-avx -mno-avx2 -mno-fma"

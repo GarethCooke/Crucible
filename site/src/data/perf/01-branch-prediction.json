@@ -9,240 +9,246 @@
     "ram_gb": 31,
     "ram_speed_mhz": null,
     "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
-    "kernel": "6.8.0-111-generic",
+    "kernel": "6.8.0-117-generic",
     "governor": "performance",
     "turbo": false,
+    "turbo_source": "cpb",
+    "freq_max_advertised_mhz": 4560,
+    "freq_max_available_mhz": 3900,
+    "freq_base_mhz": null,
     "isolated_cpus": "1-7",
-    "isolated_cpus_requested": "0-7",
+    "isolated_cpus_requested": "1-7",
     "isolated_cpus_effective": "1-7",
     "isolated_cpus_source": "cmdline+probe",
     "cpu_affinity": "4-7",
-    "lscpu_extended": "CPU NODE SOCKET CORE L1d:L1i:L2:L3 ONLINE    MAXMHZ    MINMHZ       MHZ\n  0    0      0    0 0:0:0:0          yes 4560.0552 2200.0000 3899.8579\n  1    0      0    1 1:1:1:0          yes 4560.0552 2200.0000 3900.0000\n  2    0      0    2 2:2:2:0          yes 4560.0552 2200.0000 3900.0000\n  3    0      0    3 3:3:3:0          yes 4560.0552 2200.0000 3900.0000\n  4    0      0    4 4:4:4:1          yes 4560.0552 2200.0000 3900.0000\n  5    0      0    5 5:5:5:1          yes 4560.0552 2200.0000 3900.0000\n  6    0      0    6 6:6:6:1          yes 4560.0552 2200.0000 3900.0000\n  7    0      0    7 7:7:7:1          yes 4560.0552 2200.0000 3900.0000"
+    "lscpu_extended": "CPU NODE SOCKET CORE L1d:L1i:L2:L3 ONLINE    MAXMHZ    MINMHZ       MHZ\n  0    0      0    0 0:0:0:0          yes 4560.0552 2200.0000 3894.0039\n  1    0      0    1 1:1:1:0          yes 4560.0552 2200.0000 3900.0000\n  2    0      0    2 2:2:2:0          yes 4560.0552 2200.0000 3900.0000\n  3    0      0    3 3:3:3:0          yes 4560.0552 2200.0000 3900.0000\n  4    0      0    4 4:4:4:1          yes 4560.0552 2200.0000 3900.0000\n  5    0      0    5 5:5:5:1          yes 4560.0552 2200.0000 3900.0000\n  6    0      0    6 6:6:6:1          yes 4560.0552 2200.0000 3900.0000\n  7    0      0    7 7:7:7:1          yes 4560.0552 2200.0000 3900.0000",
+    "arch": "x86_64",
+    "soc": null
   },
-  "captured_at": "2026-05-18T05:41:18Z",
+  "captured_at": "2026-06-05T05:55:01Z",
   "runs": [
     {
       "variant": "branchless",
       "n": 1024,
-      "iterations": 33394,
+      "iterations": 34296,
       "ns_per_op": {
-        "median": 20.4309,
-        "min": 20.3986,
-        "p99": 20.4784,
-        "iqr": 0.028402
+        "median": 20.5905,
+        "min": 19.9051,
+        "p99": 20.6811,
+        "iqr": 0.6741
       },
-      "ops_per_sec": 48948582,
+      "ops_per_sec": 48573740,
       "branch_misses_per_op": 0.0078,
-      "instructions_per_cycle": 2.994
+      "instructions_per_cycle": 2.96
     },
     {
       "variant": "branchless",
       "n": 10240,
-      "iterations": 26016,
+      "iterations": 25783,
       "ns_per_op": {
-        "median": 2.6262,
-        "min": 2.621,
-        "p99": 2.6312,
-        "iqr": 0.003433
+        "median": 2.6277,
+        "min": 2.6236,
+        "p99": 2.6496,
+        "iqr": 0.0073
       },
-      "ops_per_sec": 380784019,
+      "ops_per_sec": 380606449,
       "branch_misses_per_op": 0.0008,
-      "instructions_per_cycle": 3.166
+      "instructions_per_cycle": 3.163
     },
     {
       "variant": "branchless",
       "n": 102400,
-      "iterations": 8102,
+      "iterations": 8101,
       "ns_per_op": {
-        "median": 0.8433,
-        "min": 0.8428,
-        "p99": 0.8436,
-        "iqr": 0.000369
+        "median": 0.8436,
+        "min": 0.8434,
+        "p99": 0.8443,
+        "iqr": 0.0002
       },
-      "ops_per_sec": 1185937213,
+      "ops_per_sec": 1185357742,
       "branch_misses_per_op": 0.0001,
-      "instructions_per_cycle": 3.189
+      "instructions_per_cycle": 3.188
     },
     {
       "variant": "branchless",
       "n": 1048576,
       "iterations": 1006,
       "ns_per_op": {
-        "median": 0.6632,
-        "min": 0.6631,
-        "p99": 0.6634,
-        "iqr": 0.000108
+        "median": 0.6635,
+        "min": 0.6633,
+        "p99": 0.6636,
+        "iqr": 0.0
       },
-      "ops_per_sec": 1507886593,
+      "ops_per_sec": 1507301848,
       "branch_misses_per_op": 0.0,
-      "instructions_per_cycle": 3.19
+      "instructions_per_cycle": 3.191
     },
     {
       "variant": "branchless",
       "n": 10485760,
-      "iterations": 100,
+      "iterations": 98,
       "ns_per_op": {
-        "median": 0.6776,
-        "min": 0.6703,
-        "p99": 0.6912,
-        "iqr": 0.0017
+        "median": 0.6783,
+        "min": 0.6707,
+        "p99": 0.6861,
+        "iqr": 0.0012
       },
-      "ops_per_sec": 1475895809,
+      "ops_per_sec": 1474437012,
       "branch_misses_per_op": 0.0,
-      "instructions_per_cycle": 3.042
+      "instructions_per_cycle": 3.039
     },
     {
       "variant": "branchless",
       "n": 33554432,
       "iterations": 31,
       "ns_per_op": {
-        "median": 0.6762,
-        "min": 0.671,
-        "p99": 0.6873,
-        "iqr": 0.002734
+        "median": 0.6764,
+        "min": 0.6714,
+        "p99": 0.6768,
+        "iqr": 0.0027
       },
-      "ops_per_sec": 1479040051,
+      "ops_per_sec": 1478634693,
       "branch_misses_per_op": 0.0,
       "instructions_per_cycle": 3.039
     },
     {
       "variant": "sorted",
       "n": 1024,
-      "iterations": 34537,
+      "iterations": 34639,
       "ns_per_op": {
-        "median": 19.8875,
-        "min": 19.7056,
-        "p99": 19.9711,
-        "iqr": 0.065309
+        "median": 19.85,
+        "min": 19.7694,
+        "p99": 19.8833,
+        "iqr": 0.0538
       },
-      "ops_per_sec": 50306285,
+      "ops_per_sec": 50385203,
       "branch_misses_per_op": 0.0088,
-      "instructions_per_cycle": 2.896
+      "instructions_per_cycle": 2.902
     },
     {
       "variant": "sorted",
       "n": 10240,
-      "iterations": 27870,
+      "iterations": 27960,
       "ns_per_op": {
-        "median": 2.4524,
-        "min": 2.4479,
-        "p99": 2.4557,
-        "iqr": 0.002613
+        "median": 2.4489,
+        "min": 2.4446,
+        "p99": 2.454,
+        "iqr": 0.003
       },
-      "ops_per_sec": 407875701,
+      "ops_per_sec": 408396382,
       "branch_misses_per_op": 0.0009,
       "instructions_per_cycle": 3.21
     },
     {
       "variant": "sorted",
       "n": 102400,
-      "iterations": 9637,
+      "iterations": 9657,
       "ns_per_op": {
-        "median": 0.7133,
-        "min": 0.7112,
-        "p99": 0.7142,
-        "iqr": 0.001287
+        "median": 0.7089,
+        "min": 0.7079,
+        "p99": 0.7094,
+        "iqr": 0.0004
       },
-      "ops_per_sec": 1401958714,
+      "ops_per_sec": 1410791931,
       "branch_misses_per_op": 0.0001,
-      "instructions_per_cycle": 3.249
+      "instructions_per_cycle": 3.245
     },
     {
       "variant": "sorted",
       "n": 1048576,
-      "iterations": 1272,
+      "iterations": 1275,
       "ns_per_op": {
-        "median": 0.5253,
-        "min": 0.5239,
-        "p99": 0.5274,
-        "iqr": 0.000926
+        "median": 0.5232,
+        "min": 0.522,
+        "p99": 0.525,
+        "iqr": 0.0014
       },
-      "ops_per_sec": 1904212876,
+      "ops_per_sec": 1912047098,
       "branch_misses_per_op": 0.0,
-      "instructions_per_cycle": 3.303
+      "instructions_per_cycle": 3.318
     },
     {
       "variant": "sorted",
       "n": 10485760,
-      "iterations": 125,
+      "iterations": 120,
       "ns_per_op": {
-        "median": 0.5555,
-        "min": 0.5359,
-        "p99": 0.5716,
-        "iqr": 0.010498
+        "median": 0.5549,
+        "min": 0.5343,
+        "p99": 0.5808,
+        "iqr": 0.005
       },
-      "ops_per_sec": 1801114981,
+      "ops_per_sec": 1802476298,
       "branch_misses_per_op": 0.0,
-      "instructions_per_cycle": 3.023
+      "instructions_per_cycle": 3.026
     },
     {
       "variant": "sorted",
       "n": 33554432,
       "iterations": 38,
       "ns_per_op": {
-        "median": 0.5528,
-        "min": 0.5382,
-        "p99": 0.5704,
-        "iqr": 0.009365
+        "median": 0.5521,
+        "min": 0.538,
+        "p99": 0.5689,
+        "iqr": 0.0059
       },
-      "ops_per_sec": 1809653839,
+      "ops_per_sec": 1811395404,
       "branch_misses_per_op": 0.0,
-      "instructions_per_cycle": 3.024
+      "instructions_per_cycle": 3.028
     },
     {
       "variant": "unsorted",
       "n": 1024,
-      "iterations": 32888,
+      "iterations": 33055,
       "ns_per_op": {
-        "median": 20.7861,
-        "min": 20.7176,
-        "p99": 20.8269,
-        "iqr": 0.03159
+        "median": 20.7065,
+        "min": 20.672,
+        "p99": 20.7875,
+        "iqr": 0.0525
       },
-      "ops_per_sec": 48110999,
-      "branch_misses_per_op": 0.0127,
-      "instructions_per_cycle": 1.612
+      "ops_per_sec": 48297389,
+      "branch_misses_per_op": 0.0137,
+      "instructions_per_cycle": 1.696
     },
     {
       "variant": "unsorted",
       "n": 10240,
-      "iterations": 14581,
+      "iterations": 14571,
       "ns_per_op": {
-        "median": 4.6736,
-        "min": 4.6618,
-        "p99": 4.68,
-        "iqr": 0.006181
+        "median": 4.6686,
+        "min": 4.6399,
+        "p99": 4.6873,
+        "iqr": 0.02
       },
-      "ops_per_sec": 213990295,
-      "branch_misses_per_op": 0.3028,
-      "instructions_per_cycle": 0.626
+      "ops_per_sec": 214338057,
+      "branch_misses_per_op": 0.304,
+      "instructions_per_cycle": 0.628
     },
     {
       "variant": "unsorted",
       "n": 102400,
-      "iterations": 1736,
+      "iterations": 1739,
       "ns_per_op": {
-        "median": 3.925,
-        "min": 3.9192,
-        "p99": 3.9399,
-        "iqr": 0.006277
+        "median": 3.903,
+        "min": 3.8915,
+        "p99": 3.9317,
+        "iqr": 0.0114
       },
-      "ops_per_sec": 254796601,
-      "branch_misses_per_op": 0.4976,
-      "instructions_per_cycle": 0.449
+      "ops_per_sec": 256260649,
+      "branch_misses_per_op": 0.4975,
+      "instructions_per_cycle": 0.451
     },
     {
       "variant": "unsorted",
       "n": 1048576,
-      "iterations": 176,
+      "iterations": 178,
       "ns_per_op": {
-        "median": 3.7672,
-        "min": 3.7578,
-        "p99": 3.8017,
-        "iqr": 0.032541
+        "median": 3.7635,
+        "min": 3.7487,
+        "p99": 3.778,
+        "iqr": 0.0144
       },
-      "ops_per_sec": 265462548,
-      "branch_misses_per_op": 0.5005,
+      "ops_per_sec": 265766150,
+      "branch_misses_per_op": 0.5004,
       "instructions_per_cycle": 0.445
     },
     {
@@ -250,34 +256,34 @@
       "n": 10485760,
       "iterations": 18,
       "ns_per_op": {
-        "median": 3.7116,
-        "min": 3.685,
-        "p99": 3.7321,
-        "iqr": 0.023559
+        "median": 3.7803,
+        "min": 3.7721,
+        "p99": 3.7985,
+        "iqr": 0.017
       },
-      "ops_per_sec": 269708593,
+      "ops_per_sec": 264553145,
       "branch_misses_per_op": 0.5,
-      "instructions_per_cycle": 0.45
+      "instructions_per_cycle": 0.441
     },
     {
       "variant": "unsorted",
       "n": 33554432,
       "iterations": 6,
       "ns_per_op": {
-        "median": 3.6898,
-        "min": 3.6815,
-        "p99": 3.697,
-        "iqr": 0.00962
+        "median": 3.7558,
+        "min": 3.7428,
+        "p99": 3.772,
+        "iqr": 0.0133
       },
-      "ops_per_sec": 271105553,
+      "ops_per_sec": 266417548,
       "branch_misses_per_op": 0.5,
-      "instructions_per_cycle": 0.452
+      "instructions_per_cycle": 0.444
     }
   ],
   "notes": "Branch predictor learns sorted patterns; unsorted forces ~50% mispredicts.",
   "sort_cost_32m": {
-    "ns_per_op": 31.0881,
-    "wall_seconds": 1.043,
+    "ns_per_op": 32.6688,
+    "wall_seconds": 1.096,
     "iterations": 3
   }
 }
