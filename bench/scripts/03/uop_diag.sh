@@ -13,6 +13,7 @@ N=1048576
 REPS=20
 EVENTS="instructions,ex_ret_cops"
 VARIANTS=(avx2fma sse2 scalarpoly)
+FILTERS=("BM_AVX2FMA/${N}" "BM_SSE2/${N}" "BM_ScalarPoly/${N}")
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 OUT="uop_diag_${STAMP}.txt"
 
@@ -56,11 +57,12 @@ sudo cset shield --reset >/dev/null 2>&1 || true
 
 # --- run ------------------------------------------------------------------
 declare -A INSTR UOPS
-for v in "${VARIANTS[@]}"; do
-  echo "--- $v ---" | tee -a "$OUT"
+for idx in "${!VARIANTS[@]}"; do
+  v="${VARIANTS[$idx]}"; f="${FILTERS[$idx]}"
+  echo "--- $v  (filter: $f) ---" | tee -a "$OUT"
   # -x, => CSV: value,unit,event,...   2>&1 because perf prints stat to stderr
   RAW="$(taskset -c "$CORE" perf stat -x, -e "$EVENTS" \
-        "$BIN" --benchmark_filter="${v}.*${N}" --benchmark_repetitions="$REPS" 2>&1)"
+        "$BIN" --benchmark_filter="$f" --benchmark_repetitions="$REPS" 2>&1)"
   echo "$RAW" | tee -a "$OUT"
   INSTR[$v]="$(echo "$RAW" | awk -F, '$3=="instructions"{gsub(/[^0-9]/,"",$1); print $1; exit}')"
   UOPS[$v]="$(echo  "$RAW" | awk -F, '$3=="ex_ret_cops"{gsub(/[^0-9]/,"",$1); print $1; exit}')"
