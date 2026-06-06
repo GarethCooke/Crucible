@@ -1,6 +1,6 @@
 ---
 title: "No crossover: absl::flat_hash_map wins at every N and workload mix"
-date: "2026-05-26"
+date: "2026-06-05"
 summary: "Five map implementations swept from N=8 to N≈4M on a Zen 2 CCX. The 'small map → flat structure' folklore expected a crossover; the data found none. absl::flat_hash_map is fastest at every N, in both pure-lookup and modify-mixed workloads, and the sorted-vector primitives collapse under any modify load at non-trivial N."
 ---
 
@@ -42,9 +42,9 @@ N" version of it suggests.
 
 Under any modify load at non-trivial N, the sorted-vector primitives degrade
 catastrophically. Their O(N) insert/erase amplifies the modify fraction into
-10×–1000× slowdowns. At N = 65536 and 90% modify, `sorted_vec` and
-`boost::flat_map` land at ~17 µs/op against `absl::flat_hash_map`'s ~22 ns/op —
-a ~780× gap.
+10×–1000× slowdowns. At N = 65536 and 90% modify, `sorted_vec` lands at
+~17.3 µs/op and `boost::flat_map` at ~18.8 µs/op against `absl::flat_hash_map`'s
+~22 ns/op — gaps of roughly 770× and 835×.
 
 The actionable takeaway is unromantic: reach for `absl::flat_hash_map` by
 default, regardless of map size.
@@ -99,18 +99,19 @@ What to read off the chart:
 
 - **`absl::flat_hash_map`** sits near 3.5 ns/op from N = 8 through N ≈ 512 —
   close to L1 hit cost — and only rises meaningfully once the table exceeds L1.
-  At N = 4 M it reaches ~18.5 ns/op, still the fastest variant by a wide margin.
+  At N = 4 M it reaches ~18.7 ns/op, still the fastest variant by a wide margin.
 - **`std::unordered_map`** has the same shape — same hasher, chaining vs.
-  open-addressing — but sits ~4× higher at small N (14.2 ns vs. 3.5 ns at
-  N = 64), narrowing to ~1.6× at N = 4 M (29.3 ns vs. 18.5 ns) as both hit
+  open-addressing — but sits ~4× higher at small N (15.9 ns vs. 3.5 ns at
+  N = 64), narrowing to ~1.6× at N = 4 M (29.3 ns vs. 18.7 ns) as both hit
   DRAM. The probing/metadata advantage of `absl::flat_hash_map` is worth more
   in cache than it is in DRAM.
 - **`vector + lower_bound`** and **`boost::flat_map`** track each other
-  within ~11% across the entire range (under 5% for N ≥ 16) — they are the same
+  within ~10% across the entire range — they are the same
   sorted-contiguous primitive; the residual is Boost's container bookkeeping over
-  a raw vector. Against `absl::flat_hash_map` the gap widens monotonically: ~3× at
-  N = 8 (11.4 ns vs. 3.5 ns), ~13× at N = 1 024 (48.3 ns vs. 3.8 ns), ~24× at
-  N = 4 M (437.5 ns vs. 18.5 ns). Binary search's O(log N) pointer walk
+  a raw vector, and its size moves between builds (see the modify-mix section).
+  Against `absl::flat_hash_map` the gap widens monotonically: ~3× at
+  N = 8 (11.1 ns vs. 3.5 ns), ~12× at N = 1 024 (47.6 ns vs. 3.8 ns), ~23× at
+  N = 4 M (435.7 ns vs. 18.7 ns). Binary search's O(log N) pointer walk
   traverses more cache lines as N grows; the hash map's random-access probing
   stays bounded.
 - **`std::map`** is not uniformly the worst at small N. At N ≤ 512 it beats
@@ -119,7 +120,7 @@ What to read off the chart:
   tree depth at tiny N means fewer comparisons than `lower_bound`'s full log
   scan. At N ≥ 1 024 the node-based layout loses to the contiguous primitives,
   and by N = 4 M `std::map`, `vector + lower_bound`, and `boost::flat_map` have
-  converged into a ~440–460 ns/op cluster — all roughly 24× slower than
+  converged into a ~435–455 ns/op cluster — all roughly 23–24× slower than
   `absl::flat_hash_map`. The wide margin at large N is between the hash maps and
   this cluster, not within it.
 
@@ -208,9 +209,13 @@ collapse.
   yAxisLabel="median ns / op  ·  log scale"
 />
 
-At N = 65 536, 90% modify: `sorted_vec` lands at **~17 308 ns/op** (~17.3 µs),
-`boost::flat_map` at **~17 217 ns/op** (~17.2 µs), `absl::flat_hash_map` at
-**~22 ns/op**. That is a **~780× gap**. The hash-map lines barely move as
+At N = 65 536, 90% modify: `sorted_vec` lands at **~17 331 ns/op** (~17.3 µs),
+`boost::flat_map` at **~18 790 ns/op** (~18.8 µs), `absl::flat_hash_map` at
+**~22 ns/op**. That is a gap of **roughly 770× and 835×**. (The ~8% offset
+between Boost and the raw vector is build-sensitive bookkeeping, not structure —
+the May capture of identical code had the two within 1%; the
+three-orders-of-magnitude collapse is the capture-stable part.)
+The hash-map lines barely move as
 modify fraction increases — O(1) amortised insert/erase costs roughly the same
 as a lookup. The sorted-vector lines climb three orders of magnitude on a log
 axis.
@@ -232,7 +237,7 @@ The modify-mix workload dials up the fraction of O(N) operations directly. At
 10% modify, roughly 1 in 10 operations is O(N). At 90% modify, 9 in 10 are. The
 per-operation cost grows as `modify_pct × O(N) + (1 - modify_pct) × O(log N)`;
 the O(N) term dominates rapidly. At N = 65 536 and 90% modify, each operation
-is almost entirely O(N) erase+insert — hence the ~17 µs/op observed.
+is almost entirely O(N) erase+insert — hence the ~17–19 µs/op observed.
 
 `absl::flat_hash_map` and `std::unordered_map` are O(1) amortised for both
 lookup and insert/erase. The modify fraction is just adjusting the mix of two
@@ -246,7 +251,7 @@ The post's variant set substitutes `boost::container::flat_map` for
 24.04 — does not provide `std::flat_map`; libstdc++ did not implement
 `<flat_map>` until GCC 15. `boost::flat_map` uses the same underlying primitive
 (sorted contiguous storage, `lower_bound` lookup, O(N) insert/erase) and its
-lookup curve tracks `sorted_vec` to within ~11% at small N (under 5% for N ≥ 16) across the entire sweep —
+lookup curve tracks `sorted_vec` to within ~10% across the entire sweep —
 empirical confirmation that the substitution does not change the story. The
 substitution and its rationale are documented in the [bench README](https://github.com/GarethCooke/Crucible/tree/master/bench/demos/07-no-crossover/README.md).
 
@@ -311,8 +316,7 @@ sweep across the same tiers with three sort variants.
 ---
 
 *AMD Ryzen 7 3800X, Zen 2 (SMT off), 3.9 GHz base, governor = performance,
-turbo disabled (BIOS Core Performance Boost off), cores 0–7 isolated (core 0
-carries unavoidable kernel housekeeping), single thread pinned to CCX1 (cores
+turbo disabled (BIOS Core Performance Boost off), cores 1–7 isolated (cpu0 cannot be kernel-isolated and carries housekeeping), single thread pinned to CCX1 (cores
 4–7), headless Ubuntu 24.04. GCC 13.3, -O3 -march=native -DNDEBUG.
 5 outer repetitions per cell, median ns_per_op reported (working-set-sweep convention).*
 
