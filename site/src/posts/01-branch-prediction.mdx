@@ -90,9 +90,8 @@ crucially no mispredict penalty even on adversarial input.
 
 > Without the `no-tree-vectorize` attribute, GCC 13.3 at `-O3 -march=native` (which resolves
 > to `-march=znver2` on the reference machine) turns this same ternary into
-> `vpcmpgtd`/`vpand`/`vpaddd` — an 8-wide masked add that beats the cmov version by a further
-> ~8×. That's a different story (SIMD width, not branch behaviour), and gets its own
-> [post](/posts/03-simd-blackscholes).
+> `vpcmpgtd`/`vpand`/`vpaddd` — an 8-wide masked add. That's a different story (SIMD width,
+> not branch behaviour), and gets its own [post](/posts/03-simd-blackscholes).
 
 ## The numbers
 

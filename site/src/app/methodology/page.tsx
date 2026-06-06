@@ -248,18 +248,44 @@ export default function MethodologyPage() {
           numbers look better or worse than they really are.
         </Commitment>
         <Commitment n={2} title="Turbo Boost disabled">
-          Core Performance Boost is disabled in BIOS. State is verified by{" "}
-          <code>run_one.sh</code> via <code>cpupower frequency-info</code>{" "}
-          before any benchmark binary runs; the result is exported as{" "}
-          <code>CRUCIBLE_TURBO=off</code> and recorded in the JSON{" "}
-          <code>machine.turbo</code> field. If turbo state cannot be determined
-          the script exits non-zero rather than silently recording a wrong
-          value. Boost obscures the true steady-state throughput the predictor
-          and cache hierarchy deliver at nominal frequency. On Machine 2 there
-          is no BIOS turbo to disable; the equivalent is a pinned clock
-          (governor <code>performance</code>, min = max at 2400 MHz) with{" "}
-          <code>get_throttled = 0x0</code> verified before and after each
-          capture &mdash; see Machine 2 above.
+          <p>
+            Core Performance Boost is disabled in BIOS, pinning the cores to
+            their 3900 MHz base clock. Boost state is{" "}
+            <em>measured from the kernel</em>, never asserted: each capture
+            reads the per-CPU <code>cpb</code> flag (
+            <code>/sys/devices/system/cpu/cpu*/cpufreq/cpb</code>) —
+            authoritative on this AMD <code>acpi-cpufreq</code> board — and
+            cross-checks it against the top entry of{" "}
+            <code>scaling_available_frequencies</code>. The result and the
+            signal it came from are recorded in every JSON as{" "}
+            <code>machine.turbo</code> and <code>machine.turbo_source</code>.
+            A hard capture-time gate aborts the run before any benchmark
+            executes if boost is detected as enabled, so a boosted capture
+            cannot be taken silently.
+          </p>
+          <p className="mt-2">
+            <code>cpuinfo_max_freq</code> / <code>lscpu</code> MAXMHZ is{" "}
+            <strong>not</strong> used to infer boost state: on this board it
+            reports the silicon&rsquo;s 4560 MHz ceiling whether or not boost
+            is enabled, so it is recorded as{" "}
+            <code>machine.freq_max_advertised_mhz</code> (advisory) while{" "}
+            <code>machine.freq_max_available_mhz</code> — the highest real
+            P-state, 3900 MHz with boost off — is the value that tracks
+            state. Where no boost signal is exposed (e.g. the AArch64 rig),{" "}
+            <code>machine.turbo</code> is recorded as <code>null</code> rather
+            than guessed. Boost obscures the true steady-state throughput the
+            predictor and cache hierarchy deliver at nominal frequency.
+          </p>
+          <p className="mt-2">
+            <em>
+              An earlier version of this pipeline derived turbo state from an
+              environment variable rather than measuring it; see{" "}
+              <a href="#corrections" style={{ color: "var(--cyan)" }}>
+                Corrections
+              </a>
+              .
+            </em>
+          </p>
         </Commitment>
         <Commitment n={3} title="Core isolation">
           Cores 1–7 are isolated at the kernel level via{" "}
@@ -452,6 +478,84 @@ cmake --build build --target bench_<NN>_<slug>
             </li>
           ))}
         </ul>
+      </div>
+
+      {/* ── Corrections ───────────────────────────────────────────────────── */}
+      <h2
+        id="corrections"
+        className="font-sans font-semibold text-sm uppercase tracking-widest mb-4"
+        style={{ color: "var(--text-muted)" }}
+      >
+        Corrections
+      </h2>
+      <div
+        className="rounded-xl border p-5 mb-12 text-sm space-y-3"
+        style={{
+          borderColor: "var(--border-color)",
+          background: "var(--bg-card)",
+          color: "var(--text-secondary)",
+        }}
+      >
+        <p>
+          <strong style={{ color: "var(--text-primary)" }}>
+            2026-06-06 &mdash; Boost state in the original Machine 1 corpus.
+          </strong>
+        </p>
+        <p>
+          The benchmarks for demos 01&ndash;08, as originally published, were
+          captured with AMD Core Performance Boost <strong>enabled</strong>,
+          despite this page and each post stating it was disabled. The cause
+          was a measurement defect: <code>machine.turbo</code> was recorded
+          from an operator-set environment variable (<code>CRUCIBLE_TURBO</code>
+          ) &mdash; an assertion of intent, not a reading of hardware &mdash;
+          while the <code>lscpu</code> output committed in the same machine
+          blocks showed the boost ceiling active, contradicting the claim. It
+          surfaced during setup for a later piece of work, when the advertised
+          maximum frequency was noticed to be the boost ceiling on a rig that
+          should have been pinned to base.
+        </p>
+        <p>
+          The pipeline now derives boost state from kernel sysfs signals
+          (per-CPU <code>cpb</code>, cross-checked against the
+          available-frequency list), gates every capture on boost being off,
+          and records which signal verified it. The full Machine 1 corpus was
+          recaptured at the controlled 3900 MHz base clock.
+        </p>
+        <p>
+          <strong style={{ color: "var(--text-primary)" }}>
+            Effect on results.
+          </strong>{" "}
+          The comparisons each post is built on are within-session speedup
+          ratios, in which both arms ran under identical boost conditions.
+          These are unchanged: per-demo re-derivation confirms demos 01, 02,
+          03, 07, and 08 round-trip exactly against the recaptured data. Demos
+          04 and 06 required prose corrections where pre-recapture framing had
+          described the original figures inaccurately; the directional claims
+          and ratios in both posts are intact. Absolute figures (ns/op,
+          throughput) differ by under 1% from the originally published values:
+          re-derivation establishes the original captures ran near base clock
+          despite the unverified boost state &mdash; demo 02&rsquo;s
+          cache-coherency-latency-bound rows are within 0.2% of the
+          recaptured data, demo 06&rsquo;s stable cells within 1%. The boost
+          mechanism was unverified but not consistently active during the short
+          measurement windows. The L1D performance counter in the original
+          demo-02 capture used an event name (<code>l1d.replacement</code>)
+          that was never valid on this AMD hardware; the field was null in all
+          12 runs, and no numeric claim in the post cited it. The recapture
+          substitutes the working event (<code>L1-dcache-load-misses</code>);
+          the absolute figures for that demo were unaffected by the null
+          counter.
+        </p>
+        <p>
+          The raw <code>lscpu</code> capture committed alongside every result
+          is what made this auditable: the underlying data was honest even
+          where the derived field was not. The detection logic that replaced it
+          is described under{" "}
+          <a href="#commitments" style={{ color: "var(--cyan)" }}>
+            Turbo Boost disabled
+          </a>{" "}
+          above.
+        </p>
       </div>
 
       {/* ── References ────────────────────────────────────────────────────── */}
