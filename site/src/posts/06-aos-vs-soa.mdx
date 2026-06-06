@@ -1,6 +1,6 @@
 ---
 title: "AoS vs SoA: bandwidth amplification, not a crossover"
-date: "2026-05-24"
+date: "2026-06-05"
 summary: "Scanning a 128 B option-quote struct across the Zen 2 cache hierarchy. The AoS-vs-SoA gap is 7× when one field per element is hot and vanishes when every field is — and the SIMD win lands largest where memory bandwidth is smallest."
 ---
 
@@ -90,9 +90,20 @@ The shape:
 | N = 131 072 (16 MB, L3 capacity) | 3.41       | L3 boundary, mid-cliff                      |
 | N = 1 048 576 (128 MB)      | 5.37       | DRAM-bound                                  |
 
-L2-resident floor 1.31 → DRAM band 5.37 = **4.11× cliff**. There is no visible step within L3 — the eight-point plateau from N=8 K to N=65 K is near-flat. The chart looks like a flat low region, a near-vertical cliff at the L3 boundary, and a noisy DRAM band on the right. (The L1→L2 transition isn't measured; the smallest working set in the sweep, N=4 096, already fills L2.)
+L2-resident floor 1.31 → DRAM band 5.37 = **4.08× cliff**. There is no visible step within L3 — the eight-point plateau from N=8 K to N=65 K is near-flat. The chart looks like a flat low region, a near-vertical cliff at the L3 boundary, and a noisy DRAM band on the right. (The L1→L2 transition isn't measured; the smallest working set in the sweep, N=4 096, already fills L2.)
 
-The DRAM band is non-monotonic — N = 262 144 lands at 4.17 ns, N = 524 288 at 3.99 ns, N = 1 048 576 at 5.37 ns. IQR/median is at most 1.7% at any of the three points — well below the swings of up to 35% between adjacent points, so the shape is a real signal rather than measurement noise. The most likely cause is a TLB / transparent-huge-page / DRAM bank-parallelism interaction: at certain working-set sizes the page table fits in the L1 TLB, at others it spills; transparent-huge-page promotion is probabilistic at this scale. None of that changes the cliff. The chart should be read as "above L3 capacity, AoS-K=1 costs 4–5.5 ns/element with some microarchitectural variation," not as a clean rising line.
+The DRAM band has capture-dependent structure. In this capture it is nearly flat —
+N = 262 144 at 5.36 ns, N = 524 288 at 5.32 ns, N = 1 048 576 at 5.37 ns. The May
+capture of the same code showed a pronounced dip instead: 4.17 and 3.99 ns at the
+two middle points, with within-capture IQR/median of at most 1.7% — tight enough
+that, read alone, the dip looked like a real microarchitectural signal. The
+recapture says otherwise: a clean rebuild and reboot later, the dip is gone. The
+likely mechanism is the one that makes it non-reproducible — page placement and
+transparent-huge-page promotion are decided per process at allocation time, and
+TLB reach and DRAM bank parallelism follow from that draw. Within-capture tightness is not across-capture stability. None of this touches the cliff: the
+band should be read as "above L3 capacity, AoS-K=1 costs roughly 4–5.5 ns/element,
+with structure inside that band that belongs to the capture, not the code," and
+the N = 1 048 576 anchor itself is capture-stable at 5.37 ns.
 
 Then the same trace for SoA, K=1:
 
@@ -108,7 +119,7 @@ Then the same trace for SoA, K=1:
 
 SoA at K=1 doesn't see the cliff. At N = 1 048 576 the working set for one field is 8 MB — half the L3 capacity per CCX. The scan never reaches DRAM. SoA K=1 at the largest N lands at **0.77 ns/element**, against AoS's 5.37 ns. The ratio at the headline working set:
 
-> **AoS K=1 / SoA K=1, N = 1 048 576: 6.98×**
+> **AoS K=1 / SoA K=1, N = 1 048 576: 6.97×**
 
 Predicted by the bytes-touched ratio (64/8 = 8×), observed at 7×. The two-point gap between model and measurement is real — it's a combination of partial cache-line utilisation by SoA (the column at K=1 still loads 64 B lines, just with 8 useful bytes each, same as AoS) and AoS-side prefetcher behaviour rescuing some of the wasted bandwidth. It does not change the conclusion.
 
@@ -146,11 +157,11 @@ The K sweep at N = 1 048 576:
 
 | K   | AoS ns/elem | SoA ns/elem | AoS / SoA | Bytes-touched model |
 | --- | ----------- | ----------- | --------- | ------------------- |
-| 1   | 5.37        | 0.77        | **6.98×** | 8.00×               |
-| 2   | (cliff)     | (sub-L3)    | 3.37×     | 4.00×               |
+| 1   | 5.37        | 0.77        | **6.97×** | 8.00×               |
+| 2   | (cliff)     | (sub-L3)    | 3.38×     | 4.00×               |
 | 4   | (cliff)     | (cliff)     | 1.31×     | 2.00×               |
-| 8   | 6.49        | 6.30        | 1.03×     | 1.00×               |
-| 16  | 12.63       | 12.62       | 1.00×     | 1.00×               |
+| 8   | 6.55        | 6.30        | 1.04×     | 1.00×               |
+| 16  | 12.60       | 12.61       | 1.00×     | 1.00×               |
 
 (The K=2 and K=4 rows: SoA crosses the L3 boundary somewhere between K=2 and K=4 at this N — that's why its column also enters the cliff. AoS is past the cliff from K=1; SoA falls off it as the number of arrays it streams grows.)
 
@@ -172,7 +183,7 @@ The third variant — SoA with autovectorisation enabled — answers a question 
 
 At N = 1 048 576:
 
-- **K = 16, DRAM-saturated**: SoA scalar 12.62 ns/element; SoA autovec 5.01 ns. Speedup **2.52×**.
+- **K = 16, DRAM-saturated**: SoA scalar 12.61 ns/element; SoA autovec 4.99 ns. Speedup **2.53×**.
 - **K = 1, L3-resident**: SoA scalar 0.77 ns/element; SoA autovec 0.19 ns. Speedup **3.99×**.
 
 This inverts the intuition that SIMD wins more when the workload is wider. The autovectoriser wins _more_ on the narrower scan.
@@ -211,7 +222,7 @@ Where this connects: [demo 1](/posts/01-branch-prediction) established what the 
 
 ---
 
-*AMD Ryzen 7 3800X, Zen 2 (SMT off), 3.9 GHz base, governor = performance, turbo disabled (BIOS Core Performance Boost off), cores 0–7 isolated (core 0 carries unavoidable kernel housekeeping), single thread pinned to core 4 (CCX1), headless Ubuntu 24.04. GCC 13.3, -O3 -march=znver2 -fno-tree-vectorize. 5 outer repetitions per cell, median ns_per_op reported (working-set-sweep convention).*
+*AMD Ryzen 7 3800X, Zen 2 (SMT off), 3.9 GHz base, governor = performance, turbo disabled (BIOS Core Performance Boost off), cores 1–7 isolated (cpu0 cannot be kernel-isolated and carries housekeeping), single thread pinned to core 4 (CCX1), headless Ubuntu 24.04. GCC 13.3, -O3 -march=znver2 -fno-tree-vectorize. 5 outer repetitions per cell, median ns_per_op reported (working-set-sweep convention).*
 
 *Source: [`bench/demos/06-aos-vs-soa/`](https://github.com/GarethCooke/Crucible/tree/master/bench/demos/06-aos-vs-soa) · [JSON](https://github.com/GarethCooke/Crucible/blob/master/site/src/data/perf/06-aos-vs-soa.json).*
 
