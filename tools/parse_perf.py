@@ -121,9 +121,9 @@ def derive_counters(perf: dict[str, int], ops: int) -> dict:
     instructions   = perf.get("instructions",     0)
     cycles         = perf.get("cycles",           1)
 
-    # L1D replacement event — AMD Zen 2 name confirmed by:
-    #   perf list | grep -i l1d   (look for l1d.replacement or l1-dcache-load-misses)
-    l1d_raw = perf.get("l1d.replacement", perf.get("L1-dcache-load-misses", None))
+    # L1D miss event — corrected to L1-dcache-load-misses (generic PMU alias).
+    # l1d.replacement was the original name but is an Intel event, never valid on AMD Zen 2.
+    l1d_raw = perf.get("L1-dcache-load-misses", perf.get("l1d.replacement", None))
     l1d_misses_per_op = (
         round(l1d_raw / ops, 6) if (l1d_raw is not None and ops > 0) else None
     )
@@ -191,7 +191,7 @@ def main():
         "notes": (
             f"cores: {cores_used}; fill seed: 42; "
             f"AMD PMU generic counters (cache-misses, cache-references, instructions, cycles); "
-            f"l1d event: l1d.replacement (verify with perf list | grep -i l1d on reference machine)"
+            f"l1d event: L1-dcache-load-misses"
         ),
     }
 

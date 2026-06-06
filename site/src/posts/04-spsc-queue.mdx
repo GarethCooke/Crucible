@@ -1,10 +1,10 @@
 ---
 title: "Same queue API. Different tail by orders of magnitude."
 date: "2026-06-05"
-summary: "End-to-end enqueue→dequeue, market-data thread to strategy thread. Lock-free SPSC vs mutex + condvar. At moderate offered load, all three variants look similar at the median. The tail and the breakdown rate are where they diverge."
+summary: "End-to-end enqueue→dequeue, market-data thread to strategy thread. Lock-free SPSC vs mutex + condvar. At 1 MHz offered load, the median is already ~12× apart: lock-free ~130 ns, mutex ~1.7 µs. The tail diverges to ~20× at p99.9; past saturation, orders of magnitude and bistable."
 ---
 
-A market-data thread produces 16-byte ticks; a strategy thread consumes them. End-to-end enqueue-to-dequeue across three implementations of the same queue API — a hand-rolled lock-free ring, the same ring from Boost, and a `std::queue` protected by a mutex and condvar. Same hardware, same item, same threading topology. At moderate offered load all three look similar at the median; the tail and the breakdown rate are where they diverge by orders of magnitude.
+A market-data thread produces 16-byte ticks; a strategy thread consumes them. End-to-end enqueue-to-dequeue across three implementations of the same queue API — a hand-rolled lock-free ring, the same ring from Boost, and a `std::queue` protected by a mutex and condvar. Same hardware, same item, same threading topology. At 1 MHz offered load, the lock-free and mutex medians are already ~12× apart — ~130 ns vs ~1.7 µs — and diverge to ~20× at p99.9. Past saturation the gap becomes orders of magnitude and bistable.
 
 ## Setup
 
@@ -36,7 +36,7 @@ Producer pinned to core 4, consumer to core 5 — both on the same CCX of the Ry
 
 **The producer is paced at 1 M items/sec for the headline measurements**, well
 below the sustainable throughput of any variant. The lock-free variants leave the
-queue effectively empty at this load; the mutex variant runs about 1.8 items deep
+queue effectively empty at this load; the mutex variant runs about 1.7 items deep
 on average. Reported latency reflects per-op queue cost plus (for the mutex variant)
 condvar wake-up time — depth contribution is under 2 µs even in the mutex case.
 
@@ -106,11 +106,11 @@ Read right-to-left: a lower curve at any given latency means fewer samples are
 that slow or slower. The lock-free curves collapse toward the left; the mutex
 curve has a long tail extending right. At 1 MHz offered load the lock-free variants
 leave the queue effectively empty (≈0.1 items by Little's law). The mutex variant
-runs about 1.8 items deep on average — each item's wake-up cycle takes slightly
+runs about 1.7 items deep on average — each item's wake-up cycle takes slightly
 longer than the inter-arrival period, so a small amount of residency accumulates.
 Even so, the latency gap is dominated by kernel-boundary cost rather than depth:
 queue residency contributes under 2 µs while the p99.9 difference between mutex
-and lock-free is tens of microseconds.
+and lock-free is ~3.6 µs.
 
 p99.9 is the number that matters for a latency-sensitive strategy. That's the
 sample that arrives during a fast market move, when being slow costs the most.
@@ -147,7 +147,7 @@ from 100 kHz to 50 MHz (x-axis: offered/requested load). The curve is drawn only
 through the **sub-saturation** regime, where achieved throughput tracks the offered
 rate and latency is a single well-defined function of load. Below saturation the
 story is simple and reproducible: all three stay near their per-op floors — the
-lock-free pair around 120–140 ns, the mutex a few hundred ns above — and the lines
+lock-free pair around 120–140 ns, the mutex around 1–1.7 µs — and the lines
 are flat. Past the saturation knee the chart stops on purpose, because past
 saturation there is no single line to draw.
 
@@ -172,7 +172,7 @@ toward its 1024-entry capacity and residency becomes `queue_depth × consumer_pe
 — hundreds of microseconds for the mutex, tens for Boost. The two are separated by
 ~100× with nothing between them; a run is in one or the other.
 
-The selection is per *process*. At a fixed over-saturation load, 8–10 of every 10
+The selection is per *process*. At moderate over-saturation load, 8–10 of every 10
 processes are internally uniform — all five timed runs in the same mode — so a
 process picks an equilibrium in the first rounds of the producer/consumer race and
 stays there. Boost at 28 MHz is the clearest case: roughly 40% of processes run
@@ -289,20 +289,21 @@ table, and neither is doing anything clever in its hot path that the other misse
 
 ## Takeaway
 
-The lock-free SPSC ring buffer wins on the shape of the tail. At 1 MHz offered load
-the lock-free variants leave the queue effectively empty; even the mutex variant only
-carries ~1.8 items on average, so the tens-of-microseconds latency gap is
-kernel-boundary cost, not queue depth. The mutex fast path is fast — its cold path
-involves a syscall and a scheduler decision, and those outliers appear precisely when
-the market is moving fastest. The load-sweep chart shows where that breakdown begins — and past saturation it
-shows something subtler: the queue is bistable, settling deep or shallow per run,
-so a single overload number is a coin toss. The reproducible result is the
-sub-saturation tail: at moderate load the lock-free path's tail runs tens of
-microseconds tighter than the mutex's, every run.
+The lock-free SPSC ring buffer wins from the median outward. At 1 MHz offered load
+the median is already ~12× apart — lock-free ~130 ns, mutex ~1.7 µs — driven
+entirely by kernel-boundary cost: the mutex carries only ~1.7 items on average,
+so queue depth contributes under 2 µs. At p99.9 the gap is ~20×: 180 ns vs ~3.8 µs.
+The mutex fast path is fast — its cold path involves a syscall and a scheduler
+decision, and those outliers appear precisely when the market is moving fastest. The
+load-sweep chart shows where that breakdown begins — and past saturation it shows
+something subtler: the queue is bistable, settling deep or shallow per run, so a
+single overload number is a coin toss. The reproducible result is the sub-saturation
+distribution: at moderate load the lock-free tail runs ~20× tighter than the
+mutex's, every run.
 
 ---
 
-_Percentile values shown in charts above are computed from raw histograms in the corresponding JSON entries: log₂-subbucket-16 binning, bucket-midpoint percentile convention. Top-bucket counts and TSC drift across all 5 runs were zero. See [Methodology](/methodology) for the rdtscp calibration path._
+_Percentile values shown in charts above are computed from raw histograms in the corresponding JSON entries: log₂-subbucket-16 binning, bucket-midpoint percentile convention. Zero top-bucket counts; TSC drift ≤0.0001% across all 5 runs. See [Methodology](/methodology) for the rdtscp calibration path._
 
 *AMD Ryzen 7 3800X, Zen 2 (SMT off), 3.9 GHz base, governor = performance, turbo disabled (BIOS Core Performance Boost off), cores 1–7 isolated. Producer core 4 + consumer core 5 (same CCX1). Headless Ubuntu 24.04. GCC 13.3, -O3 -march=native. 5 outer runs × 1M timed samples per run, percentiles from merged histograms (tail-latency-distribution convention).*
 

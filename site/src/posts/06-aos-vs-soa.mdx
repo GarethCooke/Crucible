@@ -26,7 +26,7 @@ A reasonable prior on this is a crossover: AoS wins when you touch most fields p
 Two things are happening on a Zen 2 core scanning a 128 B struct:
 
 1. **Bandwidth amplification.** When the inner loop touches one 8 B field per element, AoS pays for the full 64 B cache line and uses 8 B of it. SoA pays for the 8 B and skips the rest. That's an ~8× difference in bytes-from-memory per useful byte. It shows up as ~7× in wall time, and it doesn't move with anything else you do at the layout level.
-2. **A cache cliff, not a staircase.** The "cache hierarchy" on this machine is binary in practice: things either fit in L3 or they don't. Crossing the L3 boundary at AoS K=1 multiplies cost by 4× (the L2-floor 1.31 → DRAM band 5.37 step). Crossing the L2 boundary on the way out costs ~15% (the L2-floor 1.31 → L3-plateau 1.48 step) and is barely visible against the cliff that follows.
+2. **A cache cliff, not a staircase.** The "cache hierarchy" on this machine is binary in practice: things either fit in L3 or they don't. Crossing the L3 boundary at AoS K=1 multiplies cost by 4× (the L2-floor 1.31 → DRAM band 5.37 step). Crossing the L2 boundary on the way out costs ~14% (the L2-floor 1.31 → L3-plateau 1.50 step) and is barely visible against the cliff that follows.
 
 The result is a layout decision that lives at the L3 boundary. Below L3, layout doesn't matter much — the cache absorbs the bandwidth waste. Above L3, layout is the difference between an L3-resident scan and a DRAM-bound one, and you pay the cliff in full.
 
@@ -65,7 +65,7 @@ Each call computes a real reduction (a floating-point sum of the scanned fields)
 
 Working-set sweep N ∈ \{4k, 8k, 16k, 32k, 65k, 131k, 262k, 524k, 1 048 576\} elements (so 128 B × N covers 512 KB through 128 MB — the L2 boundary through deep DRAM). `K` ∈ \{1, 2, 4, 8, 16\}. Three variants. 135 cells total.
 
-The reference machine, headless boot, core isolation, and statistical reporting (median `ns_per_op` across 5 outer repetitions per cell) follow the conventions documented at [Methodology](/methodology). One known gap: `l1d_misses_per_op` is null in this capture — `perf_capture.sh` doesn't subscribe to `l1d.replacement` on this kernel. The L1D story below leans on the LLC and instructions-per-cycle counters, which are populated everywhere.
+The reference machine, headless boot, core isolation, and statistical reporting (median `ns_per_op` across 5 outer repetitions per cell) follow the conventions documented at [Methodology](/methodology). One known gap: `l1d_misses_per_op` is null in this capture — the capture pipeline's original L1D event name (`l1d.replacement`) was never valid on this AMD part; this capture predates the corrected event, so the field is null. The L1D story below leans on the LLC and instructions-per-cycle counters, which are populated everywhere.
 
 ## The headline picture: a cliff, not a staircase
 
@@ -86,11 +86,11 @@ The shape:
 | Working set                 | ns/element | Notes                                       |
 | --------------------------- | ---------- | ------------------------------------------- |
 | N = 4 096 (≈ 512 KB, L2)    | 1.31       | L2-resident floor                           |
-| N = 8 192 → 65 536 (L3)     | 1.48–1.51  | L3 plateau, near-flat across the whole tier |
-| N = 131 072 (16 MB, L3 capacity) | 3.41       | L3 boundary, mid-cliff                      |
+| N = 8 192 → 65 536 (L3)     | 1.49–1.50  | L3 plateau, near-flat across the whole tier |
+| N = 131 072 (16 MB, L3 capacity) | 3.07       | L3 boundary, mid-cliff                      |
 | N = 1 048 576 (128 MB)      | 5.37       | DRAM-bound                                  |
 
-L2-resident floor 1.31 → DRAM band 5.37 = **4.08× cliff**. There is no visible step within L3 — the eight-point plateau from N=8 K to N=65 K is near-flat. The chart looks like a flat low region, a near-vertical cliff at the L3 boundary, and a noisy DRAM band on the right. (The L1→L2 transition isn't measured; the smallest working set in the sweep, N=4 096, already fills L2.)
+L2-resident floor 1.31 → DRAM band 5.37 = **4.08× cliff**. There is no visible step within L3 — the four-point plateau from N=8 K to N=65 K is near-flat. The chart looks like a flat low region, a near-vertical cliff at the L3 boundary, and a noisy DRAM band on the right. (The L1→L2 transition isn't measured; the smallest working set in the sweep, N=4 096, already fills L2.)
 
 The DRAM band has capture-dependent structure. In this capture it is nearly flat —
 N = 262 144 at 5.36 ns, N = 524 288 at 5.32 ns, N = 1 048 576 at 5.37 ns. The May
@@ -204,7 +204,7 @@ This is the section worth taking seriously. The post's claims are bounded.
 - **Hand-tuned SIMD with intrinsics.** The `soa-autovec` variant is what GCC 13 chose; it isn't what a careful intrinsic-and-FMA implementation would do. [Demo 3](/posts/03-simd-blackscholes) shows the gap between autovec and hand-tuned on a compute-bound kernel — it's substantial.
 - **Mixed read/write workloads.** The reduction here is read-only. Write-heavy passes (mark-to-market, snapshot serialisation) introduce store-buffer and write-combining behaviour the loads-only timing doesn't capture.
 - **Multi-thread / cross-CCX.** Single thread, pinned to core 4, CCX1, 16 MB L3 to itself. The cross-CCX picture is in [demo 5](/posts/05-allocators)'s side note — the Infinity-Fabric round-trip changes which working sets are bandwidth-bound in the first place.
-- **L1D miss counters.** This capture's `perf_capture.sh` doesn't subscribe to `l1d.replacement`, so the L1D row in the JSON is null. The cache-tier story above relies on LLC misses (populated everywhere) and on the qualitative L1 → L2 transition being too small to be visible in `ns_per_op`. The L1D counter would have made the smallest of the three transitions checkable. It isn't in this capture.
+- **L1D miss counters.** The `l1d_misses_per_op` field is null in this capture — `l1d.replacement` was never a valid event name on this AMD part; this capture predates the corrected event (`L1-dcache-load-misses`). The cache-tier story above relies on LLC misses (populated everywhere) and on the qualitative L1 → L2 transition being too small to be visible in `ns_per_op`. The L1D counter would have made the smallest of the three transitions checkable. It isn't in this capture.
 - **The 128 B struct.** Wider struct ⇒ steeper bandwidth-amplification curve; narrower struct ⇒ shallower. The qualitative story (cliff at L3, gap closes by K = struct-width / 8) is robust; the specific 7× number is not portable to a 64 B struct.
 
 ## Takeaway

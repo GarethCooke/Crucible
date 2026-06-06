@@ -34,7 +34,7 @@ def ipc(run: dict) -> float:
 
 
 def miss_ratio(run: dict) -> float:
-    """Generic cache miss ratio (proxy for L1D miss ratio until l1d.replacement captured)."""
+    """Generic cache miss ratio (proxy for L1D miss ratio when l1d_misses_per_op is unavailable)."""
     return run["counters"]["cache_miss_ratio"]
 
 
@@ -57,7 +57,7 @@ def main() -> None:
     # ── Assertion 1 ──────────────────────────────────────────────────────────
     # 4t intra-CCX unpadded: cache miss ratio ≥ 0.3.
     # False sharing's direct counter signature — universal across topologies.
-    # (l1d_miss_ratio preferred; using cache_miss_ratio until l1d.replacement captured.)
+    # (l1d_misses_per_op is now populated; cache_miss_ratio used here as a stable fallback.)
     intra4u = find_run(runs, "intra-ccx", 4, "unpadded")
     if intra4u is None:
         failures.append("MISSING intra-ccx/4t/unpadded run")

@@ -20,7 +20,7 @@
     "isolated_cpus_requested": "1-7",
     "isolated_cpus_effective": "1-7",
     "isolated_cpus_source": "cmdline+probe",
-    "cpu_affinity": "4-7",
+    "cpu_affinity": "1,4,6",
     "lscpu_extended": "CPU NODE SOCKET CORE L1d:L1i:L2:L3 ONLINE    MAXMHZ    MINMHZ       MHZ\n  0    0      0    0 0:0:0:0          yes 4560.0552 2200.0000 3895.9780\n  1    0      0    1 1:1:1:0          yes 4560.0552 2200.0000 3900.0000\n  2    0      0    2 2:2:2:0          yes 4560.0552 2200.0000 3900.0000\n  3    0      0    3 3:3:3:0          yes 4560.0552 2200.0000 3900.0000\n  4    0      0    4 4:4:4:1          yes 4560.0552 2200.0000 3900.0000\n  5    0      0    5 5:5:5:1          yes 4560.0552 2200.0000 3900.0000\n  6    0      0    6 6:6:6:1          yes 4560.0552 2200.0000 3900.0000\n  7    0      0    7 7:7:7:1          yes 4560.0552 2200.0000 3900.0000",
     "arch": "x86_64",
     "soc": null,

@@ -52,7 +52,7 @@
         "instructions_per_cycle": 0.5815,
         "l1d_misses_per_op": 0.006416
       },
-      "notes": "cores: [4]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles); l1d event: l1d.replacement (verify with perf list | grep -i l1d on reference machine)"
+      "notes": "cores: [4]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles)"
     },
     {
       "variant": "padded",
@@ -79,7 +79,7 @@
         "instructions_per_cycle": 0.5748,
         "l1d_misses_per_op": 0.005385
       },
-      "notes": "cores: [4]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles); l1d event: l1d.replacement (verify with perf list | grep -i l1d on reference machine)"
+      "notes": "cores: [4]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles)"
     },
     {
       "variant": "unpadded",
@@ -107,7 +107,7 @@
         "instructions_per_cycle": 0.2041,
         "l1d_misses_per_op": 0.111497
       },
-      "notes": "cores: [4, 5]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles); l1d event: l1d.replacement (verify with perf list | grep -i l1d on reference machine)"
+      "notes": "cores: [4, 5]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles)"
     },
     {
       "variant": "padded",
@@ -135,7 +135,7 @@
         "instructions_per_cycle": 0.5613,
         "l1d_misses_per_op": 0.002901
       },
-      "notes": "cores: [4, 5]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles); l1d event: l1d.replacement (verify with perf list | grep -i l1d on reference machine)"
+      "notes": "cores: [4, 5]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles)"
     },
     {
       "variant": "unpadded",
@@ -165,7 +165,7 @@
         "instructions_per_cycle": 0.1092,
         "l1d_misses_per_op": 0.103771
       },
-      "notes": "cores: [4, 5, 6, 7]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles); l1d event: l1d.replacement (verify with perf list | grep -i l1d on reference machine)"
+      "notes": "cores: [4, 5, 6, 7]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles)"
     },
     {
       "variant": "padded",
@@ -195,7 +195,7 @@
         "instructions_per_cycle": 0.5543,
         "l1d_misses_per_op": 0.001681
       },
-      "notes": "cores: [4, 5, 6, 7]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles); l1d event: l1d.replacement (verify with perf list | grep -i l1d on reference machine)"
+      "notes": "cores: [4, 5, 6, 7]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles)"
     },
     {
       "variant": "unpadded",
@@ -223,7 +223,7 @@
         "instructions_per_cycle": 0.1658,
         "l1d_misses_per_op": 0.058815
       },
-      "notes": "cores: [1, 4]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles); l1d event: l1d.replacement (verify with perf list | grep -i l1d on reference machine)"
+      "notes": "cores: [1, 4]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles)"
     },
     {
       "variant": "padded",
@@ -251,7 +251,7 @@
         "instructions_per_cycle": 0.5617,
         "l1d_misses_per_op": 0.002952
       },
-      "notes": "cores: [1, 4]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles); l1d event: l1d.replacement (verify with perf list | grep -i l1d on reference machine)"
+      "notes": "cores: [1, 4]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles)"
     },
     {
       "variant": "unpadded",
@@ -281,7 +281,7 @@
         "instructions_per_cycle": 0.0941,
         "l1d_misses_per_op": 0.094973
       },
-      "notes": "cores: [1, 2, 4, 5]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles); l1d event: l1d.replacement (verify with perf list | grep -i l1d on reference machine)"
+      "notes": "cores: [1, 2, 4, 5]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles)"
     },
     {
       "variant": "padded",
@@ -311,7 +311,7 @@
         "instructions_per_cycle": 0.5544,
         "l1d_misses_per_op": 0.001677
       },
-      "notes": "cores: [1, 2, 4, 5]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles); l1d event: l1d.replacement (verify with perf list | grep -i l1d on reference machine)"
+      "notes": "cores: [1, 2, 4, 5]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles)"
     },
     {
       "variant": "unpadded",
@@ -345,7 +345,7 @@
         "instructions_per_cycle": 0.0587,
         "l1d_misses_per_op": 0.102853
       },
-      "notes": "cores: [0, 1, 2, 3, 4, 5, 6, 7]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles); l1d event: l1d.replacement (verify with perf list | grep -i l1d on reference machine)"
+      "notes": "cores: [0, 1, 2, 3, 4, 5, 6, 7]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles)"
     },
     {
       "variant": "padded",
@@ -379,7 +379,7 @@
         "instructions_per_cycle": 0.551,
         "l1d_misses_per_op": 0.001093
       },
-      "notes": "cores: [0, 1, 2, 3, 4, 5, 6, 7]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles); l1d event: l1d.replacement (verify with perf list | grep -i l1d on reference machine)"
+      "notes": "cores: [0, 1, 2, 3, 4, 5, 6, 7]; fill seed: 42; AMD PMU generic counters (cache-misses, cache-references, instructions, cycles)"
     }
   ],
   "notes": "Captured on AMD Ryzen 7 3800X, Zen 2, governor=performance, turbo off, SMT off, isolated cpus 1-7 (cpu0 cannot be kernel-isolated). Fill stream: 1024 doubles (8 KB), mt19937 seed 42, uniform [-1, 1]. Compiler: GCC 13, -O3 -march=native."

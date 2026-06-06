@@ -101,7 +101,7 @@ What to read off the chart:
   close to L1 hit cost — and only rises meaningfully once the table exceeds L1.
   At N = 4 M it reaches ~18.7 ns/op, still the fastest variant by a wide margin.
 - **`std::unordered_map`** has the same shape — same hasher, chaining vs.
-  open-addressing — but sits ~4× higher at small N (15.9 ns vs. 3.5 ns at
+  open-addressing — but sits ~4.5× higher at small N (15.9 ns vs. 3.5 ns at
   N = 64), narrowing to ~1.6× at N = 4 M (29.3 ns vs. 18.7 ns) as both hit
   DRAM. The probing/metadata advantage of `absl::flat_hash_map` is worth more
   in cache than it is in DRAM.
