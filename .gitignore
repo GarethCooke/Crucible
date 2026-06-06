@@ -12,6 +12,7 @@ Thumbs.db
 # Editor
 .idea/
 *.swp
+.vscode/c_cpp_properties.json
 
 # Env
 .env
