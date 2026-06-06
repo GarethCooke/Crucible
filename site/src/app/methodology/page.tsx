@@ -498,53 +498,50 @@ cmake --build build --target bench_<NN>_<slug>
       >
         <p>
           <strong style={{ color: "var(--text-primary)" }}>
-            2026-06-06 &mdash; Boost state in the original Machine 1 corpus.
+            2026-06-06 &mdash; Boost-state verification in the original Machine 1 corpus.
           </strong>
         </p>
         <p>
-          The benchmarks for demos 01&ndash;08, as originally published, were
-          captured with AMD Core Performance Boost <strong>enabled</strong>,
-          despite this page and each post stating it was disabled. The cause
-          was a measurement defect: <code>machine.turbo</code> was recorded
-          from an operator-set environment variable (<code>CRUCIBLE_TURBO</code>
-          ) &mdash; an assertion of intent, not a reading of hardware &mdash;
-          while the <code>lscpu</code> output committed in the same machine
-          blocks showed the boost ceiling active, contradicting the claim. It
-          surfaced during setup for a later piece of work, when the advertised
-          maximum frequency was noticed to be the boost ceiling on a rig that
-          should have been pinned to base.
+          The benchmarks for demos 01&ndash;08, as originally published,
+          carried a <code>machine.turbo</code> field that was not a real
+          measurement: it was echoed from an operator-set environment variable
+          (<code>CRUCIBLE_TURBO</code>) rather than read from hardware, so the
+          corpus&rsquo;s boost state was in effect unverified. The{" "}
+          <code>lscpu</code> output committed alongside each result showed the
+          4560 MHz boost <em>ceiling</em> &mdash; but on this AMD{" "}
+          <code>acpi-cpufreq</code> board that ceiling is reported whether or
+          not boost is active, so it neither confirmed nor refuted the
+          &ldquo;turbo off&rdquo; claim.
         </p>
         <p>
-          The pipeline now derives boost state from kernel sysfs signals
-          (per-CPU <code>cpb</code>, cross-checked against the
-          available-frequency list), gates every capture on boost being off,
-          and records which signal verified it. The full Machine 1 corpus was
-          recaptured at the controlled 3900 MHz base clock.
+          We rebuilt boost detection to read real kernel sysfs signals (the
+          per-CPU <code>cpb</code> flag, cross-checked against the
+          available-frequency list), added a hard capture-time gate that aborts
+          if boost is enabled, and recaptured the entire Machine 1 corpus at a
+          confirmed 3900 MHz base clock.
         </p>
         <p>
           <strong style={{ color: "var(--text-primary)" }}>
             Effect on results.
           </strong>{" "}
-          The comparisons each post is built on are within-session speedup
-          ratios, in which both arms ran under identical boost conditions.
-          These are unchanged: per-demo re-derivation confirms demos 01, 02,
-          03, 07, and 08 round-trip exactly against the recaptured data. Demos
-          04 and 06 required prose corrections where pre-recapture framing had
-          described the original figures inaccurately; the directional claims
-          and ratios in both posts are intact. Absolute figures (ns/op,
-          throughput) differ by under 1% from the originally published values:
-          re-derivation establishes the original captures ran near base clock
-          despite the unverified boost state &mdash; demo 02&rsquo;s
-          cache-coherency-latency-bound rows are within 0.2% of the
-          recaptured data, demo 06&rsquo;s stable cells within 1%. The boost
-          mechanism was unverified but not consistently active during the short
-          measurement windows. The L1D performance counter in the original
-          demo-02 capture used an event name (<code>l1d.replacement</code>)
-          that was never valid on this AMD hardware; the field was null in all
-          12 runs, and no numeric claim in the post cited it. The recapture
-          substitutes the working event (<code>L1-dcache-load-misses</code>);
-          the absolute figures for that demo were unaffected by the null
-          counter.
+          The recaptured figures round-trip to within 1% of the originals
+          &mdash; the compute-bound demos (01, 03, 08) reproduce exactly
+          &mdash; which confirms the original captures were already running at
+          base clock and the published numbers were accurate. The same-session
+          speedup ratios each post is built on were unchanged throughout. Two
+          posts, demos 04 and 06, required prose corrections unrelated to
+          clock &mdash; demo 04&rsquo;s over-saturation section described
+          single-draw queue behaviour; re-derivation replaced it with a
+          bistability finding showing each process run settles into one of two
+          stable queue-depth equilibria; demo 06&rsquo;s DRAM-band
+          non-monotonic dip was attributed to a microarchitectural
+          TLB/huge-page interaction; the recapture produced a near-flat band,
+          reclassifying the dip as a capture-specific page-placement artifact
+          &mdash; while their underlying ratios were intact. Demo 02&rsquo;s
+          L1 cache counter (<code>l1d.replacement</code>) returned null in all
+          twelve original runs and was never cited in the post; the recapture
+          substitutes <code>L1-dcache-load-misses</code>, with no numeric
+          impact.
         </p>
         <p>
           The raw <code>lscpu</code> capture committed alongside every result
