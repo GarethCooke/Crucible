@@ -1,168 +1,243 @@
-# Crucible — Demo 05: workload escalation + framing revision brief
+# Demo 05 rescope brief — pool ordering below measurement resolution (decision A)
 
-Companion to `BRIEF.md`, `crucible-handover.md`, and `05-allocators-brief.md` (the original implementation brief). This brief revises that brief in two ways — one workload change, one framing change — based on pre-headline calibration data captured on the reference machine.
-
-The original brief stands except where this brief explicitly overrides it. Variants, hardware pinning of P/C, schema, chart contracts, post structure (with the framing-revision noted below), and acceptance for capture/build all remain as previously specified.
+Branch: `feature/boost-off-recapture`. Scope: `content/posts/05-allocators.mdx`, plus committing the pre-recapture JSONs as supplementary data for derivability. No rig recapture, no bench-code change, no chart-component change.
 
 ## Context
 
-The calibration ladder CC was asked to run before headline capture has been completed by the user. Four rungs were captured. All raw JSON outputs are committed at `bench/calibration-notes/rung*-{malloc,arena}.txt`.
+The 2026-06-05 recapture (same kernel, same code, clean rebuild + reboot apart from the 2026-05-21 capture) **inverts the post's same-CCX ordering**: arena and malloc swapped p50 (old: malloc/freelist 172, arena 204; new: arena 172, freelist 188, malloc 204) and the pools converged in the tail (old: freelist 312 < arena 344 at p99.9; new: both 328). The shipped narrative — "the bump-pointer that doesn't win," three mechanisms explaining arena's loss, "freelist wins at every percentile" — explains an ordering that does not reproduce. Cross-CCX likewise: arena now beats freelist at p50 (408 vs 488) and p99.9 (720 vs 784).
 
-Summary of the rung-by-rung p99.9 latencies (ns):
+Four results DO reproduce across both captures and both topologies, and the rescope is built on them:
 
-| Rung | bg-pressure-hz | bg-live-allocs | malloc p99.9 | arena p99.9 | malloc / arena |
-|------|----------------|----------------|--------------|-------------|----------------|
-| 1    | 1 M (default)  | 512            | 328          | 344         | 0.95×          |
-| 2    | 1 M            | 8192 (default) | 424          | 344         | **1.23×**      |
-| 3a   | 2 M            | 8192           | 376          | 344         | 1.09×          |
-| 3b   | 3 M            | 8192           | 376          | 328         | 1.15×          |
+1. **Malloc is the tail outlier everywhere** (worst p99/p99.9 in all four datasets).
+2. **Arena's pressure-sweep p99.9 is exactly 344 ns at all nine points in both captures** — the dead-flat claim is the post's most robust result. (New capture: freelist is now also flat at 344.)
+3. **Cross-CCX amplifies malloc's tail ~2.3–2.5× vs the pools** (2.44× old; 2.33×/2.53× new).
+4. **Malloc's pressure response is non-monotonic** (moderate pressure worse than peak) in both captures, though the new swing is much smaller (344→376→360 vs 328→424→344).
 
-Two findings drove the re-scope decision:
+The replacement content for the dead horse race is the instability finding itself: orderings within ~1–2 histogram buckets (~±15–30 ns here) did not survive a rebuild, and a single capture cannot resolve them. The old capture is committed alongside the new so the both-captures comparison is derivable.
 
-1. **The defaults are the best-separating config.** Raising `bg-pressure-hz` past 1 M *narrowed* the malloc-vs-arena gap rather than widened it. The likely mechanism: at higher churn rate, the same malloc blocks get re-touched fast enough to stay warm in cache, masking the fragmentation tail that the slower rate exposes. The original brief's "if separation is below 2×, raise pressure up to 3M/s" escalation strategy assumes a monotonic relationship that doesn't hold for this workload.
+## Pre-flight sentinel (abort on mismatch)
 
-2. **The 2× p99.9 target is unreachable on this knob.** Best observed is 1.23× at rung 2 (everything at default). Per open-item-5 of the original brief — "If at 3 M/sec the separation is still below 2× **stop and flag** — the demo's premise is in trouble and we need to re-scope before writing the post." — this is that stop.
+`05-allocators.json` (site data): `captured_at == "2026-06-05T06:07:50Z"`, `turbo:false`, `turbo_source:"cpb"`, `freq_max_available_mhz:3900`. Paced stats must read: arena p50 **172**/p99 **220**/p99.9 **328**; freelist **188/220/328**; malloc **204/312/376**. `05-allocators-cross-ccx.json`: same captured_at; malloc p99.9 **1824**, freelist **784**, arena **720**.
 
-The data is consistent with a real, defensible finding: arena p99.9 is rock-stable at 328–344 ns across all four configs (variance well within sample noise), while malloc p99.9 varies 328 → 424 depending on heap-pressure parameters, never better than arena. The direction of the original thesis holds; the magnitude is 30–50%, not 2×+.
+## Task 0 — commit the pre-recapture JSONs as supplementary data
 
-## Decisions made by Opus
+Add `site/src/data/perf/archive/05-allocators_2026-05-21.json` and `05-allocators-cross-ccx_2026-05-21.json` (the OLD files, byte-identical, renamed by capture date). The rewritten prose cites the old capture's orderings; every cited number must trace to committed data. These are not loaded by charts — archive only.
 
-Two decisions are pre-made for CC; CC executes against them rather than re-deciding.
+## Task 1 — Summary/headline (line 11)
 
-**Decision A — drop the 2× target from the demo's acceptance criteria.** The post will be written against the actual observed magnitude. "Arena allocator gives ~30% better tail under realistic background heap pressure" is the headline finding for the malloc-vs-arena comparison. The phrase "2× malloc/arena p99.9 ratio" is removed from the brief's open-item-5; the new wording is in §4 below.
+Find: `modest (1.1–1.3× p99.9) when producer and consumer share a CCX, substantial (2.4×) when they don't.`
+Replace: `modest (~1.15–1.3× p99.9) when producer and consumer share a CCX, substantial (~2.3–2.5×) when they don't.`
 
-**Decision B (light) — one workload-honesty escalation.** The original `background_pressure.h` spawns a single T_bg thread. Glibc's cross-thread-free cost manifests through arena-lock contention; a single background thread substantially undersells that contention because it competes for the arena lock only with the producer. Adding a second background-pressure thread on the same CCX more honestly represents "other subsystems sharing the heap," which is the demo's premise. CC adds support for N background threads and re-runs the calibration with `bg-threads ∈ {1, 2}` to confirm whether the wider workload also widens the malloc/arena gap. If it does, that becomes the headline config. If it doesn't, `bg-threads=1` remains the default and the freelist-vs-arena section carries proportionally more of the post.
+(Derivation: same-CCX 376/328 = 1.15 new, 392/312 = 1.26 old; cross-CCX 1824/784 = 2.33 and 1824/720 = 2.53 new, 2.44 old.)
 
-Decisions **not** in scope for CC: re-pitching the demo, changing the variants, switching allocator under test (no jemalloc), expanding to NUMA crossing, or changing the order-pipeline framing. All of those remain ruled out by the original brief.
+## Task 2 — CCDF prose (line 80)
 
-## Tasks
-
-### 1. Add `--bg-threads N` CLI flag
-
-Default value: `1` (matches current behaviour, so the existing calibration JSON remains comparable). Accept values 1–4. Values >4 are an error and the binary aborts with a diagnostic; the headline workload doesn't go that wide.
-
-`pressure_config.bg_threads` is already serialised into the per-run JSON (the calibration outputs already show `"bg_threads":1`); wire the CLI value through to that field. Reject `--bg-threads 0` — that's what `--bg-pressure-hz 0` is for.
-
-### 2. Multi-thread `T_bg` implementation
-
-In `bench/demos/05-allocators/background_pressure.h`, generalise from one loop to N. Each thread:
-
-- Has its own `std::vector<void*> live;` — **no shared state across T_bg threads.** Sharing `live` would introduce a different category of contention (a lock on the vector itself) that has nothing to do with allocator behaviour and would contaminate the measurement.
-- Uses its own `std::mt19937` seeded deterministically — `42 + thread_idx` is fine; the value isn't important, the determinism is.
-- Pacing is independent: each thread targets `bg-pressure-hz` ops/sec; aggregate background churn is `N × bg-pressure-hz`. The `bg-pressure-hz` CLI parameter retains its per-thread semantics; document this clearly in the JSON (see §3).
-- Pre-fill identical to current code (512 initial allocations from the size-class set).
-
-Pinning:
-
-- `bg-threads=1`: core 6 (unchanged from current).
-- `bg-threads=2`: cores 6 and 7. Producer 4, consumer 5, T_bg threads 6 and 7 — uses all of CCX1 and keeps the headline workload within one CCX, consistent with the rest of the post.
-- `bg-threads=3` or `bg-threads=4`: would spill across to CCX0 and change the locality story. CC supports these values for completeness (the demo's `pressure_sweep` mode or a future side experiment may use them), but **the headline must not use bg-threads > 2.** This is a hard constraint.
-
-Affinity verification at thread start is per the original brief: `sched_getcpu()` against expected core; mismatch aborts.
-
-### 3. JSON schema additions
-
-Two additive fields on the per-run object, both inside `pressure_config`:
-
-- `bg_threads` — integer, already serialised. CC's only change here is wiring it from the CLI value rather than the hardcoded `1`.
-- `bg_pressure_hz_total` — integer, equal to `bg-pressure-hz × bg-threads`. Optional but recommended; makes downstream chart axes unambiguous. If CC judges it adds avoidable schema surface, omit and document the per-thread semantics in the demo README instead.
-
-Demos 01–04 JSON unchanged. The original brief's schema acceptance criterion still holds.
-
-### 4. Calibration re-run
-
-Run the same rung structure as the user's previous ladder, but varying `bg-threads` at the rung-2 defaults (the best-separating config so far):
-
-- Rung 4a: `bg-threads=1`, `bg-pressure-hz=1M`, `bg-live-allocs=8192`. **This is identical to the user's rung 2 — use the existing JSON in `bench/calibration-notes/rung2-*.txt` rather than re-running. Pasting the file path into the calibration log is sufficient.**
-- Rung 4b: `bg-threads=2`, `bg-pressure-hz=1M`, `bg-live-allocs=8192`.
-
-Capture both variants (`cross-thread-malloc` and `arena-batch-handoff`) for the new rung. The `freelist-return-queue` variant is not required for the calibration step — its measurement story is independent of malloc/arena tail and is captured fully in the headline run later.
-
-Output: append per-rung JSON to `bench/calibration-notes/rung4{a,b}-{malloc,arena}.txt` in the same single-JSON-object-per-file format the existing files use.
-
-Decision rule for what to do with the result:
-
-- **If rung 4b's malloc/arena p99.9 ratio ≥ 1.5×**: lock `bg-threads=2` as the headline default. Update the demo README and the post's "Background heap pressure" section accordingly (note in §5 below). The headline malloc-vs-arena story now has enough magnitude to carry a non-trivial fraction of the post.
-- **If rung 4b's ratio is between 1.23× and 1.5×**: also lock `bg-threads=2` as the headline default (the wider workload is more honest regardless of the marginal gain). The post's framing balance shifts further toward the freelist-vs-arena section.
-- **If rung 4b's ratio is ≤ 1.23× (no improvement over single-thread T_bg)**: keep `bg-threads=1` as the default. The post is anchored on freelist-vs-arena. Surface the negative result in the README — the negative result is itself a finding about how glibc's per-thread arenas insulate the producer thread from background-thread contention.
-
-In all three cases, the 2× target is gone. CC does not raise pressure further; CC does not try `bg-threads=3` or `bg-threads=4` for the headline. If 4b's separation is below 1.23× and CC wants to flag that the result is surprising and worth a third rung before locking the decision, that's allowed — but only on its way to Opus, not as an autonomous escalation.
-
-### 5. Update `05-allocators-brief.md` framing language
-
-CC edits the original brief in-place. Three localised edits — the rest of the brief is unchanged.
-
-**Edit 1.** In the "Background pressure thread (T_bg)" section, where the brief currently says:
-
-> Calibration: the default background pressure for the paced headline measurement is **1,000,000 ops/sec** of mixed-size churn. Confirm during implementation that this is sustained on the reference machine (T_bg's pacing loop doesn't fall behind by more than ~5%) and that it produces a visible separation between malloc and pool variants in the headline latency distribution. If at 1M/s the separation is too small (<2× p99.9 ratio), raise to 3M/s. If T_bg can't sustain 3M/s on the reference machine, the demo is in trouble and we need to re-scope — flag immediately, don't paper over it.
+Find (verbatim, the full paragraph beginning `The CCDF reads right-to-left:` and ending `…1.26× at p99.9.`).
 
 Replace with:
 
-> Calibration: the default background pressure for the paced headline measurement is **1,000,000 ops/sec per T_bg thread** of mixed-size churn, with the number of T_bg threads selected by the calibration step (see open item 5'). Confirm during implementation that each thread sustains its target rate on the reference machine (pacing loop doesn't fall behind by more than ~5%). The malloc-vs-arena p99.9 separation is expected to be approximately 30–50% under the chosen headline config; if the captured separation differs from this band by more than 10 percentage points, surface it before writing the post.
-
-**Edit 2.** Replace open item 5 in the original brief with:
-
-> 5'. **Calibration of background pressure default.** The headline config is `bg-pressure-hz=1M`, `bg-live-allocs=8192`, `bg-threads=N` where N ∈ {1, 2} is chosen by the calibration step in `demo-05-rescope-brief.md`. The malloc-vs-arena p99.9 separation under the chosen config is the working magnitude for the post — quote whatever the data actually shows. The earlier "2× p99.9 ratio" target was retired after the pre-headline calibration ladder showed it unreachable on this workload; the post will be written against the observed effect.
-
-**Edit 3.** In the "Post structure (MDX)" section, the order of sections 7 and 8 is reversed:
-
-- Section 7 becomes the freelist-vs-arena trade-off (previously section 8).
-- Section 8 becomes the pressure sweep (previously section 7).
-
-The intent: the freelist-vs-arena finding is now the post's structural climax rather than a coda. Update the section labels (`*The freelist-vs-arena trade-off*` ahead of `*Pressure sweep*`) and any internal cross-references. The pressure-sweep section's content doesn't change — it's still the proof that arena's tail is decoupled from heap pressure while malloc's isn't — it just lands after the trade-off discussion rather than before it.
-
-All other framing language in the original brief stands. Do not edit the "What this doesn't show" list, the variant descriptions, the acceptance criteria, or the hardware-gotchas section.
-
-### 6. Commit calibration evidence
-
-The user has already moved the four existing rung outputs to `bench/calibration-notes/`. CC adds the new rung 4b output to the same directory and commits all of it with a single message referencing this brief:
-
 ```
-demo 05: rescope calibration data (drops 2× target per demo-05-rescope-brief)
+The CCDF reads right-to-left: a lower curve at any latency means fewer samples are
+that slow or slower. At the median the three variants sit within two histogram
+buckets of each other — 172, 188, and 204 ns in this capture — and that ordering
+should not be trusted: a re-capture of the same code after a clean rebuild
+reordered them (the May capture put malloc at 172 and arena at 204; this one puts
+arena at 172 and malloc at 204). Differences of one or two log-spaced buckets at
+the median are below what this harness resolves across rebuilds. The tail is where
+the signal is, and it sorts the same way in every capture: the two pool variants
+travel together (p99 = 220, p99.9 = 328 here, within one bucket of each other in
+every dataset), while malloc's tail stretches under background pressure to
+p99 = 312 and p99.9 = 376 — about 1.4× the pools at p99 and 1.15× at p99.9 in this
+capture.
 ```
 
-A short `bench/calibration-notes/README.md` summarises the table from §Context above, the decision taken in §4, and the path forward. One paragraph each is enough.
+## Task 3 — same-CCX max paragraph (line 82)
 
-## Acceptance criteria
+Find (the paragraph beginning `The numbers are modest in absolute terms` and ending `…the design-discussion framing materialises.`).
 
-- [ ] `bench_05_allocators --bg-threads N` accepts integer 1–4, defaults to 1, aborts cleanly on 0 or >4.
-- [ ] `bg_threads` field in JSON output reflects the CLI value.
-- [ ] Multi-thread T_bg: each thread has its own `live` vector and own RNG; affinity is verified at thread start.
-- [ ] `bg-threads=2` pins to cores 6 and 7; `bg-threads=1` to core 6 (unchanged).
-- [ ] Rung 4b JSON captured at `bench/calibration-notes/rung4b-{malloc,arena}.txt`.
-- [ ] Decision applied per §4 rules. `bg-threads` default in `benchmark.cpp` reflects the decision.
-- [ ] `05-allocators-brief.md` edits 1, 2, and 3 applied; the rest of that brief unchanged.
-- [ ] `bench/calibration-notes/README.md` exists with the rung table + decision summary.
-- [ ] All four existing demos' JSON unchanged.
+Replace with:
+
+```
+The numbers are modest in absolute terms because both producer and consumer share
+a CCX; the cross-CCX section near the end of the post shows what happens to
+malloc's tail when the queue traversal stops being free. One cautionary footnote
+on single-sample statistics: the May capture's headline featured a dramatic malloc
+max of 46,710 ns against the pools' 10–15 µs. In this capture all three maxes land
+between 14 and 16 µs and malloc's is unremarkable. A max is one sample out of five
+million; it carried no structural information then and carries none now.
+```
+
+## Task 4 — replace the "bump-pointer that doesn't win" section
+
+Replace the section header (line 84) and everything through line 102 (`…the freelist wins.`) — keeping the `allocate()` code block intact — with:
+
+```
+## The ordering the harness can't resolve
+
+The May capture of this benchmark put the arena last at the median, 32 ns behind
+malloc and the freelist, and this section originally explained why a
+two-instruction bump pointer was losing. The arena's steady-state `allocate()`,
+in 99.97% of calls, is:
+
+```cpp
+Order* o = &arenas_[current_].slots[orders_in_current_++];
+o->arena_idx = static_cast<uint8_t>(current_);
+return o;
+```
+
+Two instructions on the hot path; the `[[unlikely]]` rotation branch fires roughly
+every 4096 orders. The freelist's hot path is a vector pop plus an amortised
+return-queue drain. On instruction count the arena should be at least as fast — and
+in the May capture it wasn't, by a consistent 24–32 ns at every percentile.
+
+Then the recapture inverted it. Same code, same kernel, same machine state, a
+clean rebuild and a reboot apart: arena 172 ns at p50, malloc 204 — the May
+ordering exactly swapped, with the freelist's tail converging onto the arena's
+(both 328 ns at p99.9). Three mechanisms were drafted to explain the arena's
+loss; all three were plausible; none of them was the cause, because there was no
+stable effect to cause. Orderings at the ±30 ns scale on a ~200 ns pipeline are
+hostage to binary layout, page placement, and alignment luck that a rebuild
+reshuffles.
+
+That is the honest result of the pool-vs-pool comparison: **within this harness's
+resolution, the freelist and the arena are the same speed.** Any benchmark that
+hands you a winner at this scale from a single build is handing you a coin toss —
+the mechanism-shaped explanations write themselves either way, which is exactly
+why they should be distrusted without a stable effect to explain.
+
+What does separate the designs is variance, not magnitude: the arena's p99.9 is
+flat at 344 ns across the entire pressure sweep — all nine points, zero-pressure
+baseline included, in *both* captures. That reproducibility is the strongest
+result in this post. If a tail-latency SLA is written in jitter terms, the
+arena's flat line is a real, capture-stable property.
+```
+
+## Task 5 — Throughput paragraph (line 116)
+
+Find: `All three variants sustain close to 1 M/s; the freelist variant shows slightly tighter variance than malloc or arena because its amortised return-queue drain smooths over per-allocation cost spikes. Throughput differences are secondary to latency at this load level.`
+
+Replace: `All three variants sustain close to 1 M/s (1,000,241–1,000,243 ops/s in this capture). Throughput differences are secondary to latency at this load level.`
+
+(The variance claim was not derivable from the published stats; removed.)
+
+## Task 6 — pressure-sweep section (lines 132–138)
+
+Replace the four paragraphs from `**Arena is flat.**` through `…and only in a specific pressure regime.` with:
+
+```
+**Both pools are flat.** The arena lands at p99.9 = 344 ns at every sweep point,
+zero-pressure baseline included — and it did exactly that in the May capture too,
+making it the most reproducible number in this demo. The freelist sits on the same
+344 ns line at every point in this capture (in May it ranged 296–328). Whatever
+background heap churn does to the system, the pool designs don't transmit it to
+the pipeline's tail.
+
+**Malloc is the only variant that responds, and not where intuition puts it.** Its
+p99.9 rises from 344 with no background pressure to 376 across the
+100 k/s–1.4 M/s band, then settles back to 360 from 2.7 M/s up. The May capture
+showed the same shape with a larger swing (328 → 424 at 372 k/s → 344). The
+mechanism is cache locality: at high churn rates malloc's recently-freed blocks
+get re-touched fast enough to stay warm in L1/L2, while moderate rates expose the
+fragmentation tail. Two captures agree on the shape — moderate pressure is
+malloc's worst case, not peak pressure — and disagree on the amplitude, so treat
+the shape as the result and the amplitude as capture-specific.
+
+The faint horizontal reference lines show each variant's p99.9 with no background
+pressure. Both pools' references sit on their sweep lines. Only malloc's sweep
+diverges from its no-pressure reference, and only in the moderate-pressure band.
+```
+
+## Task 7 — cross-CCX section (lines 153–157)
+
+Replace the three paragraphs (`Cross-CCX configuration: …` through `…rather than a structural property of the variant.`) with:
+
+```
+Cross-CCX configuration: producer on core 4 (CCX1), consumer on core 1 (CCX0),
+T_bg on core 6 (CCX1). The p50 floor roughly doubles for all three variants — 408
+and 488 ns in this capture, one histogram bucket apart, with the same
+bucket-level reordering caveat as the same-CCX medians (the May capture put all
+three on 408). The Infinity Fabric round-trip is the new baseline.
+
+The tail is where the variants part, and it parts the same way in both captures.
+The pools top out within one bucket of each other — p99.9 = 720 and 784 ns here,
+both 720 in May — about 2.2–2.5× their same-CCX baselines. Malloc reaches
+p99 = 1184 ns and p99.9 = 1824 ns: roughly 1.7× the pools at p99 and 2.3–2.5× at
+p99.9, and a ~4.9× expansion of its own same-CCX p99.9 (376 → 1824) against the
+pools' ~2.2–2.4×. The cross-CCX environment amplifies malloc's allocator-overhead
+tail disproportionately — the lock-contention and arena-coordination paths malloc
+runs internally pay an extra Infinity-Fabric round-trip every time they cross
+between threads on different L3 domains.
+
+Single-sample max values don't track the percentile ordering and reshuffle
+between captures (this capture: malloc 8,370, arena 8,930, freelist 8,990; May:
+freelist 7,200, malloc 10,460, arena 12,200). One sample out of five million
+reflects where an interrupt landed, not a property of the variant.
+```
+
+(Derivations: 1184/688 = 1.72; 1824/784 = 2.33, 1824/720 = 2.53; 1824/376 = 4.85; 784/328 = 2.39, 720/328 = 2.20.)
+
+## Task 8 — Takeaway (lines 171–175)
+
+Replace the three takeaway paragraphs with:
+
+```
+For cross-thread Order lifetimes on this CPU, the reproducible result is not a
+pool-vs-pool winner — it's that there isn't one. Across two captures of identical
+code, the freelist and arena traded places at the median and converged at the
+tail; their differences sit below what this harness resolves across rebuilds.
+Both reliably beat `new`/`delete` where it matters: the tail under pressure, and
+everything cross-CCX.
+
+What the arena offers that nothing else here does is reproducible flatness: its
+p99.9 sat at exactly 344 ns across all nine pressure-sweep points in both
+captures, no-pressure baseline included. If the latency SLA is written in jitter
+or worst-case-under-load terms, that capture-stable flat line — not a ±30 ns
+median ordering — is the property to buy.
+
+`new`/`delete` is the only variant whose tail responds to background heap
+pressure, and the response isn't where intuition puts it: moderate pressure hurts
+malloc more than peak pressure, because at peak churn recently-freed blocks stay
+warm in cache. Both captures agree on that shape. The same-CCX gap is real but
+modest (~1.15–1.3× p99.9 across captures). Cross the CCX boundary and the gap
+opens to ~2.3–2.5× at p99.9 — roughly a 5× expansion of malloc's own same-CCX
+tail against the pools' ~2.2–2.4× — with malloc compounding the Infinity-Fabric
+round-trip with its own coordination overhead. If your producer and consumer
+don't share an L3, the case for replacing `new`/`delete` is much sharper than the
+same-CCX numbers suggest.
+```
+
+## Task 9 — section header consistency check
+
+The chart above Task 2's paragraph references markers and the section around line 96 is renamed by Task 4. CC: confirm no table-of-contents component or internal anchor links reference the old header slug `the-bump-pointer-that-doesnt-win`; if rehype-slug anchors are linked anywhere (index, other posts), report before renaming.
+
+## Task 10 — footer isolation
+
+Find: `cores 0–7 isolated (core 0 carries unavoidable kernel housekeeping; benchmarks pinned to 4–7)`
+Replace: `cores 1–7 isolated (cpu0 cannot be kernel-isolated and carries housekeeping; benchmarks pinned to 4–7)`
+
+## Task 11 — frontmatter date
+
+Update `date:` to `"2026-06-05"`.
+
+## Acceptance
+
+1. Archive files exist under `site/src/data/perf/archive/` and are byte-identical to the originals.
+2. `grep -c 'contradicts the design discussion\|freelist wins at every percentile\|32 ns slower\|46,710 ns versus\|424 at 372\|2.44× at p99.9\|4.5× as an expansion'` → 0.
+3. `grep -c 'rebuild'` → ≥3; `grep -c 'coin toss'` → 1; `grep -c '344 ns'` → ≥3.
+4. `grep -c '1824\|1,824'` → ≥1; `grep -c '1760\|1,760\|1120 ns\|1,120'` → 0.
+5. `grep -c 'cores 0–7'` → 0; `date:` reads 2026-06-05.
+6. Every number in the rewritten prose matches either the new JSONs or the committed archive JSONs (CC: spot-check the table in Task 7's derivations against the data, not against this brief).
+7. `npm run build` clean; both CCDF charts and the sweep chart render unchanged (they read the new JSONs directly; no component edits).
 
 ## Out of scope
 
-- Headline capture (`run_one.sh 05-allocators`). Happens after this brief lands and the original brief's remaining acceptance criteria still apply.
-- The cross-CCX side experiment. Original brief's hardware-gotchas section governs that, unchanged.
-- MDX writing. Happens after headline capture, against the data the capture produces.
-- The freelist variant in this brief's calibration step. The freelist's measurement story is independent; full data is captured during the headline run.
-- Any change to the variants, the SPSC queue contract, the order struct, the consumer work weight, or the chart components.
-- Re-running rungs 1, 2, 3a, 3b. The existing data stands; the brief is additive to it.
-- The "calibration_drift_pct" field surfaced in the existing JSON. Not in scope for this brief; flag separately if anomalous in the 4b run.
+- Bench-code changes, recaptures, and any repeatability study (decision B was declined; if later wanted — N rebuild+capture cycles to quantify ordering churn — it's its own spec).
+- Chart components and the `<Benchmark>` blocks — data-driven, untouched.
+- The "What this doesn't show" bullets — re-read, all still accurate, no edits.
+- Other demos, methodology page, correction note.
 
-## Open items for CC to flag
+## Open items
 
-1. **Per-thread vs aggregate pacing semantics.** This brief specifies `bg-pressure-hz` as per-thread. If CC reads the existing implementation and finds the brief's "per-thread" reading is inconsistent with what the calibration JSON actually represents (e.g., if the current single-thread implementation's `bg-pressure-hz` was already specifying aggregate), surface this before locking. The fix is documentation, not code, but it has to be right.
-
-2. **Rung 4b ratio surprises.** If 4b's malloc/arena p99.9 ratio is anywhere outside the band 0.9× to 2.0×, stop and flag before applying the §4 decision. The expected range based on rung 2 (1.23× at single-thread) extending to multi-thread is roughly 1.2×–1.6×; an extreme value either way is calibration-suspect.
-
-3. **T_bg lockstep at high churn.** With deterministic seeds offset by 1, two T_bg threads may exhibit correlated allocation patterns (similar size choices at similar times). If the measured aggregate churn rate consistently falls below `2 × bg-pressure-hz` by more than 5%, investigate whether the threads are blocking each other in glibc's arena. Don't paper over with a random-seed change; surface the observation first.
-
-4. **Core 7 isolation for `bg-threads=2`.** Verify that the bench harness's preflight check (`assert_isolated_cores`) accepts core 7 being used by T_bg. If the check is strict about which cores are "available for benchmark work," extend its definition rather than disabling the check.
-
-5. **README copy.** The user's `bench/calibration-notes/README.md` is short and factual — it is not promotional text and not a substitute for the demo's own README. If CC wants to add the same magnitude-band caveat ("expected p99.9 separation 30–50%") to the demo 05 README itself rather than only the calibration-notes README, do that and flag the duplication for Opus to deduplicate later.
-
-## Notes for CC
-
-- The original brief budgeted ~4–6 days of CC time, staged. This brief is a small mid-stream revision; budget ~half a day for tasks 1–3 (CLI + multi-thread + JSON), then a calibration re-run, then the in-place brief edits. Don't reopen the demo's architecture.
-
-- The calibration data is the evidence. If something CC sees during implementation suggests the rung-2 number is suspect (e.g., the 0.0000% calibration drift on most rungs looks artificial — should it really be exactly zero?), surface it rather than silently working around it. The four committed JSON files are the source of truth for the framing change; if they're wrong, the framing change is wrong.
-
-- The framing revision strengthens the post, it doesn't weaken it. The original 2× target was aspirational based on what was hoped a glibc tail might look like under stress; the actual finding is more nuanced and the freelist-vs-arena tradeoff carries it cleanly. The post Opus and the user are writing is a better post than the original brief's headline would have produced.
-
-- Do not start the MDX. The MDX is written after headline capture, against post-capture data, per the original brief. This brief explicitly does not authorise post writing.
+1. The instability finding generalizes: demos 01–04's re-derivations assumed orderings are stable and only magnitudes drift. Demo 05 shows bucket-scale orderings can flip on a rebuild. The hostile cross-read skill should gain a check: "is any claim an exact tie or a ≤2-bucket ordering? If so, it needs multi-capture support." Propose adding to the skill after this branch merges.
+2. Correction-note input: demo 05's divergence is rebuild/layout sensitivity — a third distinct environment-sensitivity class alongside demo 04's kernel/governor finding and the boost-verification gap. The note's framing (per demo-04 open item 3) accumulates another exhibit.
+3. Clock forensics: old capture at base clock (deltas bucket-scale, not 12%-scale) — consistent with all prior demos.
