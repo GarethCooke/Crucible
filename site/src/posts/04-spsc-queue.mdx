@@ -1,10 +1,10 @@
 ---
 title: "Same queue API. Different tail by orders of magnitude."
 date: "2026-06-05"
-summary: "End-to-end enqueue→dequeue, market-data thread to strategy thread. Lock-free SPSC vs mutex + condvar. At 1 MHz offered load, the median is already ~12× apart: lock-free ~130 ns, mutex ~1.7 µs. The tail diverges to ~20× at p99.9; past saturation, orders of magnitude and bistable."
+summary: "End-to-end enqueue→dequeue, market-data thread to strategy thread. Lock-free SPSC vs mutex + condvar. At 1 MHz offered load, the median is already ~13× apart: lock-free ~130 ns, mutex ~1.7 µs. The tail diverges to ~20× at p99.9; past saturation, orders of magnitude and bistable."
 ---
 
-A market-data thread produces 16-byte ticks; a strategy thread consumes them. End-to-end enqueue-to-dequeue across three implementations of the same queue API — a hand-rolled lock-free ring, the same ring from Boost, and a `std::queue` protected by a mutex and condvar. Same hardware, same item, same threading topology. At 1 MHz offered load, the lock-free and mutex medians are already ~12× apart — ~130 ns vs ~1.7 µs — and diverge to ~20× at p99.9. Past saturation the gap becomes orders of magnitude and bistable.
+A market-data thread produces 16-byte ticks; a strategy thread consumes them. End-to-end enqueue-to-dequeue across three implementations of the same queue API — a hand-rolled lock-free ring, the same ring from Boost, and a `std::queue` protected by a mutex and condvar. Same hardware, same item, same threading topology. At 1 MHz offered load, the lock-free and mutex medians are already ~13× apart — ~130 ns vs ~1.7 µs — and diverge to ~20× at p99.9. Past saturation the gap becomes orders of magnitude and bistable.
 
 ## Setup
 
@@ -146,18 +146,19 @@ Each line shows p50, p99, and p99.9 across twelve log-spaced offered-load points
 from 100 kHz to 50 MHz (x-axis: offered/requested load). The curve is drawn only
 through the **sub-saturation** regime, where achieved throughput tracks the offered
 rate and latency is a single well-defined function of load. Below saturation the
-story is simple and reproducible: all three stay near their per-op floors — the
-lock-free pair around 120–140 ns, the mutex around 1–1.7 µs — and the lines
-are flat. Past the saturation knee the chart stops on purpose, because past
-saturation there is no single line to draw.
+story is simple and reproducible: the lock-free pair sit near their per-op
+floor — 120–150 ns, essentially flat across the sweep — while the mutex runs
+between ~0.9 and ~3 µs, highest at the *lowest* offered loads (the wake-up
+effect discussed below). Past the saturation knee the chart stops on purpose,
+because past saturation there is no single line to draw.
 
 ### Past saturation: two equilibria, not one curve
 
 When the offered rate exceeds what a variant can drain, the queue does not settle
 into one steady state. It settles into one of two, and which one a run lands in is
 fixed when the process starts and holds for that run. Repeating each
-over-saturation point 50 times (10 processes × 5 timed runs, performance governor,
-shielded) makes the split explicit:
+over-saturation point 50 times (10 processes × 5 timed runs) makes the split
+explicit:
 
 | variant | offered | shallow p50 | deep p50 | processes deep / shallow |
 | --- | --- | --- | --- | --- |
@@ -264,8 +265,8 @@ atomics, cache-line-aware layout. Under 1 MHz paced load — the queue stays eff
 dominated by per-op cost rather than drain rate — the hand-rolled implementation
 comes in at 122 ns p50 against Boost's 140 ns, and 164 ns vs 172 ns at p99. At
 p99.9 the two are identical at 180 ns. These percentiles are quantised to the
-histogram's log-spaced buckets (~5 ns wide in this range), so the p50 and p99
-gaps are about one bucket each — a small, consistent edge to the hand-rolled
+histogram's log-spaced buckets (4–8 ns wide in this range), so the p99 gap is a
+single bucket and the p50 gap two to three — a small, consistent edge to the hand-rolled
 version, not a decisive one, and below what the load-sweep chart can resolve on a
 log axis. That's the credibility check: at this load the 50-line hand-rolled
 queue matches a battle-tested production library across the distribution, edging
@@ -290,7 +291,7 @@ table, and neither is doing anything clever in its hot path that the other misse
 ## Takeaway
 
 The lock-free SPSC ring buffer wins from the median outward. At 1 MHz offered load
-the median is already ~12× apart — lock-free ~130 ns, mutex ~1.7 µs — driven
+the median is already ~13× apart — lock-free ~130 ns, mutex ~1.7 µs — driven
 entirely by kernel-boundary cost: the mutex carries only ~1.7 items on average,
 so queue depth contributes under 2 µs. At p99.9 the gap is ~20×: 180 ns vs ~3.8 µs.
 The mutex fast path is fast — its cold path involves a syscall and a scheduler

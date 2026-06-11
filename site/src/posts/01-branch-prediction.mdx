@@ -136,8 +136,8 @@ at N = 32 M. IPC reaches **3.0** — the pipeline is full.
 in pseudo-random order (seed 42, uniform over 0–255). Zen 2's TAGE-style
 predictor _can_ in principle pick up long-history correlations even on
 superficially random data — what the measured **≈ 50% mispredict rate**
-tells us is that no such pattern exists in this shuffle, and the predictor
-converges on the 50% ceiling for a fair binary outcome. IPC drops to **0.45**
+tells us is that no such pattern is within the predictor's reach at this
+scale, and it converges on the 50% ceiling for a fair binary outcome. IPC drops to **0.45**
 as the pipeline repeatedly flushes and restarts.
 
 ## The gap across the cache hierarchy
@@ -168,7 +168,7 @@ in the lookup curves are the same story.
   prediction signal; the real per-element cost emerges from N = 10 K onward.
 - **Small N (≤ 10 K)**: 1 K elements fit in L1 (4 KiB), 10 K fits comfortably
   in L2 (40 KiB vs Zen 2's 512 KiB L2). Cache latency is minimal for both
-  variants, and at small N the predictor can memorise the sequence (see below),
+  variants, and at small N the predictor can learn the sequence (see below),
   so the gap is compressed.
 - **Cache-resident N (~1 M, L3-bound)**: sorted is fast — the pipeline is
   predictable and memory bandwidth is not yet a bottleneck. Unsorted is at
@@ -184,11 +184,15 @@ The small-N rows in the chart above conceal a finding worth pulling out. At
 N = 1024, the unsorted variant runs at **1.04× of sorted** — essentially no
 gap — with a measured mispredict rate of just **1.37%** and IPC of **1.70**.
 
-With only 1024 branches in the loop, TAGE has enough history capacity to
-effectively memorise the entire seed-42 shuffle. The same pseudo-random
+The buffer is generated once and the benchmark replays it for thousands of
+timed passes, so at N = 1024 the predictor sees the same 1024-branch sequence
+over and over — and that is enough for Zen 2's TAGE-style tables to associate
+each branch position with a distinct history context. The same pseudo-random
 sequence that produces 50% mispredicts at N ≥ 100 K is, at N = 1024, almost
-perfectly learnable. The 50% rate emerges only once N exceeds the predictor's
-effective history depth — somewhere between 10 K and 100 K on this Zen 2 part:
+perfectly learnable. The 50% rate emerges as N outgrows the predictor's
+capacity to give every position its own context — and the transition is
+gradual (30% at 10 K, not a cliff), the signature of finite predictor capacity
+saturating rather than a fixed history window being overrun:
 
 | N         | unsorted miss rate | unsorted IPC | sorted/unsorted ratio |
 | --------- | ------------------ | ------------ | --------------------- |
@@ -199,7 +203,8 @@ effective history depth — somewhere between 10 K and 100 K on this Zen 2 part:
 
 "Random" is not a property of the data alone — it is a property of the data
 _relative to the predictor's memory_. Cryptographically random data is random
-to TAGE; pseudo-random data short enough to fit in its history register is not.
+to TAGE; pseudo-random data short enough — and replayed often enough — for the
+predictor to learn is not.
 For a demo on a textbook-classic benchmark, this is the most surprising row in
 the table.
 

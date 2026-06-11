@@ -137,7 +137,7 @@ single struct layout decision.
 | Cross-CCX 8t unpadded | 3.36         | 298 M/s              | 1.0%       |
 
 The 8-thread configuration is the only one that includes cpu0, which the kernel
-refuses to isolate (it's the boot CPU and handles unmigrable housekeeping). Run-to-run
+refuses to isolate (it's the boot CPU and handles unmigratable housekeeping). Run-to-run
 variance is correspondingly higher there. The unpadded number remains robust —
 false-sharing cost dwarfs cpu0 background noise — but the padded baseline has
 IQR/median around 26% rather than the sub-1% seen everywhere else. The padded 8t median

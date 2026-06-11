@@ -200,14 +200,14 @@ The headline runs place producer and consumer on the same CCX (cores 4 and 5, sh
 />
 
 Cross-CCX configuration: producer on core 4 (CCX1), consumer on core 1 (CCX0),
-T_bg on core 6 (CCX1). The p50 floor roughly doubles for all three variants — 408
-and 488 ns in this capture, one histogram bucket apart, with the same
+T_bg on core 6 (CCX1). The p50 floor more than doubles for all three variants — 408 ns for the
+arena and 488 ns for malloc and the freelist in this capture, with the same
 bucket-level reordering caveat as the same-CCX medians (the May capture put all
 three on 408). The Infinity Fabric round-trip is the new baseline.
 
 The tail is where the variants part, and it parts the same way in both captures.
-The pools top out within one bucket of each other — p99.9 = 720 and 784 ns here,
-both 720 in May — about 2.2–2.5× their same-CCX baselines. Malloc reaches
+The pools top out within two buckets of each other — p99.9 = 720 and 784 ns here,
+both 720 in May — about 2.2–2.4× their same-CCX baselines. Malloc reaches
 p99 = 1184 ns and p99.9 = 1824 ns: roughly 1.7× the pools at p99 and 2.3–2.5× at
 p99.9, and a ~4.9× expansion of its own same-CCX p99.9 (376 → 1824) against the
 pools' ~2.2–2.4×. The cross-CCX environment amplifies malloc's allocator-overhead
