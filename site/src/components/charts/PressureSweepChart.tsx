@@ -22,6 +22,12 @@ const METRIC_LABEL: Record<PressureMetric, string> = {
   p99_9: 'p99.9',
 }
 
+// Tolerance (ns) for suppressing a no-T_bg reference line that coincides with
+// the variant's own sweep. Values are bucket-quantized (log2_subbuckets_16), so
+// a coincident reference is an exact match (diff 0) and a real divergence is
+// >= 16 ns at this magnitude — any threshold in (0, 16) is correct.
+const REFERENCE_TOL_NS = 1
+
 interface Props {
   runs: PressureSweepRun[]
   variants?: string[]
@@ -156,12 +162,24 @@ function render(
       .attr('fill', color)
   }
 
-  // Draw faint horizontal reference lines for each variant's no-T_bg baseline.
+  // Draw a faint horizontal reference line for a variant's no-T_bg baseline
+  // only when it diverges from that variant's own plotted sweep. A coincident
+  // reference (diff 0) is redundant with the solid sweep line and would render
+  // invisibly beneath it, so it is suppressed.
+  let anyReferenceDrawn = false
   for (const baseRun of baselineRuns) {
+    const v = getStatValue(baseRun, metric)
+    if (v <= 0) continue
+
+    const sweepYs = (byVariant.get(baseRun.variant) ?? [])
+      .map((r) => getStatValue(r, metric))
+      .filter((sv) => sv > 0)
+    const diverges = sweepYs.length === 0
+      || sweepYs.some((sv) => Math.abs(v - sv) > REFERENCE_TOL_NS)
+    if (!diverges) continue
+
     const varIdx = orderedVariants.indexOf(baseRun.variant)
     const color  = variantColorByIndex(varIdx)
-    const v      = getStatValue(baseRun, metric)
-    if (v <= 0) continue
 
     g.append('line')
       .attr('x1', 0)
@@ -172,6 +190,7 @@ function render(
       .attr('stroke-width', 1)
       .attr('stroke-dasharray', '4,4')
       .attr('opacity', 0.35)
+    anyReferenceDrawn = true
   }
 
   // Axes.
@@ -202,8 +221,8 @@ function render(
     { x: legendX, y: legendY, spacing: 17 },
     { textSecondary: colors.textSecondary })
 
-  // Baseline key entry (if present).
-  if (baselineRuns.length > 0) {
+  // Baseline key entry (only when a reference line is actually drawn).
+  if (anyReferenceDrawn) {
     const baseY = isNarrow
       ? legendY + variantItems.length * 17 + 8
       : legendY + variantItems.length * 17 + 6

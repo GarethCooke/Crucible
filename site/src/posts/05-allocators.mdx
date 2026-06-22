@@ -161,7 +161,7 @@ At 1 MHz paced load the throughput numbers reflect how faithfully each variant s
   yAxisLabel="p99.9 latency (ns)"
 />
 
-The sweep runs each variant across 9 background-pressure levels: a no-T_bg baseline (faint dashed horizontal reference lines) plus 8 log-spaced levels from 100 k/s to 10 M/s. Producer paced at 1 MHz throughout; 1M items per sweep point.
+The sweep runs each variant across 9 background-pressure levels: a no-T_bg baseline (the faint dashed reference line) plus 8 log-spaced levels from 100 k/s to 10 M/s. Producer paced at 1 MHz throughout; 1M items per sweep point.
 
 Three different shapes in this chart.
 
@@ -182,9 +182,10 @@ fragmentation tail. Two captures agree on the shape — moderate pressure is
 malloc's worst case, not peak pressure — and disagree on the amplitude, so treat
 the shape as the result and the amplitude as capture-specific.
 
-The faint horizontal reference lines show each variant's p99.9 with no background
-pressure. Both pools' references sit on their sweep lines. Only malloc's sweep
-diverges from its no-pressure reference, and only in the moderate-pressure band.
+The dashed line marks malloc's p99.9 with no background pressure (344 ns); the gap
+up to its solid sweep line is the moderate-pressure rise. It's the only reference
+drawn — both pools sit on 344 ns at every sweep point, baseline included, so their
+no-pressure references coincide with their sweep lines and aren't shown separately.
 
 ## Cross-CCX side note
 
