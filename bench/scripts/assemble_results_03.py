@@ -7,6 +7,9 @@ Extra fields vs v1 schema (additive — won't break demo 01 JSON reader):
   run.max_abs_error_vs_scalar_libm   from benchmark counter
   run.gflops              derived: ops_per_sec × FLOPS_PER_OPTION / 1e9
   run.instructions_per_cycle  (already ipc in v1, kept for back-compat)
+  run.instructions_per_op     retired instructions / option, from harness counter
+  run.uops_per_instruction    ex_ret_cops / instructions; null if the raw PMU
+                              event failed to open on the capture machine
 
 Usage (called by run_one.sh):
     python3 bench/scripts/assemble_results_03.py \\
@@ -73,6 +76,9 @@ def main() -> None:
         times    = [r["real_time"] for r in reps]
         ops_s    = [r.get("items_per_second", 0) for r in reps]
         ipc      = [r.get("ipc", 0) for r in reps]
+        instr_op = [r.get("instructions_per_op", 0) for r in reps]
+        uops_pi  = [r["uops_per_instruction"] for r in reps
+                    if "uops_per_instruction" in r]
         max_err  = [r.get("max_abs_error", 0) for r in reps]
 
         med_ops = sorted(ops_s)[len(ops_s) // 2]
@@ -86,6 +92,9 @@ def main() -> None:
             "ns_per_op":                    bench_stats([t / n for t in times] if n > 0 else times),
             "ops_per_sec":                  round(med_ops),
             "instructions_per_cycle":       round(sorted(ipc)[len(ipc) // 2], 3),
+            "instructions_per_op":          round(sorted(instr_op)[len(instr_op) // 2], 2),
+            "uops_per_instruction":         (round(sorted(uops_pi)[len(uops_pi) // 2], 3)
+                                             if uops_pi else None),
             "gflops":                       gflops,
             "max_abs_error_vs_scalar_libm": round(sorted(max_err)[len(max_err) // 2], 8),
             "variant_isa":                  meta["variant_isa"],
