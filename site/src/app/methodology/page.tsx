@@ -393,8 +393,7 @@ export default function MethodologyPage() {
             <code>constant_tsc</code> (the TSC ticks at a fixed rate regardless
             of frequency scaling) and <code>nonstop_tsc</code> (it keeps
             counting through idle states). Either flag missing aborts the run
-            before any benchmark executes. <code>invariant_tsc</code> is also
-            checked but is advisory — noted in the output, non-fatal.
+            before any benchmark executes.
           </p>
           <p>
             Ticks convert to nanoseconds by calibration, not by assuming a
@@ -406,13 +405,17 @@ export default function MethodologyPage() {
             that factor.
           </p>
           <p>
-            The calibration is verified after the fact: once all measurement
-            phases complete, the harness calibrates a second time and computes
-            the relative change in ns-per-cycle between the two calibrations —
-            a window that brackets all runs of the capture. Drift above 0.1%
-            warns on stderr, and the measured value is recorded in each
-            capture&rsquo;s JSON as <code>calibration_drift_pct</code>. That
-            field is the source of footer lines like demo 4&rsquo;s
+            The calibration is cross-checked rather than gated: a second{" "}
+            <code>calibrate_tsc()</code> is taken and the relative change in
+            ns-per-cycle between the two readings is committed with the results
+            as <code>calibration_drift_pct</code> — no threshold; the value
+            itself is the evidence. Where the second reading lands varies by
+            pipeline: demo 4 recalibrates after its paced runs complete and
+            after each sweep step, demo 5 at each variant&rsquo;s dispatch,
+            demo 6 back-to-back at startup. On a <code>constant_tsc</code>{" "}
+            machine this is a repeatability check of the calibration itself;
+            the committed captures show ≤0.0001% throughout, and that field is
+            the source of footer lines like demo 4&rsquo;s
             &ldquo;TSC drift ≤0.0001% across all 5 runs&rdquo;.
           </p>
         </div>

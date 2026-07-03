@@ -1,5 +1,5 @@
 #pragma once
-// Simulated risk-check work. Three small tables sized to fit comfortably in L1d.
+// Simulated risk-check work. Three small tables totalling ~34 KB (L1d plus a slice of L2).
 // Target wall-clock: 150–300 ns. Calibrate during implementation:
 //   - If too light (<100 ns), expand by adding a fourth lookup (e.g. open-orders-per-symbol).
 //   - If too heavy (>500 ns), drop the velocity check.
