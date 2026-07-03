@@ -57,7 +57,7 @@ T_p and T_c are on the same CCX, sharing an L3 — matching Demo 4's topology so
 
 ### The simulated risk check
 
-The consumer does real work: three table lookups (positions by symbol, limits by client, velocity by client), position delta arithmetic, limit checks, and a velocity-window update. All tables are sized to fit in L1d (~34 KB total). The calibrated consumer work weight is approximately 200 ns wall-clock — enough to make allocator differences visible in the latency distribution without making the consumer the dominant bottleneck.
+The consumer does real work: three table lookups (positions by symbol, limits by client, velocity by client), position delta arithmetic, limit checks, and a velocity-window update. All tables total ~34 KB — sized to sit within L1d plus a slice of L2 rather than strictly inside the 32 KB L1d. The calibrated consumer work weight is approximately 200 ns wall-clock — enough to make allocator differences visible in the latency distribution without making the consumer the dominant bottleneck.
 
 ### Background heap pressure
 
@@ -86,7 +86,8 @@ arena at 172 and malloc at 204). Differences of one or two log-spaced buckets at
 the median are below what this harness resolves across rebuilds. The tail is where
 the signal is, and it sorts the same way in every capture: the two pool variants
 travel together (p99 = 220, p99.9 = 328 here, within one bucket of each other in
-every dataset), while malloc's tail stretches under background pressure to
+every dataset; the pressure-sweep section's separately-captured baseline puts the
+same pools at 344 — one log₂-subbucket-16 bucket up, i.e. within resolution), while malloc's tail stretches under background pressure to
 p99 = 312 and p99.9 = 376 — about 1.4× the pools at p99 and 1.15× at p99.9 in this
 capture.
 
@@ -262,7 +263,7 @@ same-CCX numbers suggest.
 
 ---
 
-_Percentile values shown in charts above are computed from raw histograms in the corresponding JSON entries: log₂-subbucket-16 binning, bucket-midpoint percentile convention. See [Methodology](/methodology) for the rdtscp calibration path._
+_Percentile values shown in charts above are computed from raw histograms in the corresponding JSON entries: log₂-subbucket-16 binning, bucket-midpoint percentile convention. See [Methodology](/methodology#rdtscp-calibration) for the rdtscp calibration path._
 
 *AMD Ryzen 7 3800X, Zen 2 (SMT off), 3.9 GHz base, governor = performance, turbo disabled (BIOS Core Performance Boost off), cores 1–7 isolated (cpu0 cannot be kernel-isolated and carries housekeeping; benchmarks pinned to 4–7). Producer on core 4, consumer on core 5, T_bg on core 6 (all CCX1). Headless Ubuntu 24.04. GCC 13.3, -O3 -march=native -std=c++20. 5 outer runs × 1M timed samples per run, percentiles from merged histograms (tail-latency-distribution convention).*
 

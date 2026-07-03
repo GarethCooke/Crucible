@@ -127,7 +127,7 @@ export default async function HomePage() {
                 <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                   Take a problem with a famous theoretical quantum speedup, run it both ways, and measure
                   the gap between the promise and the silicon. Grover's algorithm on IBM quantum hardware
-                  vs classical linear search. Classical wins decisively; this post shows precisely why.
+                  vs classical linear search. Classical wins decisively; this post shows exactly why.
                 </p>
               </div>
               <div className="flex items-center gap-2 shrink-0">

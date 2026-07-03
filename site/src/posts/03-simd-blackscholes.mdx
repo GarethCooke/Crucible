@@ -164,7 +164,9 @@ instruction issues as a single µop — unlike Zen and Zen+, which cracked each
 256-bit op into two 128-bit µops. This is measurable on the reference machine
 with the retired-µop counter (`ex_ret_cops`): the AVX2 kernel retires **0.99 µops
 per instruction**, indistinguishable from SSE's **1.00**, not the ~2× a 128-bit
-split would force. So the honest expectation is plain width scaling — 8 lanes over
+split would force. (These instruction and µop figures are measured with `perf`
+over the same pinned binaries but are not fields in the committed JSON capture;
+per-variant counter fields are planned for the next recapture.) So the honest expectation is plain width scaling — 8 lanes over
 4 is **2×** — with FMA folding each multiply-add into a single instruction on top.
 
 *What actually landed:* at N=16,384 — the cleanest comparison, with the working

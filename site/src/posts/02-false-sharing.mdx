@@ -100,7 +100,7 @@ per-thread latency. For padded this falls roughly linearly with thread count
 because the work parallelises cleanly; for unpadded it stays approximately
 constant (or worsens) because the threads cancel each other out via cacheline
 ping-pong. Per-thread latency for padded sits near 2.85 ns/op across all
-thread counts (the inner loop's architectural floor); the system-level number
+intra-CCX thread counts (the inner loop's architectural floor); the system-level number
 falls because more threads share the wall-clock budget.
 
 <Benchmark slug="02-false-sharing-pnl" chart="throughput-bars" placement="intra-ccx" />
