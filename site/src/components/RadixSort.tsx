@@ -228,7 +228,7 @@ const BKT_X0 = 8
 const Y_BKT = 88
 
 const STAGE_W = 512
-const STAGE_H = 222
+const STAGE_H = 236 // includes the scratch label that sits below the bottom row
 
 const cellX = (slot: number) => ARR_X0 + slot * CELL_PITCH
 const bktX = (b: number) => BKT_X0 + b * BKT_PITCH
@@ -602,7 +602,10 @@ const STYLES = `
 
 /* Narration + code */
 .rx-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 16px; }
-.rx-card { border: 1px solid var(--border-color); border-radius: 10px; background: var(--bg-card); padding: 13px 15px; }
+/* min-width:0 lets a grid item shrink below its content's min-content width, so the
+   white-space:pre code panel scrolls inside its own overflow-x:auto box instead of
+   blowing the grid (and the whole page) wider than the viewport on narrow screens. */
+.rx-card { border: 1px solid var(--border-color); border-radius: 10px; background: var(--bg-card); padding: 13px 15px; min-width: 0; }
 /* .rx-root-prefixed so these reliably beat .prose p / .prose h3 element+class rules. */
 .rx-root .rx-card h3 {
   margin: 0 0 8px; font-family: var(--font-mono, ui-monospace, monospace);
