@@ -603,15 +603,16 @@ const STYLES = `
 /* Narration + code */
 .rx-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 16px; }
 .rx-card { border: 1px solid var(--border-color); border-radius: 10px; background: var(--bg-card); padding: 13px 15px; }
-.rx-card h3 {
+/* .rx-root-prefixed so these reliably beat .prose p / .prose h3 element+class rules. */
+.rx-root .rx-card h3 {
   margin: 0 0 8px; font-family: var(--font-mono, ui-monospace, monospace);
   font-size: 11px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-muted); font-weight: 600;
 }
-.rx-narration { margin: 0; font-size: 14.5px; line-height: 1.55; min-height: 66px; color: var(--text-secondary); }
-.rx-code { margin: 0; font-family: var(--font-mono, ui-monospace, monospace); font-size: 12.5px; line-height: 1.7; white-space: pre; overflow-x: auto; color: var(--text-secondary); }
-.rx-ln { display: block; padding: 0 8px; border-radius: 5px; border-left: 2px solid transparent; }
-.rx-ln.on { background: color-mix(in srgb, var(--rx-line) 12%, transparent); border-left-color: var(--rx-line); color: var(--text-primary); }
-.rx-code .cmt { color: var(--text-muted); }
+.rx-root .rx-narration { margin: 0; font-size: 14.5px; line-height: 1.55; min-height: 66px; color: var(--text-secondary); }
+.rx-root .rx-code { margin: 0; font-family: var(--font-mono, ui-monospace, monospace); font-size: 12.5px; line-height: 1.7; white-space: pre; overflow-x: auto; color: var(--text-secondary); }
+.rx-root .rx-ln { display: block; padding: 0 8px; border-radius: 5px; border-left: 2px solid transparent; }
+.rx-root .rx-ln.on { background: color-mix(in srgb, var(--rx-line) 12%, transparent); border-left-color: var(--rx-line); color: var(--text-primary); }
+.rx-root .rx-code .cmt { color: var(--text-muted); }
 
 @media (max-width: 640px) {
   .rx-grid { grid-template-columns: 1fr; }
