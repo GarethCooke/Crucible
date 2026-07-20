@@ -5,7 +5,7 @@ import { axisBottom, axisLeft } from 'd3-axis'
 import { line } from 'd3-shape'
 import { typography, variantColorByIndex } from './theme'
 import {
-  appendGrid, appendLegendLines,
+  appendGrid, appendLegendLines, pickLogTickValues,
   setupSVG, appendXAxis, appendYAxis, appendXLabel, appendYLabel, legendPosition,
 } from './d3helpers'
 import { tokens } from '@/lib/design-tokens'
@@ -36,6 +36,18 @@ const STAT_LABEL: Record<string, string> = {
 }
 
 const STATS_SHOWN = ['p50', 'p99', 'p99_9'] as const
+
+// Narrow-layout bottom region (px). Tick labels, the x-axis title, and the
+// legend stack in three separate bands with gaps so none of them overlap;
+// the bottom margin and SVG height derive from the legend rows actually drawn.
+const TICK_LABEL_BAND  = 18
+const AXIS_TITLE_GAP   = 12
+const AXIS_TITLE_BAND  = 14
+const LEGEND_GAP       = 14
+const LEGEND_ROW_H     = 17  // variant swatch rows
+const STAT_ROW_H       = 16  // p50/p99/p99.9 dash-key rows
+const LEGEND_GROUP_GAP = 8   // between the variant block and the dash key
+const NARROW_PLOT_H    = 218 // inner plot height on narrow screens (as before)
 
 const DEFAULT_TITLE = 'Latency vs offered load chart'
 
@@ -70,12 +82,21 @@ export function LatencyVsLoadChart({ runs, variants, title, decoupleThreshold = 
 }
 
 function render(el: SVGSVGElement, runs: SweepRun[], orderedVariants: string[], title?: string, decoupleThreshold = 0.9, showDecoupledTail = false) {
-  const H = 380
   const W = el.clientWidth || 680
   const isNarrow = W < tokens.chart.mobileBreakpoint
+
+  const variantItems = orderedVariants
+    .filter((v) => runs.some((r) => r.variant === v))
+    .map((v, i) => ({ label: v, color: variantColorByIndex(i) }))
+
+  const legendBlockH =
+    variantItems.length * LEGEND_ROW_H + LEGEND_GROUP_GAP + STATS_SHOWN.length * STAT_ROW_H
+  const narrowBottom =
+    TICK_LABEL_BAND + AXIS_TITLE_GAP + AXIS_TITLE_BAND + LEGEND_GAP + legendBlockH
   const margin = isNarrow
-    ? { top: 32, right: 16, bottom: 130, left: 80 }
+    ? { top: 32, right: 16, bottom: narrowBottom, left: 80 }
     : { top: 32, right: 150, bottom: 60, left: 80 }
+  const H = isNarrow ? margin.top + NARROW_PLOT_H + margin.bottom : 380
   const { svg, g, inner, colors } = setupSVG(el, W, H, margin, title ?? DEFAULT_TITLE)
 
   const byVariant = new Map<string, SweepRun[]>()
@@ -218,18 +239,28 @@ function render(el: SVGSVGElement, runs: SweepRun[], orderedVariants: string[], 
     }
   }
 
+  // Decade candidates spanning the (niced) x-domain, thinned to the labels
+  // that fit the inner width. Curves and points still cover every rate.
+  const [x0, x1] = x.domain()
+  const decadeTicks: number[] = []
+  for (let p = Math.ceil(Math.log10(x0) - 1e-9); Math.pow(10, p) <= x1 * (1 + 1e-9); p++) {
+    decadeTicks.push(Math.pow(10, p))
+  }
+
   const xAxis = isNarrow
-    ? axisBottom(x).tickValues([1e4, 1e5, 1e6, 1e8]).tickFormat((d) => {
+    ? axisBottom(x).tickValues(pickLogTickValues(inner.w, decadeTicks, 30)).tickFormat((d) => {
         const n = +d
-        if (n >= 1e8) return '100M'
-        if (n >= 1e6) return '1M'
-        if (n >= 1e5) return '100k'
-        return '10k'
+        if (n >= 1e6) return `${n / 1e6}M`
+        if (n >= 1e3) return `${n / 1e3}k`
+        return `${n}`
       }).tickSize(0)
     : axisBottom(x).ticks(6, '~s').tickSize(0)
 
   appendXAxis(g, inner, colors, xAxis)
-  appendXLabel(svg, 'offered load (items/sec, log scale)', margin.left + inner.w / 2, H - 18, colors)
+  const xTitleY = isNarrow
+    ? margin.top + inner.h + TICK_LABEL_BAND + AXIS_TITLE_GAP
+    : H - 18
+  appendXLabel(svg, 'offered load (items/sec, log scale)', margin.left + inner.w / 2, xTitleY, colors)
   if (!isNarrow) {
     svg.append('text')
       .attr('x', margin.left + inner.w / 2)
@@ -244,23 +275,21 @@ function render(el: SVGSVGElement, runs: SweepRun[], orderedVariants: string[], 
   appendYAxis(g, colors, axisLeft(y).ticks(6, '~g'))
   appendYLabel(svg, 'latency (ns, log scale)', -(margin.top + inner.h / 2), 16, colors)
 
-  // Legend — variant colour swatches then stat dash key
-  const { x: legendX, y: legendBaseY } = legendPosition(isNarrow, margin, inner, 10)
-
-  const variantItems = orderedVariants
-    .filter((v) => byVariant.has(v))
-    .map((v, i) => ({ label: v, color: variantColorByIndex(i) }))
+  // Legend — variant colour swatches then stat dash key. On narrow screens the
+  // whole block sits in its own band below the x-axis title (issue D3).
+  const { x: legendX } = legendPosition(isNarrow, margin, inner, 10)
+  const legendBaseY = isNarrow ? xTitleY + AXIS_TITLE_BAND + LEGEND_GAP : margin.top
 
   appendLegendLines(svg, variantItems,
-    { x: legendX, y: legendBaseY, spacing: 17 },
+    { x: legendX, y: legendBaseY, spacing: LEGEND_ROW_H },
     { textSecondary: colors.textSecondary })
 
   const statKeyY = isNarrow
-    ? legendBaseY + variantItems.length * 17 + 8
-    : margin.top + variantItems.length * 17 + 6
+    ? legendBaseY + variantItems.length * LEGEND_ROW_H + LEGEND_GROUP_GAP
+    : margin.top + variantItems.length * LEGEND_ROW_H + 6
   appendLegendLines(svg, STATS_SHOWN.map((stat) => ({
     label: STAT_LABEL[stat],
     color: colors.textMuted,
     dash:  STAT_DASH[stat],
-  })), { x: legendX, y: statKeyY, spacing: 16 }, { textSecondary: colors.textMuted })
+  })), { x: legendX, y: statKeyY, spacing: STAT_ROW_H }, { textSecondary: colors.textMuted })
 }
