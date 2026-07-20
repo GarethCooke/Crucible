@@ -35,6 +35,8 @@ for (unsigned shift = 0; shift < 32; shift += 8) {
 }`}
 />
 
+Three phases per pass — count, position, scatter — and a stability property that's the reason least-significant-digit-first works at all. For a step-by-step walkthrough of the mechanism: [How LSD radix sort actually works →](/posts/08-sorting-shootout/radix-explained)
+
 ## The race across N
 
 Here is the per-element cost of all three sorts on random 32-bit keys, from a thousand elements to 67 million.
