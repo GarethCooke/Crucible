@@ -207,7 +207,7 @@ function renderKGrouped(
 
   const variants = Array.from(new Set(data.map((r) => r.variant)))
   const vals = data.map((d) => d.ns_per_op[stat] ?? d.ns_per_op.median)
-  const { H, margin, svg, g, inner, colors, x0, x1, y } = setupGroupChart(
+  const { H, margin, svg, g, inner, colors, x0, x1, y, isNarrow, legendPos } = setupGroupChart(
     el, kValues.map((k) => `K=${k}`), variants, max(vals)!, title ?? DEFAULT_TITLE_K,
   )
 
@@ -221,13 +221,13 @@ function renderKGrouped(
     })
   })
 
-  appendXAxis(g, inner, colors, axisBottom(x0).tickSize(0), true)
+  appendXAxis(g, inner, colors, axisBottom(x0).tickSize(0), true, isNarrow)
   appendXLabel(svg, `K value  ·  ${stat} ns/element  ·  N = ${n.toLocaleString()}`, margin.left + inner.w / 2, H - 8, colors)
   appendYAxis(g, colors, axisLeft(y).ticks(5).tickFormat((v) => `${v} ns`))
   appendLegendRects(svg, variants.map((v) => ({
     label: capitalize(v),
     color: variantColor(v),
-  })), { x: margin.left + inner.w + 8, y: margin.top }, { textSecondary: colors.textSecondary })
+  })), legendPos, { textSecondary: colors.textSecondary })
 }
 
 // ─── Distribution-grouped renderer (demo 8: bars grouped by input distribution) ─
@@ -256,7 +256,7 @@ function renderDistGrouped(
   const distItems = DISTS.filter((d) => data.some((r) => r.distribution === d.key))
   const variants  = Array.from(new Set(data.map((r) => r.variant)))
   const vals      = data.map((d) => d.ns_per_op[stat] ?? d.ns_per_op.median)
-  const { H, margin, svg, g, inner, colors, x0, x1, y } = setupGroupChart(
+  const { H, margin, svg, g, inner, colors, x0, x1, y, isNarrow, legendPos } = setupGroupChart(
     el,
     distItems.map((d) => d.label),
     variants,
@@ -276,13 +276,13 @@ function renderDistGrouped(
     })
   })
 
-  appendXAxis(g, inner, colors, axisBottom(x0).tickSize(0), true)
+  appendXAxis(g, inner, colors, axisBottom(x0).tickSize(0), true, isNarrow)
   appendXLabel(svg, `distribution  ·  ${stat} ns/elem  ·  N = ${n.toLocaleString()}`, margin.left + inner.w / 2, H - 8, colors)
   appendYAxis(g, colors, axisLeft(y).ticks(5).tickFormat((v) => `${v} ns`))
   appendLegendRects(svg, variants.map((v) => ({
     label: variantLabels?.[v] ?? capitalize(v),
     color: variantColor(v),
-  })), { x: margin.left + inner.w + 8, y: margin.top }, { textSecondary: colors.textSecondary })
+  })), legendPos, { textSecondary: colors.textSecondary })
 }
 
 // ─── Grouped renderer (false sharing) ────────────────────────────────────────
@@ -296,7 +296,7 @@ function renderGrouped(
   const threadCounts = Array.from(new Set(runs.map((r) => r.threads))).sort((a, b) => a - b)
   const variants = ['unpadded', 'padded']
   const vals = runs.map((d) => d.ns_per_op[stat] ?? d.ns_per_op.median)
-  const { H, margin, svg, g, inner, colors, x0, x1, y } = setupGroupChart(
+  const { H, margin, svg, g, inner, colors, x0, x1, y, isNarrow, legendPos } = setupGroupChart(
     el, threadCounts.map((t) => `${t}t`), variants, max(vals)!, title ?? DEFAULT_TITLE_GROUPED,
   )
 
@@ -311,13 +311,13 @@ function renderGrouped(
     })
   })
 
-  appendXAxis(g, inner, colors, axisBottom(x0).tickSize(0), true)
+  appendXAxis(g, inner, colors, axisBottom(x0).tickSize(0), true, isNarrow)
   appendXLabel(svg, `threads  ·  ${stat} ns/op`, margin.left + inner.w / 2, H - 8, colors)
   appendYAxis(g, colors, axisLeft(y).ticks(5).tickFormat((v) => `${v} ns`))
   appendLegendRects(svg, [
     { label: 'Unpadded', color: variantColor('unpadded') },
     { label: 'Padded',   color: variantColor('padded') },
-  ], { x: margin.left + inner.w + 8, y: margin.top }, { textSecondary: colors.textSecondary })
+  ], legendPos, { textSecondary: colors.textSecondary })
 }
 
 // ─── Shared helpers ───────────────────────────────────────────────────────────
@@ -332,9 +332,13 @@ function setupGroupChart(
   maxVal: number,
   title: string,
 ) {
-  const H = 280
   const W = el.clientWidth || 600
-  const margin = { top: 32, right: 96, bottom: 64, left: 72 }
+  const isNarrow = W < tokens.chart.mobileBreakpoint
+  const H = isNarrow ? 300 : 280
+  const legendRows = variants.length
+  const margin = isNarrow
+    ? { top: 20 + legendRows * 18, right: 16, bottom: 68, left: 52 }
+    : { top: 32, right: 96, bottom: 64, left: 72 }
   const { svg, g, inner, colors } = setupSVG(el, W, H, margin, title)
 
   const x0 = scaleBand()
@@ -352,7 +356,11 @@ function setupGroupChart(
 
   appendGrid(g, y, inner, { gridline: colors.border })
 
-  return { H, margin, svg, g, inner, colors, x0, x1, y }
+  const legendPos = isNarrow
+    ? { x: margin.left, y: 16 }
+    : { x: margin.left + inner.w + 8, y: margin.top }
+
+  return { H, margin, svg, g, inner, colors, x0, x1, y, isNarrow, legendPos }
 }
 
 // Renders a single bar rect + value label, with an optional secondary annotation above.
