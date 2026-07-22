@@ -178,17 +178,25 @@ export function appendXAxis(
   colors: Colors,
   axis: AxisFn,
   useSecondary = false,
+  isNarrow = false,
 ): void {
   g.append('g')
     .attr('transform', `translate(0,${inner.h})`)
     .call(axis)
     .call((s) => s.select('.domain').attr('stroke', colors.border))
-    .call((s) =>
-      s.selectAll('text')
-        .attr('font-size', typography.axisSize)
+    .call((s) => {
+      const labels = s.selectAll('text')
+        .attr('font-size', isNarrow ? typography.captionSize : typography.axisSize)
         .attr('fill', useSecondary ? colors.textSecondary : colors.textMuted)
-        .attr('dy', '1.4em'),
-    )
+      if (isNarrow) {
+        labels
+          .style('text-anchor', 'end')
+          .attr('transform', 'rotate(-30) translate(-6, 0)')
+          .attr('dy', '0.3em')
+      } else {
+        labels.attr('dy', '1.4em')
+      }
+    })
 }
 
 export function appendYAxis(
