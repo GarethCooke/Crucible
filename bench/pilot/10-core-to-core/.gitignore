@@ -1,0 +1,5 @@
+# Throwaway pilot: the user regenerates real gate logs headless on Machine 1.
+# Off-rig sanity output and build artifacts are never committed.
+build/
+pilot_logs/*
+!pilot_logs/.gitkeep
