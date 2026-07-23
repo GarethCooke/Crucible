@@ -65,6 +65,7 @@ if [[ "${SKIP_ENV_CHECKS}" == "1" ]]; then
 else
     assert_smt_off
     assert_isolated_cores
+    assert_headless
     set_governor_performance
 fi
 

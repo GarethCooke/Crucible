@@ -30,6 +30,19 @@ assert_isolated_cores() {
     fi
 }
 
+# Aborts if a graphical session is active. Demos 1-9 were captured under
+# multi-user.target; a GUI-up capture is not comparable to them. The gate is
+# strictly stronger than the old runlevel-`3` boot argument it replaces: it
+# also catches booting headless and then switching to the desktop mid-session.
+assert_headless() {
+    if systemctl is-active --quiet graphical.target; then
+        echo "ERROR: graphical.target is active — captures must run headless." >&2
+        echo "  Use: ./bench/scripts/headless-capture.sh <capture command>" >&2
+        echo "  Or:  sudo systemctl isolate multi-user.target" >&2
+        exit 1
+    fi
+}
+
 set_governor_performance() {
     echo "==> Setting CPU governor to performance..."
     for c in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do

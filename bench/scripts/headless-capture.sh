@@ -25,8 +25,9 @@ if [[ "${1:-}" == "--inner" ]]; then
     WORKDIR="${CRUCIBLE_WORKDIR:?}"
     START="${CRUCIBLE_START:?}"
 
-    # Restore the desktop no matter how this exits.
+    # Restore the desktop no matter how this exits, including on a signal.
     trap 'systemctl isolate graphical.target' EXIT
+    trap 'exit 143' TERM INT
 
     rc=0
     {
@@ -36,11 +37,24 @@ if [[ "${1:-}" == "--inner" ]]; then
         systemctl isolate multi-user.target
         sleep 10   # let the session tear down and the machine settle
 
+        # The desktop stack -- power-profiles-daemon especially -- drives
+        # scaling_governor. Force it HERE, after the isolate, so capture-time
+        # state is what's guaranteed rather than whatever was true at launch.
+        echo "--- quiescing services + forcing performance governor ---"
+        systemctl stop power-profiles-daemon.service 2>/dev/null || true
+        systemctl stop unattended-upgrades.service   2>/dev/null || true
+        for g in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
+            echo performance >"$g" 2>/dev/null || true
+        done
+        bad="$(grep -Lx performance /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor || true)"
+        [[ -z "$bad" ]] || { echo "ERROR: governor not 'performance' on: $bad" >&2; exit 1; }
+
         echo "--- machine state at capture time ---"
         echo "isolated:   $(cat /sys/devices/system/cpu/isolated)"
         echo "nohz_full:  $(cat /sys/devices/system/cpu/nohz_full)"
         echo "smt/active: $(cat /sys/devices/system/cpu/smt/active 2>/dev/null || echo n/a)"
         echo "boost:      $(cat /sys/devices/system/cpu/cpufreq/boost 2>/dev/null || echo n/a)"
+        echo "governor:   $(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null || echo n/a)  (all 8 verified above)"
         echo "graphical:  $(systemctl is-active graphical.target)"
         echo "-------------------------------------"
 
@@ -106,6 +120,7 @@ sudo systemd-run \
     --collect \
     --service-type=oneshot \
     --property=TimeoutStartSec=infinity \
+    --property=IgnoreOnIsolate=yes \
     --setenv=CRUCIBLE_LOG="$LOG" \
     --setenv=CRUCIBLE_OWNER="$RUN_USER" \
     --setenv=CRUCIBLE_WORKDIR="$REPO_ROOT" \
