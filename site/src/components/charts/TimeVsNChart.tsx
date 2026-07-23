@@ -5,7 +5,7 @@ import { axisBottom, axisLeft } from 'd3-axis'
 import { max } from 'd3-array'
 import { typography, variantColor } from './theme'
 import {
-  appendGrid, appendLegendLines, appendLineSeries,
+  appendGrid, appendLegendLines, appendLineSeries, pickLogTickValues,
   setupSVG, appendXAxis, appendYAxis, appendXLabel, appendYLabel,
 } from './d3helpers'
 import { capitalize, uniqueSortedNs } from '@/lib/format'
@@ -43,6 +43,12 @@ interface Props {
   /** Use log scale on the Y axis (needed for modify_pct charts with wide dynamic range). */
   yAxisLog?: boolean
 }
+
+// Compact binary abbreviation for sweep N labels (sweep values are exact
+// multiples of 2^10/2^20, so K/M divide cleanly).
+const formatN = (n: number): string =>
+  n >= 1 << 20 ? `${n >> 20}M` : n >= 1 << 10 ? `${n >> 10}K` : `${n}`
+// 1024→"1K", 16384→"16K", 262144→"256K", 4194304→"4M", 67108864→"64M"
 
 // Dash patterns keyed by K value. K=1 is solid.
 const K_DASH: Record<number, string> = {
@@ -203,14 +209,9 @@ function renderNAxis(
   }
 
   const xAxisFn = axisBottom(x)
-    .tickValues(ns)
+    .tickValues(pickLogTickValues(inner.w, ns, 28))
     .tickSize(0)
-    .tickFormat((v) => {
-      const n = +v
-      if (n >= 1e6) return `${n / 1e6}M`
-      if (n >= 1e3) return `${n / 1e3}K`
-      return `${n}`
-    })
+    .tickFormat((v) => formatN(+v))
 
   appendXAxis(g, inner, colors, xAxisFn, true)
   appendXLabel(svg, 'N (elements)  ·  log scale', margin.left + inner.w / 2, H - 8, colors)

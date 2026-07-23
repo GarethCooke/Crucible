@@ -8,7 +8,7 @@ Same pricing model. Same input chain. Same machine. Four implementations — and
 spread from slowest to fastest is around 10×. The interesting part: most of the gap
 is SIMD, but you can't get there from libm. `std::erfc` doesn't vectorise. Swapping
 it for a polynomial approximation buys a modest 11% on its own — and is the gate
-that makes the SIMD wins reachable at all.
+that makes the SIMD wins reachable.
 
 ## The workload
 
@@ -25,7 +25,7 @@ $$
 Input: 1,048,576 option structs — arrays of `S`, `K`, `T`, `r`, `σ` (all `float`,
 aligned to 32 bytes). Output: array of call prices `C`.
 
-The audience knows Black-Scholes. The parameters cover a realistic options chain:
+The parameters cover a realistic options chain:
 S, K ∈ \[50, 150], T ∈ \[0.05, 2.0], r ∈ \[0, 0.08], σ ∈ \[0.1, 0.6]. Fixed
 seed `0xCAFEBABE` for reproducibility.
 
@@ -164,7 +164,9 @@ instruction issues as a single µop — unlike Zen and Zen+, which cracked each
 256-bit op into two 128-bit µops. This is measurable on the reference machine
 with the retired-µop counter (`ex_ret_cops`): the AVX2 kernel retires **0.99 µops
 per instruction**, indistinguishable from SSE's **1.00**, not the ~2× a 128-bit
-split would force. So the honest expectation is plain width scaling — 8 lanes over
+split would force. (These instruction and µop figures are measured with `perf`
+over the same pinned binaries but are not fields in the committed JSON capture;
+per-variant counter fields are planned for the next recapture.) So the honest expectation is plain width scaling — 8 lanes over
 4 is **2×** — with FMA folding each multiply-add into a single instruction on top.
 
 *What actually landed:* at N=16,384 — the cleanest comparison, with the working

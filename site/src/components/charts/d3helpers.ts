@@ -50,6 +50,41 @@ export function appendGrid<E extends Element>(
   }
 }
 
+// ─── Log-axis tick thinning ───────────────────────────────────────────────────
+
+/**
+ * Choose which log-axis tick candidates to LABEL so they don't collide at the
+ * given inner pixel width. Always keeps the first and last candidate. Callers
+ * still draw points/gridlines/markers at every value; this only thins labels.
+ *
+ * Candidates need not be evenly log-spaced (e.g. a sweep whose final step is a
+ * fraction of a decade), so selection works on each candidate's approximate
+ * pixel position — log-interpolated across [first, last] — rather than on a
+ * fixed index stride: a middle candidate is kept only when it clears the
+ * previous kept label AND the always-kept last label by minLabelPx.
+ */
+export function pickLogTickValues(
+  innerWidthPx: number,
+  candidates: number[],
+  minLabelPx = 30,
+): number[] {
+  if (candidates.length <= 2) return candidates
+  const first = candidates[0]
+  const last = candidates[candidates.length - 1]
+  const span = Math.log(last) - Math.log(first)
+  if (span <= 0) return [first, last]
+  const px = (v: number) => ((Math.log(v) - Math.log(first)) / span) * innerWidthPx
+  const picked: number[] = [first]
+  for (let i = 1; i < candidates.length - 1; i++) {
+    const p = px(candidates[i])
+    if (p - px(picked[picked.length - 1]) >= minLabelPx && px(last) - p >= minLabelPx) {
+      picked.push(candidates[i])
+    }
+  }
+  picked.push(last)
+  return picked
+}
+
 // ─── Legend helpers ────────────────────────────────────────────────────────────
 
 function appendLegendText<E extends Element>(
@@ -143,17 +178,25 @@ export function appendXAxis(
   colors: Colors,
   axis: AxisFn,
   useSecondary = false,
+  isNarrow = false,
 ): void {
   g.append('g')
     .attr('transform', `translate(0,${inner.h})`)
     .call(axis)
     .call((s) => s.select('.domain').attr('stroke', colors.border))
-    .call((s) =>
-      s.selectAll('text')
-        .attr('font-size', typography.axisSize)
+    .call((s) => {
+      const labels = s.selectAll('text')
+        .attr('font-size', isNarrow ? typography.captionSize : typography.axisSize)
         .attr('fill', useSecondary ? colors.textSecondary : colors.textMuted)
-        .attr('dy', '1.4em'),
-    )
+      if (isNarrow) {
+        labels
+          .style('text-anchor', 'end')
+          .attr('transform', 'rotate(-30) translate(-6, 0)')
+          .attr('dy', '0.3em')
+      } else {
+        labels.attr('dy', '1.4em')
+      }
+    })
 }
 
 export function appendYAxis(

@@ -31,6 +31,7 @@ export interface QuantumCircuitDepthPoint {
   N: number
   depth: number
   two_qubit_gates: number
+  two_qubit_gates_decomposed?: number
   optimal_iters?: number
 }
 
@@ -69,6 +70,12 @@ export interface QuantumMeasuringTheGap {
   circuit_depth: {
     grover: QuantumCircuitDepthPoint[]
     bv: QuantumCircuitDepthPoint[]
+    decomposition?: {
+      basis: string[]
+      optimization_level: number
+      seed_transpiler: number
+      qiskit_version: string
+    }
   }
   raw_archive_paths: string[]
 }

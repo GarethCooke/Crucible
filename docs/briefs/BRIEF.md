@@ -113,6 +113,10 @@ References to credit on the methodology page:
 - Agner Fog — optimisation manuals at agner.org
 - Brendan Gregg — systems performance writing at brendangregg.com
 
+## Post conventions
+
+Every post footer carries the machine-spec line and states its rep-count convention. "Reproducing this" sections appear only where a post has reproduction subtleties beyond the methodology page (currently demos 08 and 09); their absence elsewhere is deliberate.
+
 ## Data schema
 
 Every benchmark emits a JSON file at `site/src/data/perf/<slug>.json` matching this contract. **This is the boundary between C++ and the site — settle it before writing chart components.**

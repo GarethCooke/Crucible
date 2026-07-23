@@ -212,7 +212,7 @@ This is the section worth taking seriously. The post's claims are bounded.
 For a trading-shop pipeline scanning a chain of quotes or orders:
 
 1. **AoS is fine when your hot pass touches most of the fields per element.** By K = 8 on a 128 B struct, layout is invisible.
-2. **SoA matters when your hot pass touches one or two fields and the working set is large enough to push AoS past L3.** "Large enough" on this machine is somewhere between 128 KB and 16 MB of struct memory. Below 128 KB even AoS at K=1 fits in L1 and the layout question evaporates.
+2. **SoA matters when your hot pass touches one or two fields and the working set is large enough to push AoS past L3.** "Large enough" on this machine is ~16 MB of struct memory — L3 capacity: the measured cliff sits between 8 MB (still on the L3 plateau) and 32 MB (fully DRAM-bound). Below the cliff the layout gap is the cache-resident ~1.5–2×, not the 7×.
 3. **The cache hierarchy on Zen 2 is binary in practice, not a staircase.** L1, L2, and L3 plateaus aren't distinguishable in scan timing for this workload; what matters is L3 capacity. Plan for "fits in L3" or "doesn't."
 4. **SIMD is a compute optimisation, not a memory one.** If your hot loop is bandwidth-bound, vectorising won't save you. Find the bandwidth-bound boundary first; vectorise on the right side of it.
 

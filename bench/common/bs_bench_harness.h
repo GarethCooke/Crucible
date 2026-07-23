@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <iostream>
+#include <optional>
 
 namespace crucible {
 
@@ -49,7 +50,11 @@ inline void bs_run_bm(benchmark::State& state,
                        const float* max_abs_err) {
     const int64_t n = state.range(0);
 
+#if defined(__x86_64__)
+    PerfCounters perf{std::optional<uint64_t>{0xC1}}; // Zen 2 ExRetCops (retired µops), same event uop_diag.sh uses
+#else
     PerfCounters perf;
+#endif
     PerfCounters::Counts total{};
 
     for (auto _ : state) {
@@ -61,7 +66,11 @@ inline void bs_run_bm(benchmark::State& state,
     }
 
     const int64_t ops = static_cast<int64_t>(state.iterations()) * n;
-    state.counters["ipc"]           = total.ipc();
+    state.counters["ipc"]                 = total.ipc();
+    state.counters["instructions_per_op"] = static_cast<double>(total.instructions) / ops;
+    if (total.raw_ok && total.instructions > 0)
+        state.counters["uops_per_instruction"] =
+            static_cast<double>(total.raw) / total.instructions;
     state.counters["max_abs_error"] = max_abs_err[var_idx];
     state.SetItemsProcessed(ops);
 }

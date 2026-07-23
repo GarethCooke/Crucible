@@ -67,3 +67,22 @@ verify.cpp             Standalone correctness checker (separate binary)
 CMakeLists.txt         Per-TU ISA flags via OBJECT libraries
 asm/                   Committed disassembly dumps (generated post-build)
 ```
+
+## Instruction/µop provenance and recapture validation
+
+The instruction and µop figures published in the post — ≈17 instructions per
+option (AVX2+FMA) vs ≈50 (SSE), and 0.99/1.00 µops per instruction — currently
+derive from `bench/scripts/03/uop_diag.sh`, a pinned
+`perf stat -e instructions,ex_ret_cops` pass over the same binaries. They are
+not fields in the committed JSON capture.
+
+From the next capture onward, the per-run JSON fields `instructions_per_op`
+and `uops_per_instruction` are authoritative: the harness measures them inline
+per iteration (raw PMU event `0xC1` = ExRetCops on Zen 2, the same event
+`uop_diag.sh` names symbolically) and the assembler medians them into the site
+JSON alongside `instructions_per_cycle`.
+
+**Validation gate for that first capture:** the new fields must land within a
+few percent of the published figures for `sse2` and `avx2fma` at N = 1M. A
+mismatch means raw event `0xC1` mis-resolved on that kernel/PMU, and the
+capture must stop before the JSON is committed.

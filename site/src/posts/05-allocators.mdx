@@ -57,7 +57,7 @@ T_p and T_c are on the same CCX, sharing an L3 — matching Demo 4's topology so
 
 ### The simulated risk check
 
-The consumer does real work: three table lookups (positions by symbol, limits by client, velocity by client), position delta arithmetic, limit checks, and a velocity-window update. All tables are sized to fit in L1d (~34 KB total). The calibrated consumer work weight is approximately 200 ns wall-clock — enough to make allocator differences visible in the latency distribution without making the consumer the dominant bottleneck.
+The consumer does real work: three table lookups (positions by symbol, limits by client, velocity by client), position delta arithmetic, limit checks, and a velocity-window update. All tables total ~34 KB — sized to sit within L1d plus a slice of L2 rather than strictly inside the 32 KB L1d. The calibrated consumer work weight is approximately 200 ns wall-clock — enough to make allocator differences visible in the latency distribution without making the consumer the dominant bottleneck.
 
 ### Background heap pressure
 
@@ -86,7 +86,8 @@ arena at 172 and malloc at 204). Differences of one or two log-spaced buckets at
 the median are below what this harness resolves across rebuilds. The tail is where
 the signal is, and it sorts the same way in every capture: the two pool variants
 travel together (p99 = 220, p99.9 = 328 here, within one bucket of each other in
-every dataset), while malloc's tail stretches under background pressure to
+every dataset; the pressure-sweep section's separately-captured baseline puts the
+same pools at 344 — one log₂-subbucket-16 bucket up, i.e. within resolution), while malloc's tail stretches under background pressure to
 p99 = 312 and p99.9 = 376 — about 1.4× the pools at p99 and 1.15× at p99.9 in this
 capture.
 
@@ -161,7 +162,10 @@ At 1 MHz paced load the throughput numbers reflect how faithfully each variant s
   yAxisLabel="p99.9 latency (ns)"
 />
 
-The sweep runs each variant across 9 background-pressure levels: a no-T_bg baseline (faint dashed horizontal reference lines) plus 8 log-spaced levels from 100 k/s to 10 M/s. Producer paced at 1 MHz throughout; 1M items per sweep point.
+The sweep runs each variant across 9 background-pressure levels: a no-T_bg
+baseline (plotted as each line's leftmost point, left of the log scale) plus 8
+log-spaced levels from 100 k/s to 10 M/s. Producer paced at 1 MHz throughout; 1M
+items per sweep point.
 
 Three different shapes in this chart.
 
@@ -182,9 +186,10 @@ fragmentation tail. Two captures agree on the shape — moderate pressure is
 malloc's worst case, not peak pressure — and disagree on the amplitude, so treat
 the shape as the result and the amplitude as capture-specific.
 
-The faint horizontal reference lines show each variant's p99.9 with no background
-pressure. Both pools' references sit on their sweep lines. Only malloc's sweep
-diverges from its no-pressure reference, and only in the moderate-pressure band.
+Each line's leftmost point, set apart from the log scale, is that variant's p99.9
+with no background pressure — all three sit at 344 ns, so the lines start together.
+Only malloc departs from it, climbing to 376 ns under moderate pressure before
+settling at 360; the pools stay on the 344 ns line across the whole sweep.
 
 ## Cross-CCX side note
 
@@ -200,14 +205,14 @@ The headline runs place producer and consumer on the same CCX (cores 4 and 5, sh
 />
 
 Cross-CCX configuration: producer on core 4 (CCX1), consumer on core 1 (CCX0),
-T_bg on core 6 (CCX1). The p50 floor roughly doubles for all three variants — 408
-and 488 ns in this capture, one histogram bucket apart, with the same
+T_bg on core 6 (CCX1). The p50 floor more than doubles for all three variants — 408 ns for the
+arena and 488 ns for malloc and the freelist in this capture, with the same
 bucket-level reordering caveat as the same-CCX medians (the May capture put all
 three on 408). The Infinity Fabric round-trip is the new baseline.
 
 The tail is where the variants part, and it parts the same way in both captures.
-The pools top out within one bucket of each other — p99.9 = 720 and 784 ns here,
-both 720 in May — about 2.2–2.5× their same-CCX baselines. Malloc reaches
+The pools top out within two buckets of each other — p99.9 = 720 and 784 ns here,
+both 720 in May — about 2.2–2.4× their same-CCX baselines. Malloc reaches
 p99 = 1184 ns and p99.9 = 1824 ns: roughly 1.7× the pools at p99 and 2.3–2.5× at
 p99.9, and a ~4.9× expansion of its own same-CCX p99.9 (376 → 1824) against the
 pools' ~2.2–2.4×. The cross-CCX environment amplifies malloc's allocator-overhead
@@ -258,7 +263,7 @@ same-CCX numbers suggest.
 
 ---
 
-_Percentile values shown in charts above are computed from raw histograms in the corresponding JSON entries: log₂-subbucket-16 binning, bucket-midpoint percentile convention. See [Methodology](/methodology) for the rdtscp calibration path._
+_Percentile values shown in charts above are computed from raw histograms in the corresponding JSON entries: log₂-subbucket-16 binning, bucket-midpoint percentile convention. See [Methodology](/methodology#rdtscp-calibration) for the rdtscp calibration path._
 
 *AMD Ryzen 7 3800X, Zen 2 (SMT off), 3.9 GHz base, governor = performance, turbo disabled (BIOS Core Performance Boost off), cores 1–7 isolated (cpu0 cannot be kernel-isolated and carries housekeeping; benchmarks pinned to 4–7). Producer on core 4, consumer on core 5, T_bg on core 6 (all CCX1). Headless Ubuntu 24.04. GCC 13.3, -O3 -march=native -std=c++20. 5 outer runs × 1M timed samples per run, percentiles from merged histograms (tail-latency-distribution convention).*
 

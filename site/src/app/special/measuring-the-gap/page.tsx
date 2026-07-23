@@ -10,7 +10,7 @@ import { AsymptoticCrossover } from '@/components/charts/quantum/AsymptoticCross
 export const metadata: Metadata = {
   title: 'Measuring the Gap — Grover\'s algorithm on real quantum hardware',
   description:
-    'Take a problem with a famous theoretical quantum speedup, run it both ways, and measure the gap between the promise and the silicon. Classical wins decisively today; this post shows precisely why.',
+    'Take a problem with a famous theoretical quantum speedup, run it both ways, and measure the gap between the promise and the silicon. Classical wins decisively today; this post shows exactly why.',
   robots: { index: false, follow: true },
 }
 
@@ -255,14 +255,19 @@ export default async function MeasuringTheGapPage() {
           multi-controlled gates that the transpiler expands into sequences of two-qubit CX or ECR
           gates. The transpiled circuit depth at N=32 is roughly{' '}
           {data.circuit_depth.grover.find((d) => d.N === 32)?.depth ?? '—'} layers. BV at N=32 transpiles
-          to roughly {data.circuit_depth.bv.find((d) => d.N === 32)?.depth ?? '—'} layers.
+          to {(() => {
+            const bvDepth = data.circuit_depth.bv.find((d) => d.N === 32)?.depth
+            if (bvDepth == null) return 'roughly — layers'
+            return bvDepth === 1 ? 'a single layer' : `roughly ${bvDepth} layers`
+          })()}.
         </P>
         <P>
           Each physical gate has an error rate. IBM Heron-class devices run at ~0.1–0.3% per
-          two-qubit gate under current calibration. A Grover circuit at N=32 applies on the order
-          of {(data.circuit_depth.grover.find((d) => d.N === 32)?.two_qubit_gates ?? 0) || 'many'} two-qubit
-          gates; compound that error and the fidelity of the final state is degraded to near-random
-          before you measure. BV's shallow circuit escapes this compound loss.
+          two-qubit gate under current calibration. A Grover circuit at N=32 decomposes into{' '}
+          {data.circuit_depth.grover.find((d) => d.N === 32)?.two_qubit_gates_decomposed ?? '—'} two-qubit
+          gates when transpiled to a CX basis — the committed two_qubit_gates_decomposed figure —
+          before device routing adds more. Compound that error and the fidelity of the final state
+          is degraded to near-random before you measure. BV's shallow circuit escapes this compound loss.
         </P>
         <QuantumMechanism />
         <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>

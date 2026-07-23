@@ -25,7 +25,7 @@ This is the first Crucible benchmark on a second reference machine. One rule cha
 
 **scalar (libm)** — the honest baseline. Prices one option at a time, taking its transcendentals straight from the system math library (`std::log`, `std::exp`, and the error function behind the normal CDF). Built with `-fno-tree-vectorize` so the compiler cannot quietly vectorise it — this is genuinely scalar code, confirmed in the emitted assembly.
 
-**autovec** — the same libm-based kernel as scalar (libm), but with the anti-vectorisation guard removed, so `-O3` is free to autovectorise. On AArch64 NEON is part of the baseline ISA and GCC vectorises by default — the question is whether it _can_ here. It can't: the libm `log`/`exp`/`erfc` calls are opaque barriers the autovectoriser won't cross, so the assembly comes out byte-identical to scalar (libm) and the timing tracks it within 0.01%. The variant exists to show that "just turn on `-O3`" buys nothing for this kernel.
+**autovec** — the same libm-based kernel as scalar (libm), but with the anti-vectorisation guard removed, so `-O3` is free to autovectorise. On AArch64 NEON is part of the baseline ISA and GCC vectorises by default — the question is whether it _can_ here. It can't: the libm `log`/`exp`/`erfc` calls are opaque barriers the autovectoriser won't cross, so the assembly comes out byte-identical to scalar (libm) and the timing tracks it within 0.1%. The variant exists to show that "just turn on `-O3`" buys nothing for this kernel.
 
 **scalar (poly)** — replaces libm's `exp` and normal CDF with inlined polynomial approximations, still one option at a time. This isolates the _algorithm_ win — avoiding the libm `exp`/`erfc` dispatch — from the _width_ win that comes later, and runs ~6% faster than scalar (libm). It is the width-ratio denominator: it shares the dominant polynomial math (`exp`, `N(x)`) with the NEON kernel. Using `scalar_libm` as the denominator instead would fold the `exp`/`erfc` algorithm win into "width" and overstate what lane count buys; scalar_poly is the closer baseline. (One residual difference — the `log` and `sqrt` paths — is accounted for under _Decomposing the speedup_.)
 
@@ -137,7 +137,7 @@ The scalar variant is one call per option. The NEON variant loads four at once w
 
 ## The autovectoriser's tell
 
-The `autovec` variant sits on top of `scalar_libm` at every N — within 0.01% across the full sweep. GCC at `-O3 -mcpu=cortex-a76`, targeting a core where NEON is on by default, did not vectorise the Black-Scholes loop.
+The `autovec` variant sits on top of `scalar_libm` at every N — within 0.1% across the full sweep. GCC at `-O3 -mcpu=cortex-a76`, targeting a core where NEON is on by default, did not vectorise the Black-Scholes loop.
 
 This is worth naming explicitly. On AArch64, NEON is part of the baseline ISA — there is no `-mno-avx` gate. The compiler is actively trying to vectorise at `-O3`. It failed here, and the assembled output confirms it: the `autovec` object file contains no `.4s` register operations in the main loop. The barrier is `logf@plt` — the libm call cannot be inlined or proven pure through the PLT, and GCC gives up on the loop entirely rather than partially vectorising around the call.
 

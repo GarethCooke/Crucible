@@ -158,8 +158,10 @@ export default function MethodologyPage() {
         </div>
       </div>
       <p className="text-sm mb-8" style={{ color: "var(--text-muted)" }}>
-        Zen 2 implements 256-bit AVX2 as two 128-bit µops — called out
-        explicitly in any SIMD post. Full{" "}
+        Zen 2 executes 256-bit AVX2 as single µops — verified per capture with
+        the retired-µop counter (<code>ex_ret_cops</code> ≈ 1.0 µops/instruction;
+        demo 03), unlike Zen and Zen+, which cracked each 256-bit op into two
+        128-bit µops. Full{" "}
         <code>lscpu --extended</code> output,
         kernel version, and compiler version are committed to the repo alongside
         each benchmark result.
@@ -355,6 +357,68 @@ export default function MethodologyPage() {
             </li>
           </ul>
         </Commitment>
+      </div>
+
+      {/* ── Timestamping: rdtscp calibration ──────────────────────────────── */}
+      <div className="mb-12">
+        <h3
+          id="rdtscp-calibration"
+          className="font-sans font-semibold mb-1"
+          style={{ color: "var(--text-primary)" }}
+        >
+          Timestamping: rdtscp calibration
+        </h3>
+        <div
+          className="text-sm leading-relaxed space-y-2"
+          style={{ color: "var(--text-secondary)" }}
+        >
+          <p>
+            The custom latency pipelines (demos 4–6) timestamp with the TSC
+            rather than Google Benchmark&rsquo;s timers. Every timestamp is
+            taken by <code>rdtscp_ordered()</code> (
+            <code>bench/common/tsc_utils.h</code>): an <code>rdtscp</code>{" "}
+            instruction followed by an <code>lfence</code>.{" "}
+            <code>rdtscp</code> does not read the counter until all prior loads
+            and stores have retired, so a timestamp cannot be taken before the
+            work it closes has finished; the trailing <code>lfence</code>{" "}
+            prevents subsequent instructions from executing before the{" "}
+            <code>rdtscp</code> itself retires, so following work cannot start
+            ahead of the timestamp. A latency sample is the difference of two
+            such reads — in demo 4&rsquo;s case taken on different cores
+            (enqueue timestamped on the producer, dequeue on the consumer).
+          </p>
+          <p>
+            Before any measurement, <code>calibrate_tsc()</code> checks the
+            TSC-stability flags in <code>/proc/cpuinfo</code>:{" "}
+            <code>constant_tsc</code> (the TSC ticks at a fixed rate regardless
+            of frequency scaling) and <code>nonstop_tsc</code> (it keeps
+            counting through idle states). Either flag missing aborts the run
+            before any benchmark executes.
+          </p>
+          <p>
+            Ticks convert to nanoseconds by calibration, not by assuming a
+            nominal frequency: <code>calibrate_tsc()</code> reads{" "}
+            <code>CLOCK_MONOTONIC_RAW</code> and the TSC together, busy-waits
+            for a 100 ms window on the monotonic clock, reads both again, and
+            returns ns-per-cycle as elapsed nanoseconds over elapsed cycles.
+            Every nanosecond figure these demos report is a TSC delta scaled by
+            that factor.
+          </p>
+          <p>
+            The calibration is cross-checked rather than gated: a second{" "}
+            <code>calibrate_tsc()</code> is taken and the relative change in
+            ns-per-cycle between the two readings is committed with the results
+            as <code>calibration_drift_pct</code> — no threshold; the value
+            itself is the evidence. Where the second reading lands varies by
+            pipeline: demo 4 recalibrates after its paced runs complete and
+            after each sweep step, demo 5 at each variant&rsquo;s dispatch,
+            demo 6 back-to-back at startup. On a <code>constant_tsc</code>{" "}
+            machine this is a repeatability check of the calibration itself;
+            the committed captures show ≤0.0001% throughout, and that field is
+            the source of footer lines like demo 4&rsquo;s
+            &ldquo;TSC drift ≤0.0001% across all 5 runs&rdquo;.
+          </p>
+        </div>
       </div>
 
       {/* ── Best practice items ───────────────────────────────────────────── */}

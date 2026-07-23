@@ -3,7 +3,7 @@
 import { scaleLog } from 'd3-scale'
 import { axisBottom, axisLeft } from 'd3-axis'
 import { line } from 'd3-shape'
-import { variantColorByIndex } from './theme'
+import { variantColorByIndex, typography } from './theme'
 import {
   appendGrid, appendLegendLines,
   setupSVG, appendXAxis, appendYAxis, appendXLabel, appendYLabel, legendPosition,
@@ -110,9 +110,15 @@ function render(
 
   if (xMin === Infinity || xMax === 0) return
 
+  // Categorical "none" (no-T_bg) slot at the far left, separated from the log
+  // scale by a visible gap / axis break. The log axis starts at LOG_START so the
+  // anchor never reads as a numeric pressure value.
+  const NONE_SLOT_X = 8
+  const LOG_START   = 56
+
   const x = scaleLog()
     .domain([xMin * 0.8, xMax * 1.25])
-    .range([0, inner.w])
+    .range([LOG_START, inner.w])
     .nice()
 
   const y = scaleLog()
@@ -123,55 +129,63 @@ function render(
   appendGrid(g, y, inner, { gridline: colors.border }, undefined,
     isNarrow ? { y: 4 } : undefined)
 
-  const lineGen = line<[number, number]>()
-    .x((d) => x(d[0]))
-    .y((d) => y(Math.max(1, d[1])))
+  // Series points carry pre-computed pixel x so the no-pressure anchor (which has
+  // no place on the log scale) can sit at the fixed NONE_SLOT_X alongside the
+  // log-mapped sweep points.
+  type Pt = { px: number; v: number }
+  const lineGen = line<Pt>()
+    .x((d) => d.px)
+    .y((d) => y(Math.max(1, d.v)))
 
-  // Draw one line per variant.
+  // Draw one line per variant: a no-pressure anchor at the "none" slot, a dashed
+  // bridge across the axis break to the first pressure point, then a solid line
+  // through the log-spaced sweep.
   for (const [variantName, arr] of byVariant.entries()) {
     const varIdx = orderedVariants.indexOf(variantName)
     const color  = variantColorByIndex(varIdx)
 
-    const points: [number, number][] = arr
-      .map((r) => [r.background_pressure_hz!, getStatValue(r, metric)] as [number, number])
-      .filter(([, v]) => v > 0)
+    const sweepPts: Pt[] = arr
+      .map((r) => ({ px: x(r.background_pressure_hz!), v: getStatValue(r, metric) }))
+      .filter((p) => p.v > 0)
 
-    if (points.length === 0) continue
+    const baseRun = baselineRuns.find((r) => r.variant === variantName)
+    const baseV   = baseRun ? getStatValue(baseRun, metric) : 0
+    const anchor: Pt | null = baseV > 0 ? { px: NONE_SLOT_X, v: baseV } : null
 
-    g.append('path')
-      .datum(points)
-      .attr('fill', 'none')
-      .attr('stroke', color)
-      .attr('stroke-width', 2)
-      .attr('d', lineGen)
+    if (sweepPts.length === 0 && !anchor) continue
 
-    // Marker dots at each sweep step.
+    // Bridge segment: dashed, since it crosses the axis break and isn't a
+    // continuous log interval.
+    if (anchor && sweepPts.length > 0) {
+      g.append('path')
+        .datum([anchor, sweepPts[0]])
+        .attr('fill', 'none')
+        .attr('stroke', color)
+        .attr('stroke-width', 2)
+        .attr('stroke-dasharray', '4,4')
+        .attr('d', lineGen)
+    }
+
+    // Solid sweep line across the log region.
+    if (sweepPts.length > 0) {
+      g.append('path')
+        .datum(sweepPts)
+        .attr('fill', 'none')
+        .attr('stroke', color)
+        .attr('stroke-width', 2)
+        .attr('d', lineGen)
+    }
+
+    // Marker dots: no-pressure anchor + each sweep step.
+    const allPts = anchor ? [anchor, ...sweepPts] : sweepPts
     g.selectAll(null)
-      .data(points)
+      .data(allPts)
       .enter()
       .append('circle')
-      .attr('cx', (d) => x(d[0]))
-      .attr('cy', (d) => y(Math.max(1, d[1])))
+      .attr('cx', (d) => d.px)
+      .attr('cy', (d) => y(Math.max(1, d.v)))
       .attr('r', 3.5)
       .attr('fill', color)
-  }
-
-  // Draw faint horizontal reference lines for each variant's no-T_bg baseline.
-  for (const baseRun of baselineRuns) {
-    const varIdx = orderedVariants.indexOf(baseRun.variant)
-    const color  = variantColorByIndex(varIdx)
-    const v      = getStatValue(baseRun, metric)
-    if (v <= 0) continue
-
-    g.append('line')
-      .attr('x1', 0)
-      .attr('x2', inner.w)
-      .attr('y1', y(v))
-      .attr('y2', y(v))
-      .attr('stroke', color)
-      .attr('stroke-width', 1)
-      .attr('stroke-dasharray', '4,4')
-      .attr('opacity', 0.35)
   }
 
   // Axes.
@@ -188,6 +202,28 @@ function render(
   appendXAxis(g, inner, colors, xAxis)
   appendXLabel(svg, 'background pressure (ops/sec, log scale)', margin.left + inner.w / 2, H - 6, colors)
 
+  // Categorical "none" tick at the no-pressure slot, set apart from the log ticks.
+  g.append('text')
+    .attr('x', NONE_SLOT_X)
+    .attr('y', inner.h)
+    .attr('dy', '1.4em')
+    .attr('text-anchor', 'middle')
+    .attr('font-size', typography.axisSize)
+    .attr('fill', colors.textMuted)
+    .attr('font-family', typography.fontMono)
+    .text('none')
+
+  // Axis-break glyph (//) in the gap, signalling the discontinuity between the
+  // categorical "none" slot and the log scale.
+  const breakX = (NONE_SLOT_X + LOG_START) / 2
+  for (const off of [-3, 3]) {
+    g.append('line')
+      .attr('x1', breakX + off - 3).attr('y1', inner.h + 5)
+      .attr('x2', breakX + off + 3).attr('y2', inner.h - 5)
+      .attr('stroke', colors.textMuted)
+      .attr('stroke-width', 1)
+  }
+
   appendYAxis(g, colors, axisLeft(y).ticks(6, '~g'))
   appendYLabel(svg, yAxisLabel ?? `${METRIC_LABEL[metric]} latency (ns, log scale)`, -(margin.top + inner.h / 2), 16, colors)
 
@@ -201,16 +237,4 @@ function render(
   appendLegendLines(svg, variantItems,
     { x: legendX, y: legendY, spacing: 17 },
     { textSecondary: colors.textSecondary })
-
-  // Baseline key entry (if present).
-  if (baselineRuns.length > 0) {
-    const baseY = isNarrow
-      ? legendY + variantItems.length * 17 + 8
-      : legendY + variantItems.length * 17 + 6
-    appendLegendLines(svg,
-      [{ label: 'no pressure', color: colors.textMuted, dash: '4,4' }],
-      { x: legendX, y: baseY, spacing: 16 },
-      { textSecondary: colors.textMuted },
-    )
-  }
 }

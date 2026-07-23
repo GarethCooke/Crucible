@@ -12,6 +12,7 @@ Extra fields beyond the v1 schema (additive):
   run.compile_flags       per-variant flags string
   run.max_abs_error_vs_scalar_libm   from benchmark counter
   run.gflops              derived: ops_per_sec × FLOPS_PER_OPTION / 1e9
+  run.instructions_per_op retired instructions / option, from harness counter
 
 Usage (called by run_one.sh):
     python3 bench/scripts/assemble_results_09.py \\
@@ -75,10 +76,11 @@ def main() -> None:
 
     runs = []
     for (variant, n), reps in sorted(groups.items(), key=lambda x: (x[0][0], x[0][1])):
-        times   = [r["real_time"] for r in reps]
-        ops_s   = [r.get("items_per_second", 0) for r in reps]
-        ipc     = [r.get("ipc", 0) for r in reps]
-        max_err = [r.get("max_abs_error", 0) for r in reps]
+        times    = [r["real_time"] for r in reps]
+        ops_s    = [r.get("items_per_second", 0) for r in reps]
+        ipc      = [r.get("ipc", 0) for r in reps]
+        instr_op = [r.get("instructions_per_op", 0) for r in reps]
+        max_err  = [r.get("max_abs_error", 0) for r in reps]
 
         med_ops = sorted(ops_s)[len(ops_s) // 2]
         meta    = VARIANT_META.get(variant, {
@@ -93,6 +95,7 @@ def main() -> None:
             "ns_per_op":                    bench_stats([t / n for t in times] if n > 0 else times),
             "ops_per_sec":                  round(med_ops),
             "instructions_per_cycle":       round(sorted(ipc)[len(ipc) // 2], 3),
+            "instructions_per_op":          round(sorted(instr_op)[len(instr_op) // 2], 2),
             "gflops":                       gflops,
             "max_abs_error_vs_scalar_libm": round(sorted(max_err)[len(max_err) // 2], 8),
             "variant_isa":                  meta["variant_isa"],
