@@ -1,0 +1,260 @@
+=== crucible headless capture 2026-07-23T16:22:39+01:00 ===
+=== cmd: bash -c ./bench/pilot/10-core-to-core/topology.sh && \
+   ./bench/pilot/10-core-to-core/run_pilot.sh && \
+   ./bench/pilot/10-core-to-core/run_pilot.sh --a4 ===
+--- dropping to multi-user.target ---
+--- quiescing services + forcing performance governor ---
+--- machine state at capture time ---
+isolated:   1-7
+nohz_full:  1-7
+smt/active: 0
+boost:      0
+governor:   performance  (all 8 verified above)
+graphical:  inactive
+-------------------------------------
+==============================================================
+ Crucible demo 10 — CPU topology ground truth
+ host: iguanabunt   kernel: 6.8.0-134-generic   arch: x86_64
+==============================================================
+
+--- lscpu -e (core / socket / node enumeration) ---
+CPU NODE SOCKET CORE L1d:L1i:L2:L3 ONLINE    MAXMHZ    MINMHZ       MHZ
+  0    0      0    0 0:0:0:0          yes 4560.0552 2200.0000 3899.6841
+  1    0      0    1 1:1:1:0          yes 4560.0552 2200.0000 3900.0000
+  2    0      0    2 2:2:2:0          yes 4560.0552 2200.0000 3900.0000
+  3    0      0    3 3:3:3:0          yes 4560.0552 2200.0000 3900.0000
+  4    0      0    4 4:4:4:1          yes 4560.0552 2200.0000 3900.0000
+  5    0      0    5 5:5:5:1          yes 4560.0552 2200.0000 3900.0000
+  6    0      0    6 6:6:6:1          yes 4560.0552 2200.0000 3900.0000
+  7    0      0    7 7:7:7:1          yes 4560.0552 2200.0000 3900.0000
+
+--- L3 sharing per CPU (index3) — on Zen 2 this IS CCX membership ---
+  cpu0:   L3 shared_cpu_list: 0-3
+  cpu1:   L3 shared_cpu_list: 0-3
+  cpu2:   L3 shared_cpu_list: 0-3
+  cpu3:   L3 shared_cpu_list: 0-3
+  cpu4:   L3 shared_cpu_list: 4-7
+  cpu5:   L3 shared_cpu_list: 4-7
+  cpu6:   L3 shared_cpu_list: 4-7
+  cpu7:   L3 shared_cpu_list: 4-7
+
+  Distinct L3 domains (each distinct line = one CCX):
+    0-3
+    4-7
+
+--- L1d (index0) and L2 (index2) sharing, for completeness ---
+  cpu0:   L1d: 0          L2: 0         
+  cpu1:   L1d: 1          L2: 1         
+  cpu2:   L1d: 2          L2: 2         
+  cpu3:   L1d: 3          L2: 3         
+  cpu4:   L1d: 4          L2: 4         
+  cpu5:   L1d: 5          L2: 5         
+  cpu6:   L1d: 6          L2: 6         
+  cpu7:   L1d: 7          L2: 7         
+
+--- isolation / SMT state ---
+  isolated:   1-7
+  nohz_full:  1-7
+  smt/active: 0  (0 = SMT off)
+
+--- hwloc lstopo (optional) ---
+  lstopo-no-graphics not installed (hwloc absent) — skipped.
+
+Expected on a 3800X with SMT off: two L3 domains, 0-3 and 4-7.
+This grouping is A1's PREDICTION — measurement then confirms or contradicts it.
+[0;36m[INFO][0m logging to /home/gcooke/Development/Crucible/bench/pilot/10-core-to-core/pilot_logs/run_pilot-20260723T162252.log
+
+[1m[0;36m━━━ demo 10 §1 core-to-core pilot — gates: a1 a2 a3 ━━━[0m
+[0;36m[INFO][0m isolation OK: isolated=1-7 nohz_full=1-7 smt=off
+
+[1m[0;36m━━━ CCX grouping (from sysfs L3 shared_cpu_list — this is A1's prediction) ━━━[0m
+    core 1  -> L3 domain 0-3
+    core 2  -> L3 domain 0-3
+    core 3  -> L3 domain 0-3
+    core 4  -> L3 domain 4-7
+    core 5  -> L3 domain 4-7
+    core 6  -> L3 domain 4-7
+    core 7  -> L3 domain 4-7
+[0;36m[INFO][0m intra-CCX pair: (1,2) — both in L3 domain 0-3
+[0;36m[INFO][0m cross-CCX pair: (1,4) — 1 in 0-3, 4 in 4-7
+
+[1m[0;36m━━━ A1 — full RTT matrix, twice back to back ━━━[0m
+[0;36m[INFO][0m run 1 of 2
+==== core-to-core ping-pong (demo 10 §1 pilot) ====
+isolated cores : 1-7   nohz_full: 1-7
+graphical.target: inactive   (GUI up => a headless-only gate is unsafe)
+TSC->ns factor : 0.256409 ns/cycle  (~3.900 GHz invariant TSC)
+invariant TSC  : constant_tsc=yes nonstop_tsc=yes
+protocol=exchange  K=1000  windows=20  warmup=5
+
+median RTT matrix (ns), protocol=exchange:
+
+            1       2       3       4       5       6       7
+   1        -    80.1    79.1   163.5   162.4   162.5   161.7
+   2     80.1       -    76.5   163.5   162.3   162.0   161.7
+   3     79.1    76.5       -   163.1   161.8   161.7   160.4
+   4    163.5   163.5   163.1       -    73.4    73.2    72.1
+   5    162.4   162.3   161.8    73.4       -    72.1    71.1
+   6    162.5   162.0   161.7    73.2    72.1       -    70.8
+   7    161.7   161.7   160.4    72.1    71.1    70.8       -
+
+(rows/cols are core ids; each cell is the median round-trip ns for that pair)
+[0;36m[INFO][0m run 2 of 2
+==== core-to-core ping-pong (demo 10 §1 pilot) ====
+isolated cores : 1-7   nohz_full: 1-7
+graphical.target: inactive   (GUI up => a headless-only gate is unsafe)
+TSC->ns factor : 0.256408 ns/cycle  (~3.900 GHz invariant TSC)
+invariant TSC  : constant_tsc=yes nonstop_tsc=yes
+protocol=exchange  K=1000  windows=20  warmup=5
+
+median RTT matrix (ns), protocol=exchange:
+
+            1       2       3       4       5       6       7
+   1        -    77.6    79.1   158.2   157.5   160.1   158.8
+   2     77.6       -    73.4   160.3   159.6   161.7   160.3
+   3     79.1    73.4       -   160.1   158.3   160.4   160.2
+   4    158.2   160.3   160.1       -    70.8    73.1    72.1
+   5    157.5   159.6   158.3    70.8       -    72.1    71.1
+   6    160.1   161.7   160.4    73.1    72.1       -    73.4
+   7    158.8   160.3   160.2    72.1    71.1    73.4       -
+
+(rows/cols are core ids; each cell is the median round-trip ns for that pair)
+[0;36m[INFO][0m A1 done — compare the two matrices for stability, and the block
+[0;36m[INFO][0m structure against the CCX grouping above (they should agree).
+
+[1m[0;36m━━━ A2 — intra vs cross-CCX pair, both protocols (4 medians) ━━━[0m
+[0;36m[INFO][0m protocol=exchange  intra (1,2)
+==== core-to-core ping-pong (demo 10 §1 pilot) ====
+isolated cores : 1-7   nohz_full: 1-7
+graphical.target: inactive   (GUI up => a headless-only gate is unsafe)
+TSC->ns factor : 0.256409 ns/cycle  (~3.900 GHz invariant TSC)
+invariant TSC  : constant_tsc=yes nonstop_tsc=yes
+protocol=exchange  K=1000  windows=20  warmup=5
+
+pair (1,2) RTT: median 72.11 ns   IQR 0.00 ns   [min 72.09, max 76.70, n=20]
+[0;36m[INFO][0m protocol=exchange  cross (1,4)
+==== core-to-core ping-pong (demo 10 §1 pilot) ====
+isolated cores : 1-7   nohz_full: 1-7
+graphical.target: inactive   (GUI up => a headless-only gate is unsafe)
+TSC->ns factor : 0.256409 ns/cycle  (~3.900 GHz invariant TSC)
+invariant TSC  : constant_tsc=yes nonstop_tsc=yes
+protocol=exchange  K=1000  windows=20  warmup=5
+
+pair (1,4) RTT: median 158.80 ns   IQR 1.02 ns   [min 158.02, max 163.78, n=20]
+[0;36m[INFO][0m protocol=twoflag  intra (1,2)
+==== core-to-core ping-pong (demo 10 §1 pilot) ====
+isolated cores : 1-7   nohz_full: 1-7
+graphical.target: inactive   (GUI up => a headless-only gate is unsafe)
+TSC->ns factor : 0.256408 ns/cycle  (~3.900 GHz invariant TSC)
+invariant TSC  : constant_tsc=yes nonstop_tsc=yes
+protocol=twoflag  K=1000  windows=20  warmup=5
+
+pair (1,2) RTT: median 86.38 ns   IQR 1.01 ns   [min 84.71, max 89.12, n=20]
+[0;36m[INFO][0m protocol=twoflag  cross (1,4)
+==== core-to-core ping-pong (demo 10 §1 pilot) ====
+isolated cores : 1-7   nohz_full: 1-7
+graphical.target: inactive   (GUI up => a headless-only gate is unsafe)
+TSC->ns factor : 0.256409 ns/cycle  (~3.900 GHz invariant TSC)
+invariant TSC  : constant_tsc=yes nonstop_tsc=yes
+protocol=twoflag  K=1000  windows=20  warmup=5
+
+pair (1,4) RTT: median 273.13 ns   IQR 5.13 ns   [min 265.98, max 280.30, n=20]
+
+[1m[0;36m━━━ A3 — K sweep {100,1000,10000}, >=20 windows, median + IQR per K ━━━[0m
+[0;36m[INFO][0m K=100  intra (1,2)
+==== core-to-core ping-pong (demo 10 §1 pilot) ====
+isolated cores : 1-7   nohz_full: 1-7
+graphical.target: inactive   (GUI up => a headless-only gate is unsafe)
+TSC->ns factor : 0.256409 ns/cycle  (~3.900 GHz invariant TSC)
+invariant TSC  : constant_tsc=yes nonstop_tsc=yes
+protocol=exchange  K=100  windows=20  warmup=5
+
+pair (1,2) RTT: median 89.00 ns   IQR 0.10 ns   [min 88.70, max 89.20, n=20]
+[0;36m[INFO][0m K=100  cross (1,4)
+==== core-to-core ping-pong (demo 10 §1 pilot) ====
+isolated cores : 1-7   nohz_full: 1-7
+graphical.target: inactive   (GUI up => a headless-only gate is unsafe)
+TSC->ns factor : 0.256409 ns/cycle  (~3.900 GHz invariant TSC)
+invariant TSC  : constant_tsc=yes nonstop_tsc=yes
+protocol=exchange  K=100  windows=20  warmup=5
+
+pair (1,4) RTT: median 166.40 ns   IQR 0.37 ns   [min 165.80, max 180.20, n=20]
+[0;36m[INFO][0m K=1000  intra (1,2)
+==== core-to-core ping-pong (demo 10 §1 pilot) ====
+isolated cores : 1-7   nohz_full: 1-7
+graphical.target: inactive   (GUI up => a headless-only gate is unsafe)
+TSC->ns factor : 0.256409 ns/cycle  (~3.900 GHz invariant TSC)
+invariant TSC  : constant_tsc=yes nonstop_tsc=yes
+protocol=exchange  K=1000  windows=20  warmup=5
+
+pair (1,2) RTT: median 80.21 ns   IQR 8.12 ns   [min 72.10, max 80.37, n=20]
+[0;36m[INFO][0m K=1000  cross (1,4)
+==== core-to-core ping-pong (demo 10 §1 pilot) ====
+isolated cores : 1-7   nohz_full: 1-7
+graphical.target: inactive   (GUI up => a headless-only gate is unsafe)
+TSC->ns factor : 0.256409 ns/cycle  (~3.900 GHz invariant TSC)
+invariant TSC  : constant_tsc=yes nonstop_tsc=yes
+protocol=exchange  K=1000  windows=20  warmup=5
+
+pair (1,4) RTT: median 158.82 ns   IQR 0.36 ns   [min 158.01, max 163.29, n=20]
+[0;36m[INFO][0m K=10000  intra (1,2)
+==== core-to-core ping-pong (demo 10 §1 pilot) ====
+isolated cores : 1-7   nohz_full: 1-7
+graphical.target: inactive   (GUI up => a headless-only gate is unsafe)
+TSC->ns factor : 0.256409 ns/cycle  (~3.900 GHz invariant TSC)
+invariant TSC  : constant_tsc=yes nonstop_tsc=yes
+protocol=exchange  K=10000  windows=20  warmup=5
+
+pair (1,2) RTT: median 72.03 ns   IQR 0.00 ns   [min 72.03, max 72.51, n=20]
+[0;36m[INFO][0m K=10000  cross (1,4)
+==== core-to-core ping-pong (demo 10 §1 pilot) ====
+isolated cores : 1-7   nohz_full: 1-7
+graphical.target: inactive   (GUI up => a headless-only gate is unsafe)
+TSC->ns factor : 0.256409 ns/cycle  (~3.900 GHz invariant TSC)
+invariant TSC  : constant_tsc=yes nonstop_tsc=yes
+protocol=exchange  K=10000  windows=20  warmup=5
+
+pair (1,4) RTT: median 163.35 ns   IQR 0.01 ns   [min 163.02, max 163.66, n=20]
+[0;36m[INFO][0m Pick the smallest K whose IQR stays comfortably inside the intra/cross gap.
+
+[1m[0;36m━━━ done — full log: /home/gcooke/Development/Crucible/bench/pilot/10-core-to-core/pilot_logs/run_pilot-20260723T162252.log ━━━[0m
+[0;36m[INFO][0m This script laid out numbers only; no gate was decided here.
+[0;36m[INFO][0m logging to /home/gcooke/Development/Crucible/bench/pilot/10-core-to-core/pilot_logs/run_pilot-20260723T162254.log
+
+[1m[0;36m━━━ demo 10 §1 core-to-core pilot — gates: a4 ━━━[0m
+[0;36m[INFO][0m isolation OK: isolated=1-7 nohz_full=1-7 smt=off
+
+[1m[0;36m━━━ CCX grouping (from sysfs L3 shared_cpu_list — this is A1's prediction) ━━━[0m
+    core 1  -> L3 domain 0-3
+    core 2  -> L3 domain 0-3
+    core 3  -> L3 domain 0-3
+    core 4  -> L3 domain 4-7
+    core 5  -> L3 domain 4-7
+    core 6  -> L3 domain 4-7
+    core 7  -> L3 domain 4-7
+[0;36m[INFO][0m intra-CCX pair: (1,2) — both in L3 domain 0-3
+[0;36m[INFO][0m cross-CCX pair: (1,4) — 1 in 0-3, 4 in 4-7
+
+[1m[0;36m━━━ A4 — core 0's row (HEADLESS ONLY) ━━━[0m
+[0;36m[INFO][0m core 0 paired with each isolated core:
+==== core-to-core ping-pong (demo 10 §1 pilot) ====
+isolated cores : 1-7   nohz_full: 1-7
+graphical.target: inactive   (GUI up => a headless-only gate is unsafe)
+TSC->ns factor : 0.256408 ns/cycle  (~3.900 GHz invariant TSC)
+invariant TSC  : constant_tsc=yes nonstop_tsc=yes
+protocol=exchange  K=1000  windows=20  warmup=5
+
+core 0 row — RTT of core 0 against each isolated core (exchange):
+  0 <-> 1  : median    73.42 ns   IQR    0.00 ns
+  0 <-> 2  : median    73.16 ns   IQR    0.00 ns
+  0 <-> 3  : median    72.11 ns   IQR    0.01 ns
+  0 <-> 4  : median   164.63 ns   IQR    0.40 ns
+  0 <-> 5  : median   163.42 ns   IQR    1.97 ns
+  0 <-> 6  : median   163.47 ns   IQR    1.10 ns
+  0 <-> 7  : median   162.82 ns   IQR    0.37 ns
+[0;36m[INFO][0m A4 done — judge whether core 0's row is quiet enough to include, or
+[0;36m[INFO][0m whether housekeeping noise argues for excluding it (data decides with user).
+
+[1m[0;36m━━━ done — full log: /home/gcooke/Development/Crucible/bench/pilot/10-core-to-core/pilot_logs/run_pilot-20260723T162254.log ━━━[0m
+[0;36m[INFO][0m This script laid out numbers only; no gate was decided here.
+=== exit 0 ===
