@@ -37,6 +37,7 @@ dump_variant() {
 }
 
 echo "==> Dumping disassembly to asm/..."
+mkdir -p "${ASM_DIR}"
 dump_variant bs_scalar_libm    scalar_libm
 dump_variant bs_scalar_poly    scalar_poly
 dump_variant bs_sse2           sse2_intrinsics
