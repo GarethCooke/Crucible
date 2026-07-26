@@ -53,7 +53,7 @@ if [[ "${1:-}" == "--inner" ]]; then
         echo "isolated:   $(cat /sys/devices/system/cpu/isolated)"
         echo "nohz_full:  $(cat /sys/devices/system/cpu/nohz_full)"
         echo "smt/active: $(cat /sys/devices/system/cpu/smt/active 2>/dev/null || echo n/a)"
-        echo "boost:      $(cat /sys/devices/system/cpu/cpufreq/boost 2>/dev/null || echo n/a)"
+        echo "boost:      cpb=$(cat /sys/devices/system/cpu/cpu0/cpufreq/cpb 2>/dev/null || echo n/a)  (0 = boost off)"
         echo "governor:   $(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null || echo n/a)  (all 8 verified above)"
         echo "graphical:  $(systemctl is-active graphical.target)"
         echo "-------------------------------------"
@@ -83,6 +83,14 @@ fi
 SELF="$(readlink -f "${BASH_SOURCE[0]}")"
 REPO_ROOT="$(cd "$(dirname "$SELF")/../.." && pwd)"
 RUN_USER="${SUDO_USER:-$USER}"
+
+# Board-aware asserts (assert_boost_off handles this rig's per-CPU cpb signal,
+# where the global cpufreq/boost node is absent). Source rather than reimplement.
+LIB="$(dirname "$SELF")/lib.sh"
+[[ -r "$LIB" ]] || { echo "ERROR: cannot source $LIB" >&2; exit 1; }
+# shellcheck source=/dev/null
+source "$LIB"
+
 LOG_DIR="${REPO_ROOT}/capture_logs"
 mkdir -p "$LOG_DIR"
 LOG="${LOG_DIR}/capture-$(date +%Y%m%dT%H%M%S).log"
@@ -103,8 +111,7 @@ NOHZ="$(cat /sys/devices/system/cpu/nohz_full 2>/dev/null || echo '')"
 SMT="$(cat /sys/devices/system/cpu/smt/active 2>/dev/null || echo '')"
 [[ "$SMT" == "0" ]] || fail "SMT active ('$SMT'). Disable in BIOS."
 
-BOOST="$(cat /sys/devices/system/cpu/cpufreq/boost 2>/dev/null || echo '')"
-[[ "$BOOST" == "0" ]] || fail "cpufreq/boost='$BOOST', expected 0 (CPB disabled in BIOS)."
+assert_boost_off
 
 CMD="$1"
 [[ -x "$CMD" ]] || command -v "$CMD" >/dev/null 2>&1 \
