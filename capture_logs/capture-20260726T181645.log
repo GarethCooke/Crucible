@@ -1,0 +1,367 @@
+=== crucible headless capture 2026-07-26T18:16:51+01:00 ===
+=== cmd: bash -c ./bench/pilot/10-core-to-core/run_pilot.sh --a3b && \
+   ./bench/pilot/10-core-to-core/run_pilot.sh --a6  && \
+   ./bench/pilot/10-core-to-core/run_pilot.sh --a7  && \
+   ./bench/pilot/10-core-to-core/run_pilot.sh --a8 ===
+--- dropping to multi-user.target ---
+--- quiescing services + forcing performance governor ---
+--- machine state at capture time ---
+isolated:   1-7
+nohz_full:  1-7
+smt/active: 0
+boost:      cpb=0  (0 = boost off)
+governor:   performance  (all 8 verified above)
+graphical:  inactive
+-------------------------------------
+[0;36m[INFO][0m logging to /home/gcooke/Development/Crucible/bench/pilot/10-core-to-core/pilot_logs/run_pilot-20260726T181703.log
+
+[1m[0;36m━━━ demo 10 §1 core-to-core pilot — gates: a3b ━━━[0m
+[0;36m[INFO][0m isolation OK: isolated=1-7 nohz_full=1-7 smt=off governor=performance
+
+[1m[0;36m━━━ CCX grouping (from sysfs L3 shared_cpu_list — this is A1's prediction) ━━━[0m
+    core 1  -> L3 domain 0-3
+    core 2  -> L3 domain 0-3
+    core 3  -> L3 domain 0-3
+    core 4  -> L3 domain 4-7
+    core 5  -> L3 domain 4-7
+    core 6  -> L3 domain 4-7
+    core 7  -> L3 domain 4-7
+[0;36m[INFO][0m intra-CCX pair: (1,2) — both in L3 domain 0-3
+[0;36m[INFO][0m cross-CCX pair: (1,4) — 1 in 0-3, 4 in 4-7
+
+[1m[0;36m━━━ A3b — K sweep {100,1000,10000} with --repeat 20 (the real K-lock) ━━━[0m
+[0;36m[INFO][0m K=100  intra (1,2)  --repeat 20
+==== core-to-core ping-pong (demo 10 §1 pilot) ====
+isolated cores : 1-7   nohz_full: 1-7
+graphical.target: inactive   (GUI up => a headless-only gate is unsafe)
+TSC->ns factor : 0.256411 ns/cycle  (~3.900 GHz invariant TSC)
+invariant TSC  : constant_tsc=yes nonstop_tsc=yes
+arena          : 2 MiB @ 0x7316e5400000 — THP obtained (AnonHugePages=2048 kB)
+protocol=exchange  K=100  windows=20  warmup=5  orchestrator-core=0
+repeat=20 (across-allocation)  seed=0x9e3779b97f4a7c15  offset=random
+
+pair (1,2) across-allocation distribution — N=20 offsets, seed=0x9e3779b97f4a7c15:
+  median-of-medians 89.30 ns   IQR(medians) 0.40 ns   [min 72.80, max 89.40, n=20]
+  sorted per-offset medians (ns): 72.80 72.90 81.20 89.00 89.00 89.00 89.00 89.00 89.10 89.30 89.30 89.35 89.40 89.40 89.40 89.40 89.40 89.40 89.40 89.40
+[0;36m[INFO][0m K=100  cross (1,4)  --repeat 20
+==== core-to-core ping-pong (demo 10 §1 pilot) ====
+isolated cores : 1-7   nohz_full: 1-7
+graphical.target: inactive   (GUI up => a headless-only gate is unsafe)
+TSC->ns factor : 0.256412 ns/cycle  (~3.900 GHz invariant TSC)
+invariant TSC  : constant_tsc=yes nonstop_tsc=yes
+arena          : 2 MiB @ 0x7c372c800000 — THP obtained (AnonHugePages=2048 kB)
+protocol=exchange  K=100  windows=20  warmup=5  orchestrator-core=0
+repeat=20 (across-allocation)  seed=0x9e3779b97f4a7c15  offset=random
+
+pair (1,4) across-allocation distribution — N=20 offsets, seed=0x9e3779b97f4a7c15:
+  median-of-medians 168.20 ns   IQR(medians) 5.60 ns   [min 163.00, max 170.00, n=20]
+  sorted per-offset medians (ns): 163.00 164.10 164.40 164.40 164.40 164.40 164.40 164.40 164.70 168.00 168.40 169.80 170.00 170.00 170.00 170.00 170.00 170.00 170.00 170.00
+[0;36m[INFO][0m K=1000  intra (1,2)  --repeat 20
+==== core-to-core ping-pong (demo 10 §1 pilot) ====
+isolated cores : 1-7   nohz_full: 1-7
+graphical.target: inactive   (GUI up => a headless-only gate is unsafe)
+TSC->ns factor : 0.256410 ns/cycle  (~3.900 GHz invariant TSC)
+invariant TSC  : constant_tsc=yes nonstop_tsc=yes
+arena          : 2 MiB @ 0x73315e000000 — THP obtained (AnonHugePages=2048 kB)
+protocol=exchange  K=1000  windows=20  warmup=5  orchestrator-core=0
+repeat=20 (across-allocation)  seed=0x9e3779b97f4a7c15  offset=random
+
+pair (1,2) across-allocation distribution — N=20 offsets, seed=0x9e3779b97f4a7c15:
+  median-of-medians 72.13 ns   IQR(medians) 0.01 ns   [min 72.12, max 72.15, n=20]
+  sorted per-offset medians (ns): 72.12 72.13 72.13 72.13 72.13 72.13 72.13 72.13 72.13 72.13 72.13 72.13 72.14 72.14 72.14 72.14 72.14 72.14 72.14 72.15
+[0;36m[INFO][0m K=1000  cross (1,4)  --repeat 20
+==== core-to-core ping-pong (demo 10 §1 pilot) ====
+isolated cores : 1-7   nohz_full: 1-7
+graphical.target: inactive   (GUI up => a headless-only gate is unsafe)
+TSC->ns factor : 0.256411 ns/cycle  (~3.900 GHz invariant TSC)
+invariant TSC  : constant_tsc=yes nonstop_tsc=yes
+arena          : 2 MiB @ 0x72c150400000 — THP obtained (AnonHugePages=2048 kB)
+protocol=exchange  K=1000  windows=20  warmup=5  orchestrator-core=0
+repeat=20 (across-allocation)  seed=0x9e3779b97f4a7c15  offset=random
+
+pair (1,4) across-allocation distribution — N=20 offsets, seed=0x9e3779b97f4a7c15:
+  median-of-medians 166.00 ns   IQR(medians) 5.67 ns   [min 160.19, max 167.02, n=20]
+  sorted per-offset medians (ns): 160.19 160.24 160.27 160.40 160.66 160.77 161.02 161.49 161.54 166.00 166.01 166.02 166.24 166.32 166.38 166.52 166.56 166.60 166.73 167.02
+[0;36m[INFO][0m K=10000  intra (1,2)  --repeat 20
+==== core-to-core ping-pong (demo 10 §1 pilot) ====
+isolated cores : 1-7   nohz_full: 1-7
+graphical.target: inactive   (GUI up => a headless-only gate is unsafe)
+TSC->ns factor : 0.256410 ns/cycle  (~3.900 GHz invariant TSC)
+invariant TSC  : constant_tsc=yes nonstop_tsc=yes
+arena          : 2 MiB @ 0x7be81fc00000 — THP obtained (AnonHugePages=2048 kB)
+protocol=exchange  K=10000  windows=20  warmup=5  orchestrator-core=0
+repeat=20 (across-allocation)  seed=0x9e3779b97f4a7c15  offset=random
+
+pair (1,2) across-allocation distribution — N=20 offsets, seed=0x9e3779b97f4a7c15:
+  median-of-medians 72.06 ns   IQR(medians) 0.00 ns   [min 72.06, max 72.06, n=20]
+  sorted per-offset medians (ns): 72.06 72.06 72.06 72.06 72.06 72.06 72.06 72.06 72.06 72.06 72.06 72.06 72.06 72.06 72.06 72.06 72.06 72.06 72.06 72.06
+[0;36m[INFO][0m K=10000  cross (1,4)  --repeat 20
+==== core-to-core ping-pong (demo 10 §1 pilot) ====
+isolated cores : 1-7   nohz_full: 1-7
+graphical.target: inactive   (GUI up => a headless-only gate is unsafe)
+TSC->ns factor : 0.256411 ns/cycle  (~3.900 GHz invariant TSC)
+invariant TSC  : constant_tsc=yes nonstop_tsc=yes
+arena          : 2 MiB @ 0x72a4ab400000 — THP obtained (AnonHugePages=2048 kB)
+protocol=exchange  K=10000  windows=20  warmup=5  orchestrator-core=0
+repeat=20 (across-allocation)  seed=0x9e3779b97f4a7c15  offset=random
+
+pair (1,4) across-allocation distribution — N=20 offsets, seed=0x9e3779b97f4a7c15:
+  median-of-medians 165.99 ns   IQR(medians) 5.33 ns   [min 160.39, max 166.54, n=20]
+  sorted per-offset medians (ns): 160.39 160.42 160.55 160.71 160.80 160.95 161.03 161.09 161.74 165.90 166.08 166.11 166.14 166.23 166.24 166.25 166.32 166.39 166.49 166.54
+[0;36m[INFO][0m K-lock test: pick the smallest K whose across-allocation IQR(medians)
+[0;36m[INFO][0m stays comfortably inside the intra/cross gap — compare that, not the
+[0;36m[INFO][0m within-window IQR A3 reported.
+
+[1m[0;36m━━━ done — full log: /home/gcooke/Development/Crucible/bench/pilot/10-core-to-core/pilot_logs/run_pilot-20260726T181703.log ━━━[0m
+[0;36m[INFO][0m This script laid out numbers only; no gate was decided here.
+[0;36m[INFO][0m logging to /home/gcooke/Development/Crucible/bench/pilot/10-core-to-core/pilot_logs/run_pilot-20260726T181706.log
+
+[1m[0;36m━━━ demo 10 §1 core-to-core pilot — gates: a6 ━━━[0m
+[0;36m[INFO][0m isolation OK: isolated=1-7 nohz_full=1-7 smt=off governor=performance
+
+[1m[0;36m━━━ CCX grouping (from sysfs L3 shared_cpu_list — this is A1's prediction) ━━━[0m
+    core 1  -> L3 domain 0-3
+    core 2  -> L3 domain 0-3
+    core 3  -> L3 domain 0-3
+    core 4  -> L3 domain 4-7
+    core 5  -> L3 domain 4-7
+    core 6  -> L3 domain 4-7
+    core 7  -> L3 domain 4-7
+[0;36m[INFO][0m intra-CCX pair: (1,2) — both in L3 domain 0-3
+[0;36m[INFO][0m cross-CCX pair: (1,4) — 1 in 0-3, 4 in 4-7
+
+[1m[0;36m━━━ A6 — offset sweep, intra and cross pair (confirm/kill L3 slicing) ━━━[0m
+[0;36m[INFO][0m intra pair (1,2):
+==== core-to-core ping-pong (demo 10 §1 pilot) ====
+isolated cores : 1-7   nohz_full: 1-7
+graphical.target: inactive   (GUI up => a headless-only gate is unsafe)
+TSC->ns factor : 0.256409 ns/cycle  (~3.900 GHz invariant TSC)
+invariant TSC  : constant_tsc=yes nonstop_tsc=yes
+arena          : 2 MiB @ 0x7ec71ee00000 — THP obtained (AnonHugePages=2048 kB)
+protocol=exchange  K=1000  windows=20  warmup=5  orchestrator-core=0
+repeat=1  offset=0
+
+offset sweep — pair (1,2), protocol=exchange, range=4096 B, step=64:
+  offset_B    median_ns
+         0        72.13
+        64        72.14
+       128        72.13
+       192        72.15
+       256        72.14
+       320        72.17
+       384        72.14
+       448        72.14
+       512        72.15
+       576        72.17
+       640        72.14
+       704        72.15
+       768        72.14
+       832        72.15
+       896        72.14
+       960        72.13
+      1024        72.14
+      1088        72.17
+      1152        72.14
+      1216        72.14
+      1280        72.14
+      1344        72.14
+      1408        72.14
+      1472        72.14
+      1536        72.14
+      1600        72.15
+      1664        72.14
+      1728        72.15
+      1792        72.15
+      1856        72.20
+      1920        72.14
+      1984        72.14
+      2048        72.14
+      2112        72.14
+      2176        72.13
+      2240        72.14
+      2304        72.14
+      2368        72.13
+      2432        72.13
+      2496        72.14
+      2560        72.14
+      2624        88.80
+      2688        88.59
+      2752        72.17
+      2816        80.27
+      2880        72.14
+      2944        83.53
+      3008        72.13
+      3072        89.76
+      3136        72.13
+      3200        90.95
+      3264        72.14
+      3328        72.14
+      3392        72.13
+      3456        72.14
+      3520        72.14
+      3584        72.13
+      3648        72.14
+      3712        72.14
+      3776        72.13
+      3840        72.13
+      3904        72.13
+      3968        72.14
+      4032        72.14
+[0;36m[INFO][0m cross pair (1,4):
+==== core-to-core ping-pong (demo 10 §1 pilot) ====
+isolated cores : 1-7   nohz_full: 1-7
+graphical.target: inactive   (GUI up => a headless-only gate is unsafe)
+TSC->ns factor : 0.256412 ns/cycle  (~3.900 GHz invariant TSC)
+invariant TSC  : constant_tsc=yes nonstop_tsc=yes
+arena          : 2 MiB @ 0x7a273f600000 — THP obtained (AnonHugePages=2048 kB)
+protocol=exchange  K=1000  windows=20  warmup=5  orchestrator-core=0
+repeat=1  offset=0
+
+offset sweep — pair (1,4), protocol=exchange, range=4096 B, step=64:
+  offset_B    median_ns
+         0       160.56
+        64       161.59
+       128       166.79
+       192       166.52
+       256       160.16
+       320       161.67
+       384       165.92
+       448       166.62
+       512       161.41
+       576       160.18
+       640       166.45
+       704       166.37
+       768       160.36
+       832       160.22
+       896       166.18
+       960       166.76
+      1024       160.16
+      1088       160.44
+      1152       166.26
+      1216       166.47
+      1280       160.55
+      1344       160.15
+      1408       166.20
+      1472       166.08
+      1536       161.52
+      1600       160.17
+      1664       166.37
+      1728       165.99
+      1792       160.22
+      1856       160.16
+      1920       166.20
+      1984       166.04
+      2048       160.16
+      2112       161.59
+      2176       166.52
+      2240       166.47
+      2304       160.33
+      2368       160.59
+      2432       166.23
+      2496       166.42
+      2560       160.43
+      2624       161.05
+      2688       166.25
+      2752       166.69
+      2816       160.19
+      2880       160.33
+      2944       166.28
+      3008       166.58
+      3072       161.49
+      3136       161.02
+      3200       166.27
+      3264       166.02
+      3328       161.38
+      3392       160.49
+      3456       166.68
+      3520       166.15
+      3584       160.32
+      3648       163.08
+      3712       166.67
+      3776       166.25
+      3840       161.08
+      3904       160.53
+      3968       165.97
+      4032       165.99
+[0;36m[INFO][0m A repeating period or clustering into a few discrete levels confirms L3
+[0;36m[INFO][0m slice placement; a flat line refutes it and sends us hunting elsewhere.
+
+[1m[0;36m━━━ done — full log: /home/gcooke/Development/Crucible/bench/pilot/10-core-to-core/pilot_logs/run_pilot-20260726T181706.log ━━━[0m
+[0;36m[INFO][0m This script laid out numbers only; no gate was decided here.
+[0;36m[INFO][0m logging to /home/gcooke/Development/Crucible/bench/pilot/10-core-to-core/pilot_logs/run_pilot-20260726T181707.log
+
+[1m[0;36m━━━ demo 10 §1 core-to-core pilot — gates: a7 ━━━[0m
+[0;36m[INFO][0m isolation OK: isolated=1-7 nohz_full=1-7 smt=off governor=performance
+
+[1m[0;36m━━━ CCX grouping (from sysfs L3 shared_cpu_list — this is A1's prediction) ━━━[0m
+    core 1  -> L3 domain 0-3
+    core 2  -> L3 domain 0-3
+    core 3  -> L3 domain 0-3
+    core 4  -> L3 domain 4-7
+    core 5  -> L3 domain 4-7
+    core 6  -> L3 domain 4-7
+    core 7  -> L3 domain 4-7
+[0;36m[INFO][0m intra-CCX pair: (1,2) — both in L3 domain 0-3
+[0;36m[INFO][0m cross-CCX pair: (1,4) — 1 in 0-3, 4 in 4-7
+
+[1m[0;36m━━━ A7 — baseline fixed cost X on cores 1,2,4,5 ━━━[0m
+[0;36m[INFO][0m baseline cores 1,2:
+==== core-to-core ping-pong (demo 10 §1 pilot) ====
+isolated cores : 1-7   nohz_full: 1-7
+graphical.target: inactive   (GUI up => a headless-only gate is unsafe)
+TSC->ns factor : 0.256410 ns/cycle  (~3.900 GHz invariant TSC)
+invariant TSC  : constant_tsc=yes nonstop_tsc=yes
+arena          : 2 MiB @ 0x79fc78a00000 — THP obtained (AnonHugePages=2048 kB)
+protocol=exchange  K=1000  windows=20  warmup=5  orchestrator-core=0
+repeat=1  offset=0
+
+baseline X — single thread, line resident in L1, two atomic stores per
+round trip, no cross-core transfer, no spin-wait:
+  core 1: median 0.58 ns   IQR 0.00 ns   [min 0.58, max 0.61, n=20]
+  core 2: median 0.67 ns   IQR 0.00 ns   [min 0.67, max 0.68, n=20]
+[0;36m[INFO][0m baseline cores 4,5:
+==== core-to-core ping-pong (demo 10 §1 pilot) ====
+isolated cores : 1-7   nohz_full: 1-7
+graphical.target: inactive   (GUI up => a headless-only gate is unsafe)
+TSC->ns factor : 0.256410 ns/cycle  (~3.900 GHz invariant TSC)
+invariant TSC  : constant_tsc=yes nonstop_tsc=yes
+arena          : 2 MiB @ 0x7746f8a00000 — THP obtained (AnonHugePages=2048 kB)
+protocol=exchange  K=1000  windows=20  warmup=5  orchestrator-core=0
+repeat=1  offset=0
+
+baseline X — single thread, line resident in L1, two atomic stores per
+round trip, no cross-core transfer, no spin-wait:
+  core 4: median 0.58 ns   IQR 0.00 ns   [min 0.58, max 0.63, n=20]
+  core 5: median 0.58 ns   IQR 0.00 ns   [min 0.58, max 0.68, n=20]
+[0;36m[INFO][0m X is the fixed protocol cost (two atomic stores into L1 + loop + amortised
+[0;36m[INFO][0m rdtscp). The transfer component is (RTT - X)/2 per direction — computed
+[0;36m[INFO][0m OUTSIDE the harness. If X exceeds the intra-CCX RTT, STOP and report.
+
+[1m[0;36m━━━ done — full log: /home/gcooke/Development/Crucible/bench/pilot/10-core-to-core/pilot_logs/run_pilot-20260726T181707.log ━━━[0m
+[0;36m[INFO][0m This script laid out numbers only; no gate was decided here.
+[0;36m[INFO][0m logging to /home/gcooke/Development/Crucible/bench/pilot/10-core-to-core/pilot_logs/run_pilot-20260726T181707.log
+
+[1m[0;36m━━━ demo 10 §1 core-to-core pilot — gates: a8 ━━━[0m
+[0;36m[INFO][0m isolation OK: isolated=1-7 nohz_full=1-7 smt=off governor=performance
+
+[1m[0;36m━━━ CCX grouping (from sysfs L3 shared_cpu_list — this is A1's prediction) ━━━[0m
+    core 1  -> L3 domain 0-3
+    core 2  -> L3 domain 0-3
+    core 3  -> L3 domain 0-3
+    core 4  -> L3 domain 4-7
+    core 5  -> L3 domain 4-7
+    core 6  -> L3 domain 4-7
+    core 7  -> L3 domain 4-7
+[0;36m[INFO][0m intra-CCX pair: (1,2) — both in L3 domain 0-3
+[0;36m[INFO][0m cross-CCX pair: (1,4) — 1 in 0-3, 4 in 4-7
+
+[1m[0;36m━━━ A8 — orchestrator placement: pair (1,2) & (4,5) over orchestrator cores 0,3,4,7 ━━━[0m
+    pair     orch=0         orch=3         orch=4         orch=7       
+    (1,2)    72.13          72.14          72.13          72.14        
+    (4,5)    70.85          70.85          70.85          70.85        
+[0;36m[INFO][0m orchestrator sleeps in pthread_join during the timed region (see PR notes);
+[0;36m[INFO][0m a row that is flat across orch cores says its placement does not perturb the pair.
+
+[1m[0;36m━━━ done — full log: /home/gcooke/Development/Crucible/bench/pilot/10-core-to-core/pilot_logs/run_pilot-20260726T181707.log ━━━[0m
+[0;36m[INFO][0m This script laid out numbers only; no gate was decided here.
+=== exit 0 ===
