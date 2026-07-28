@@ -46,6 +46,27 @@ export const palette = {
   series:   tokens.color.chart.series,
 } as const
 
+// Core-to-core latency matrix (demo 10) — a two-plateau heatmap ramp, not a
+// min→max sequential one. The measured RTT distribution is bimodal: a same-L3
+// cluster and a cross-L3 cluster separated by a wide interval in which no cell
+// lands. Within either cluster the variation is timer quantisation (intra) and
+// slice-placement wobble (cross), not topology, so it is given no colour delta
+// at all — the seam is the finding, the within-block texture is not.
+//
+// Blue vs orange rather than red vs green: the two plateaus stay separable
+// under the common colour-vision deficiencies, and series[0]/series[1] already
+// carry a ~20-point luminance gap (see design-tokens.ts).
+//
+// The label colours are fixed rather than theme-read because the plateau fills
+// are themselves theme-independent: near-black reads on the light blue tile,
+// near-white on the darker orange one, in either site theme.
+export const matrixPalette = {
+  low:       tokens.color.chart.series[0],   // blue-cyan  — the fast plateau
+  high:      tokens.color.chart.series[1],   // red-orange — the slow plateau
+  lowLabel:  tokens.color.surface[900],
+  highLabel: tokens.color.dark.textPrimary,
+} as const
+
 export function getColors() {
   if (typeof document === 'undefined') {
     return {

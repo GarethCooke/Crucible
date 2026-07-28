@@ -593,6 +593,215 @@ if [[ "${SLUG}" == "09-arm-neon" ]]; then
 fi
 # ─────────────────────────────────────────────────────────────────────────────
 
+# ─── Demo 10: core-to-core ping-pong RTT — custom capture, no variant loop ───
+# Unlike demos 01–08 this is neither a Google Benchmark target nor a perf-stat
+# pipeline: the binary owns the whole capture and writes complete, ready-to-ship
+# JSON to stdout. There is no parse_perf.py and no assemble_results_*.py step —
+# every string in the output is a literal in benchmark.cpp.
+#
+# NO cset shield. Every other demo confines itself to cores 4-7; demo 10 has to
+# reach all eight, core 0 included (it measures core 0's row), and pins each
+# worker itself with an asserted sched_getcpu(). A shield on 4-7 would make
+# those pins fail. Isolation here comes from isolcpus + explicit affinity.
+#
+# The preconditions are re-asserted inside this branch, unconditionally — they
+# are NOT skippable with --skipchecks. The §1 pilot established that a path
+# which skips them produces plausible-but-wrong numbers: RTT is small enough
+# that a stray governor or a live desktop on core 0 moves the headline.
+#
+# ─── Archive-before-overwrite ────────────────────────────────────────────────
+# Demo 10 needs TWO independent captures on disk: the §6 fine-structure rule is
+# that they agree on CCX block structure within the across-placement error band.
+# It runs under headless-capture.sh, where the desktop is down and nobody is
+# reading the console, so printing "move the previous file first" and then
+# overwriting it would let the second capture silently destroy the first — and
+# with it the only thing the two-capture rule can be checked against. An
+# advisory nobody can act on is not a safeguard, so the previous file is MOVED.
+#
+# Naming follows demos 05-08: archive/<basename>_<YYYY-MM-DD>.json, where the
+# date is that file's OWN captured_at — when the capture was taken, not today.
+archive_previous_capture() {
+    local live="$1"
+    [[ -f "${live}" ]] || return 0
+
+    local archive_dir="${REPO_ROOT}/site/src/data/perf/archive"
+    local base cdate mtime_fallback=0
+    base="$(basename "${live}" .json)"
+
+    # captured_at is never hand-edited and is stamped by the emitter, so it is
+    # the authority on when this file was captured. Fall back to mtime only if
+    # it is missing or malformed (truncated file, hand-mangled JSON) — and say
+    # so, because an mtime is a write date, not necessarily a capture date.
+    #
+    # The `|| true` is load-bearing: on an unparseable file jq exits 5, and this
+    # script runs under `set -euo pipefail`, so without it the whole capture
+    # would abort here instead of taking the fallback below.
+    cdate="$(jq -r '.captured_at // empty' "${live}" 2>/dev/null | cut -c1-10 || true)"
+    if [[ ! "${cdate}" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
+        cdate="$(date -u -r "${live}" +%Y-%m-%d)"
+        mtime_fallback=1
+    fi
+
+    mkdir -p "${archive_dir}"
+    local dest="${archive_dir}/${base}_${cdate}.json"
+    # Same capture date already archived (a re-run on the same day): disambiguate
+    # rather than clobber. Overwriting here would lose an older capture, which is
+    # the exact failure this function exists to prevent.
+    if [[ -e "${dest}" ]]; then
+        local n=2
+        while [[ -e "${archive_dir}/${base}_${cdate}_${n}.json" ]]; do n=$((n + 1)); done
+        dest="${archive_dir}/${base}_${cdate}_${n}.json"
+        echo "    NOTE: ${base}_${cdate}.json is already archived; this one goes to" >&2
+        echo "          $(basename "${dest}") rather than replacing it." >&2
+    fi
+
+    mv "${live}" "${dest}"
+    echo "    archived ${live}" >&2
+    echo "          -> ${dest}" >&2
+    if [[ "${mtime_fallback}" -eq 1 ]]; then
+        echo "    WARNING: that date came from the file MTIME, not its captured_at" >&2
+        echo "             (the field was missing or malformed). An mtime is when the" >&2
+        echo "             file was last written, not necessarily when it was captured —" >&2
+        echo "             check the archived file before citing that date in the post." >&2
+    fi
+}
+
+if [[ "${SLUG}" == "10-core-to-core" ]]; then
+    C2C_BINARY="${BENCH_ROOT}/build/demos/10-core-to-core/bench_10_core_to_core"
+
+    if [[ ! -x "${C2C_BINARY}" ]]; then
+        echo "ERROR: binary not found: ${C2C_BINARY}" >&2; exit 1
+    fi
+
+    echo "==> Re-asserting capture preconditions (not skippable for demo 10)..."
+    assert_isolated_cores
+    assert_smt_off
+    assert_boost_off
+    assert_headless
+    set_governor_performance
+
+    echo "==> Resetting cset shield (demo 10 needs all 8 cores, core 0 included)..."
+    sudo cset shield --reset > /dev/null 2>&1 || true
+
+    SLICE_JSON="${REPO_ROOT}/site/src/data/perf/10-core-to-core.slice-sweep.json"
+    PROTO_JSON="${REPO_ROOT}/site/src/data/perf/10-core-to-core.protocol.json"
+
+    WDIR=$(mktemp -d /tmp/crucible_c2c_XXXXXX)
+
+    # Emit to a temp file first: a mid-capture abort must not leave a truncated
+    # data file behind where the site build would happily import it.
+    echo "==> Capturing the 8x8 matrix (28 pairs x 20 placements + baselines)..."
+    "${C2C_BINARY}" --capture > "${WDIR}/matrix.json"
+
+    echo "==> Capturing the slice-sweep exhibit (full 2 MiB huge page)..."
+    "${C2C_BINARY}" --capture-slice-sweep --offset-sweep-range 2097152 \
+        > "${WDIR}/slice-sweep.json"
+
+    echo "==> Capturing the protocol-comparison exhibit (exchange vs twoflag)..."
+    "${C2C_BINARY}" --capture-protocol > "${WDIR}/protocol.json"
+
+    echo "==> Validating emitted JSON..."
+    jq -e '.demo and .machine.cpu and (.captured_at | test("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"))' \
+        "${WDIR}/matrix.json" > /dev/null \
+        || { echo "FATAL: matrix capture is not schema-valid" >&2; exit 1; }
+    jq -e '(.latency_matrix.pairs | length) == 28 and (.latency_matrix.cores | length) == 8 and (.latency_matrix.baseline_ns | length) == 8' \
+        "${WDIR}/matrix.json" > /dev/null \
+        || { echo "FATAL: matrix capture is not 8 cores / 28 pairs — check the isolated set" >&2; exit 1; }
+    for f in "${WDIR}/slice-sweep.json" "${WDIR}/protocol.json"; do
+        jq -e '.demo and .machine.cpu and .captured_at' "$f" > /dev/null \
+            || { echo "FATAL: exhibit capture ${f} is not schema-valid" >&2; exit 1; }
+    done
+
+    # Brief §Open item 3. Without a transparent huge page the sweep is clamped to
+    # one 4 KiB page — the binary says so on stderr, exits 0, and the file above
+    # is still schema-valid, so this would otherwise ship silently as a
+    # full-2 MiB exhibit. The matrix itself stays valid (intra is flat and the
+    # cross modulation is sampled either way); it is the EXHIBIT that is weaker.
+    # Loud, not fatal.
+    if [[ "$(jq -r '.slice_sweep.arena_hugepage' "${WDIR}/slice-sweep.json")" != "true" ]]; then
+        SWEPT=$(jq -r '.slice_sweep.sweep_range_bytes' "${WDIR}/slice-sweep.json")
+        echo "" >&2
+        echo "WARNING ============================================================" >&2
+        echo "  THP NOT obtained: the slice-sweep exhibit covers ${SWEPT} B, not the" >&2
+        echo "  2097152 B requested. Past a page boundary virtual offsets stop" >&2
+        echo "  tracking physical offsets, so the sweep was clamped to one page." >&2
+        echo "  The MATRIX is unaffected and still valid. The EXHIBIT is weaker:" >&2
+        echo "  say so in the post, or free memory and re-run to get a huge page." >&2
+        echo "    check: cat /sys/kernel/mm/transparent_hugepage/enabled" >&2
+        echo "==================================================================" >&2
+        echo "" >&2
+    fi
+
+    # The matrix samples cache-line placement across a POOL of independent arenas
+    # (one per placement) so that each cell spans distinct physical frames, not
+    # just offsets inside one frame. Arenas that miss THP are tolerated — a random
+    # offset in a small-page arena is still a valid frame sample — so this is
+    # reported, never fatal. It is worth reading: if the count is routinely well
+    # under the pool size, the matrix and the single-frame slice-sweep exhibit
+    # differ in page backing, and the post should know that.
+    POOL_N=$(jq -r '.latency_matrix.placement_arenas' "${WDIR}/matrix.json")
+    POOL_THP=$(jq -r '.latency_matrix.arenas_hugepage_obtained' "${WDIR}/matrix.json")
+    echo "==> Matrix arena pool: ${POOL_THP}/${POOL_N} arenas THP-backed" >&2
+    if [[ "${POOL_THP}" != "${POOL_N}" ]]; then
+        echo "    NOTE: $(( POOL_N - POOL_THP )) of ${POOL_N} pool arenas are on 4 KiB pages." >&2
+        echo "    Tolerated by design (still valid frame samples) and recorded in the JSON" >&2
+        echo "    as arenas_hugepage_obtained. If this is not 0, check whether THP is" >&2
+        echo "    disabled for this process tree, which is inherited and survives sysfs:" >&2
+        echo "      grep THP_enabled /proc/self/status    # 0 means disabled" >&2
+    fi
+
+    # ─── Cross-file consistency: protocol exhibit vs matrix ──────────────────
+    # The exhibit's two `exchange` cells re-measure two matrix cells with the
+    # same locked parameters and the same sampling design — but in a separate
+    # process with its OWN arena pool. A pool is allocated in one burst, so its
+    # frames can be correlated in the high-order physical-address bits that
+    # feed the L3 slice hash, and a whole pool can land on one slice mode: a §7
+    # protocol capture came out 79.3 ns on pair (1,2) against the matrix's
+    # 72.1 ns, each with a tight across-placement IQR. Normal agreement is well
+    # under 1%; the frame-mode split is ~10%; 5% separates the two cleanly.
+    # Disagreement means one of the two pools sat on a minority frame mode, so
+    # the capture must be RE-RUN — fatal here, before anything is archived.
+    echo "==> Cross-checking protocol exhibit vs matrix (exchange cells, 5% band)..." >&2
+    while read -r A B EXMED; do
+        MMED=$(jq -r --argjson a "${A}" --argjson b "${B}" \
+            '.latency_matrix.pairs[] | select(.a == $a and .b == $b) | .rtt_ns.median' \
+            "${WDIR}/matrix.json")
+        if [[ -z "${MMED}" || "${MMED}" == "null" ]]; then
+            echo "FATAL: protocol exhibit measures pair (${A},${B}) but the matrix has no such cell" >&2
+            exit 1
+        fi
+        if ! awk -v e="${EXMED}" -v m="${MMED}" \
+                'BEGIN { d = (e - m) / m; if (d < 0) d = -d; exit !(d <= 0.05) }'; then
+            echo "FATAL: protocol exhibit 'exchange' (${A},${B}) = ${EXMED} ns vs matrix" >&2
+            echo "       ${MMED} ns — more than 5% apart. One of the two arena pools" >&2
+            echo "       landed on a minority L3 slice mode (frame-correlated pool)." >&2
+            echo "       Re-run the capture; nothing has been archived or published." >&2
+            exit 1
+        fi
+        echo "    exchange (${A},${B}): exhibit ${EXMED} ns vs matrix ${MMED} ns — OK" >&2
+    done < <(jq -r '.protocol_comparison.cells[] | select(.protocol == "exchange") | "\(.a) \(.b) \(.rtt_ns.median)"' \
+             "${WDIR}/protocol.json")
+
+    # Only now that all three captures exist and validate: retire the previous
+    # set to the archive, then publish. Doing it here and not before the capture
+    # means an aborted run leaves the previous capture live where it was, rather
+    # than archiving it and shipping nothing.
+    echo "==> Archiving the previous captures (second-capture convention, demos 05-08)..."
+    archive_previous_capture "${OUT_JSON}"
+    archive_previous_capture "${SLICE_JSON}"
+    archive_previous_capture "${PROTO_JSON}"
+
+    mv "${WDIR}/matrix.json"      "${OUT_JSON}"
+    mv "${WDIR}/slice-sweep.json" "${SLICE_JSON}"
+    mv "${WDIR}/protocol.json"    "${PROTO_JSON}"
+
+    echo "==> Done: ${OUT_JSON}"
+    echo "          ${SLICE_JSON}"
+    echo "          ${PROTO_JSON}"
+    exit 0
+fi
+# ─────────────────────────────────────────────────────────────────────────────
+
 if [[ ! -x "${BINARY}" ]]; then
     echo "ERROR: binary not found at ${BINARY}" >&2
     exit 1

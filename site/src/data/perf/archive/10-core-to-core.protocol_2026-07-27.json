@@ -1,0 +1,42 @@
+{
+  "demo": "10-core-to-core.protocol",
+  "title": "Protocol comparison: single-line exchange vs two-line flag handshake",
+  "machine": {"cpu":"AMD Ryzen 7 3800X 8-Core Processor","cores_physical":8,"cores_logical":8,"smt_enabled":false,"ram_gb":31,"ram_speed_mhz":null,"compiler":"gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0","kernel":"6.8.0-136-generic","governor":"performance","turbo":false,"turbo_source":"cpb","freq_max_advertised_mhz":4560,"freq_max_available_mhz":3900,"freq_base_mhz":null,"isolated_cpus":"1-7","isolated_cpus_requested":"1-7","isolated_cpus_effective":"1-7","isolated_cpus_source":"cmdline+probe","cpu_affinity":"0","lscpu_extended":"CPU NODE SOCKET CORE L1d:L1i:L2:L3 ONLINE    MAXMHZ    MINMHZ       MHZ\n  0    0      0    0 0:0:0:0          yes 4560.0552 2200.0000 3899.8831\n  1    0      0    1 1:1:1:0          yes 4560.0552 2200.0000 3900.0000\n  2    0      0    2 2:2:2:0          yes 4560.0552 2200.0000 3900.0000\n  3    0      0    3 3:3:3:0          yes 4560.0552 2200.0000 3900.0000\n  4    0      0    4 4:4:4:1          yes 4560.0552 2200.0000 3900.0000\n  5    0      0    5 5:5:5:1          yes 4560.0552 2200.0000 3900.0000\n  6    0      0    6 6:6:6:1          yes 4560.0552 2200.0000 3900.0000\n  7    0      0    7 7:7:7:1          yes 4560.0552 2200.0000 3900.0000","arch":"x86_64","soc":null},
+  "captured_at": "2026-07-27T20:22:33Z",
+  "protocol_comparison": {
+    "memory_order": "acq_rel",
+    "k_roundtrips": 1000,
+    "windows_per_placement": 20,
+    "warmup_windows": 5,
+    "placements_per_cell": 20,
+    "placement_arenas": 20,
+    "placement_sampling": "independent_arena_pool",
+    "arenas_hugepage_obtained": 20,
+    "offset_mode": "random_64B_aligned_per_arena",
+    "offset_seed": "0x9e3779b97f4a7c15",
+    "tsc_ns_per_cycle": 0.256409,
+    "rtt_convention": "round_trip",
+    "orchestrator_placement": "lowest-free-isolated",
+    "cores": [
+      {"cpu": 0, "ccx": 0, "l3_domain": "0-3", "housekeeping": true},
+      {"cpu": 1, "ccx": 0, "l3_domain": "0-3", "housekeeping": false},
+      {"cpu": 2, "ccx": 0, "l3_domain": "0-3", "housekeeping": false},
+      {"cpu": 3, "ccx": 0, "l3_domain": "0-3", "housekeeping": false},
+      {"cpu": 4, "ccx": 1, "l3_domain": "4-7", "housekeeping": false},
+      {"cpu": 5, "ccx": 1, "l3_domain": "4-7", "housekeeping": false},
+      {"cpu": 6, "ccx": 1, "l3_domain": "4-7", "housekeeping": false},
+      {"cpu": 7, "ccx": 1, "l3_domain": "4-7", "housekeeping": false}
+    ],
+    "cells": [
+      {"protocol": "exchange", "a": 1, "b": 2, "same_ccx": true,
+       "rtt_ns": {"median": 72.1098, "min": 72.1098, "max": 72.1198, "iqr": 0, "iqr_lo": 72.1098, "iqr_hi": 72.1098, "n_reps": 20}},
+      {"protocol": "exchange", "a": 1, "b": 4, "same_ccx": false,
+       "rtt_ns": {"median": 158.7845, "min": 158.2345, "max": 163.4795, "iqr": 4.9, "iqr_lo": 158.347, "iqr_hi": 163.247, "n_reps": 20}},
+      {"protocol": "twoflag", "a": 1, "b": 2, "same_ccx": true,
+       "rtt_ns": {"median": 86.3447, "min": 85.9047, "max": 87.3297, "iqr": 0.395, "iqr_lo": 86.2322, "iqr_hi": 86.6272, "n_reps": 20}},
+      {"protocol": "twoflag", "a": 1, "b": 4, "same_ccx": false,
+       "rtt_ns": {"median": 244.7468, "min": 241.4543, "max": 267.2042, "iqr": 2.455, "iqr_lo": 244.1093, "iqr_hi": 246.5643, "n_reps": 20}}
+    ]
+  },
+  "notes": "Supporting exhibit for the protocol choice in 10-core-to-core.json. The headline uses 'exchange': one shared cache line, leader and follower alternating on it. 'twoflag' uses two atomics on SEPARATE lines, one per direction, so each round trip drags two lines across the interconnect and the cross-CCX cost roughly doubles -- a larger ratio that measures a different thing. Both are measured here on the same intra-CCX and cross-CCX pair, at the same K and over the same pool of placement_arenas independent arena allocations held live simultaneously (distinct physical frames), which is the matrix's sampling design -- so the comparison is paired on frame placement and these numbers are directly comparable with the matrix cells for the same pairs. Statistics follow the matrix convention: the distribution is the per-placement medians, iqr_lo/iqr_hi are absolute quartiles and iqr is their difference, p99 is omitted for the same reason it is omitted from the matrix (it would be the near-maximum of an averaged quantity, not a tail), and values are full round trips."
+}

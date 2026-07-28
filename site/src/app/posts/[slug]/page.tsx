@@ -16,10 +16,11 @@ import { InProgressNotice } from '@/components/InProgressNotice'
 import { PressureSweep } from '@/components/charts/PressureSweep'
 import { TimeVsN } from '@/components/charts/TimeVsN'
 import { ThroughputBars } from '@/components/charts/ThroughputBars'
+import { LatencyMatrix } from '@/components/charts/LatencyMatrix'
 import { getAllPosts } from '@/lib/posts'
 import { SYNTAX_THEME } from '@/lib/syntax'
 
-const components = { CodeCompare, Benchmark, InProgressNotice, PressureSweep, TimeVsN, ThroughputBars }
+const components = { CodeCompare, Benchmark, InProgressNotice, PressureSweep, TimeVsN, ThroughputBars, LatencyMatrix }
 
 const POSTS_DIR = path.join(process.cwd(), 'src/posts')
 

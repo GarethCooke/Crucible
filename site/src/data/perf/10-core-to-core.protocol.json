@@ -1,0 +1,42 @@
+{
+  "demo": "10-core-to-core.protocol",
+  "title": "Protocol comparison: single-line exchange vs two-line flag handshake",
+  "machine": {"cpu":"AMD Ryzen 7 3800X 8-Core Processor","cores_physical":8,"cores_logical":8,"smt_enabled":false,"ram_gb":31,"ram_speed_mhz":null,"compiler":"gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0","kernel":"6.8.0-136-generic","governor":"performance","turbo":false,"turbo_source":"cpb","freq_max_advertised_mhz":4560,"freq_max_available_mhz":3900,"freq_base_mhz":null,"isolated_cpus":"1-7","isolated_cpus_requested":"1-7","isolated_cpus_effective":"1-7","isolated_cpus_source":"cmdline+probe","cpu_affinity":"0","lscpu_extended":"CPU NODE SOCKET CORE L1d:L1i:L2:L3 ONLINE    MAXMHZ    MINMHZ       MHZ\n  0    0      0    0 0:0:0:0          yes 4560.0552 2200.0000 3899.9490\n  1    0      0    1 1:1:1:0          yes 4560.0552 2200.0000 3900.0000\n  2    0      0    2 2:2:2:0          yes 4560.0552 2200.0000 3900.0000\n  3    0      0    3 3:3:3:0          yes 4560.0552 2200.0000 3900.0000\n  4    0      0    4 4:4:4:1          yes 4560.0552 2200.0000 3900.0000\n  5    0      0    5 5:5:5:1          yes 4560.0552 2200.0000 3900.0000\n  6    0      0    6 6:6:6:1          yes 4560.0552 2200.0000 3900.0000\n  7    0      0    7 7:7:7:1          yes 4560.0552 2200.0000 3900.0000","arch":"x86_64","soc":null},
+  "captured_at": "2026-07-28T12:02:28Z",
+  "protocol_comparison": {
+    "memory_order": "acq_rel",
+    "k_roundtrips": 1000,
+    "windows_per_placement": 20,
+    "warmup_windows": 5,
+    "placements_per_cell": 20,
+    "placement_arenas": 20,
+    "placement_sampling": "independent_arena_pool",
+    "arenas_hugepage_obtained": 20,
+    "offset_mode": "random_64B_aligned_per_arena",
+    "offset_seed": "0x9e3779b97f4a7c15",
+    "tsc_ns_per_cycle": 0.256407,
+    "rtt_convention": "round_trip",
+    "orchestrator_placement": "lowest-free-isolated",
+    "cores": [
+      {"cpu": 0, "ccx": 0, "l3_domain": "0-3", "housekeeping": true},
+      {"cpu": 1, "ccx": 0, "l3_domain": "0-3", "housekeeping": false},
+      {"cpu": 2, "ccx": 0, "l3_domain": "0-3", "housekeeping": false},
+      {"cpu": 3, "ccx": 0, "l3_domain": "0-3", "housekeeping": false},
+      {"cpu": 4, "ccx": 1, "l3_domain": "4-7", "housekeeping": false},
+      {"cpu": 5, "ccx": 1, "l3_domain": "4-7", "housekeeping": false},
+      {"cpu": 6, "ccx": 1, "l3_domain": "4-7", "housekeeping": false},
+      {"cpu": 7, "ccx": 1, "l3_domain": "4-7", "housekeeping": false}
+    ],
+    "cells": [
+      {"protocol": "exchange", "a": 1, "b": 2, "same_ccx": true,
+       "rtt_ns": {"median": 72.149, "min": 72.099, "max": 80.2039, "iqr": 7.9236, "iqr_lo": 72.1365, "iqr_hi": 80.0601, "n_reps": 20}},
+      {"protocol": "exchange", "a": 1, "b": 4, "same_ccx": false,
+       "rtt_ns": {"median": 158.8203, "min": 158.0978, "max": 163.4877, "iqr": 4.5587, "iqr_lo": 158.7265, "iqr_hi": 163.2852, "n_reps": 20}},
+      {"protocol": "twoflag", "a": 1, "b": 2, "same_ccx": true,
+       "rtt_ns": {"median": 85.5338, "min": 84.3438, "max": 86.9688, "iqr": 0.8912, "iqr_lo": 85.0313, "iqr_hi": 85.9225, "n_reps": 20}},
+      {"protocol": "twoflag", "a": 1, "b": 4, "same_ccx": false,
+       "rtt_ns": {"median": 249.349, "min": 246.7816, "max": 278.4811, "iqr": 2.5412, "iqr_lo": 248.2653, "iqr_hi": 250.8065, "n_reps": 20}}
+    ]
+  },
+  "notes": "Supporting exhibit for the protocol choice in 10-core-to-core.json. The headline uses 'exchange': one shared cache line, leader and follower alternating on it. 'twoflag' uses two atomics on SEPARATE lines, one per direction, so each round trip drags two lines across the interconnect and the cross-CCX cost comes out materially higher -- about 1.5x the exchange figure on this rig -- a larger ratio that measures a different thing. Both protocols are measured on the same intra-CCX and cross-CCX pair, at the same K and over the same pool of placement_arenas independent arena allocations held live simultaneously (distinct physical frames), the matrix's sampling design -- so exchange and twoflag are paired on frame placement WITHIN this exhibit and their comparison is clean. This exhibit is its own capture with its own pool, though, so its frames are NOT the matrix capture's frames: arenas allocated in one burst can be correlated in the high-order physical-address bits that feed the L3 slice hash, and a whole pool can land on one slice mode. The exchange cells here therefore double as a cross-capture probe rather than being assumed directly comparable -- run_one.sh fails the capture if they disagree with the matrix cells for the same pairs by more than 5%. Statistics follow the matrix convention: the distribution is the per-placement medians, iqr_lo/iqr_hi are absolute quartiles and iqr is their difference, p99 is omitted for the same reason it is omitted from the matrix (it would be the near-maximum of an averaged quantity, not a tail), and values are full round trips."
+}

@@ -1,0 +1,143 @@
+---
+title: "Core-to-core latency: the seam inside a Zen 2 die"
+date: "2026-07-28"
+summary: "Two cores on the same chip, millimetres apart, talk in 72 ns or 160 ns depending on which side of an invisible line they sit on. Measuring the CCX boundary — and the placement effect that nearly turned into a phantom finding."
+---
+
+{/*
+  DRAFT for authorial review (Opus §7). Prose is the deliverable; component
+  invocations are marked and use the house patterns, but CC should confirm each
+  against the actual component contracts when wiring.
+
+  TITLE is provisional — alternatives on the table: "Anatomy of the CCX",
+  "The seam in the silicon". Gareth's call.
+
+  Every number in this prose is the headline figure from
+  site/src/data/perf/10-core-to-core.json and re-derivable from it. The full
+  matrix lives in the chart, not the prose (data primacy).
+*/}
+
+Two cores on the same die, a few millimetres apart. Hand one pair a cache line to bounce back and forth and they finish the round trip in about 72 nanoseconds. Hand the same line to a different pair on the same chip and it takes about 160. Same silicon, same instruction, same clock — and a 2.2× gap that depends only on *which two cores* you picked.
+
+The cores aren't different. The wire between them is. There's a seam running through the middle of this processor, and this post is about finding it, measuring it honestly, and one placement effect that nearly turned a measurement artifact into a published finding.
+
+## What "core-to-core latency" actually measures
+
+The quantity is a cache-line ping-pong round trip. Two threads share one 64-byte cache line. The leader writes a value and spins until the follower writes back; the follower spins until it sees the leader's write, then answers. One round trip is one there-and-back, so the line crosses the interconnect twice per cycle.
+
+<CodeCompare
+  lang="cpp"
+  naive={`// One shared alignas(64) atomic. The leader owns
+// even->odd transitions; one round trip is one
+// even->odd->even cycle.
+uint64_t local = 0;  // seq starts even
+for (uint64_t k = 0; k < K; ++k) {
+    pp->seq.store(local + 1,
+        std::memory_order_release);   // ping (odd)
+    while (pp->seq.load(std::memory_order_acquire)
+           != local + 2)
+        _mm_pause();                  // await pong
+    local += 2;
+}`}
+  optimized={`// Mirrors the leader's line; answers every
+// odd value with the next even one.
+for (;;) {
+    uint64_t cur =
+        pp->seq.load(std::memory_order_acquire);
+    if (cur & 1ULL) {
+        pp->seq.store(cur + 1,
+            std::memory_order_release);  // pong (even)
+    } else if (c->stop.load(std::memory_order_acquire)) {
+        return;  // leader finished its windows
+    } else {
+        _mm_pause();
+    }
+}`}
+  labels={["Leader", "Follower"]}
+/>
+
+Timing is an `lfence`-bracketed `rdtscp` pair around a window of a thousand round trips, converted to nanoseconds with a TSC factor calibrated against `CLOCK_MONOTONIC`. Two details make the number trustworthy. The TSC is invariant on this part — it ticks at a fixed rate regardless of the core's actual frequency — so a nanosecond figure doesn't wobble when the clock does. And the fixed cost of the loop itself, measured by running the same two atomic stores on a single core with the line resident in its own L1, comes to about 0.6 ns — roughly a hundred times smaller than the figure we're reporting. The round-trip time is essentially all transfer. Nothing meaningful is hiding in the harness.
+
+Every pair of the eight cores gets measured this way. The result is a matrix.
+
+## The seam
+
+<LatencyMatrix slug="10-core-to-core" />
+
+The two blocks are the finding. Cores split cleanly into two groups — `{0,1,2,3}` and `{4,5,6,7}` — where every within-group pair sits near 72 ns and every across-group pair sits near 160 ns, with nothing in between. Not a gradient. A step.
+
+Those groups aren't a labelling choice. They're read directly from the hardware: `/sys/devices/system/cpu/cpuN/cache/index3/shared_cpu_list` reports which cores share an L3 cache, and the two groups are exactly the two L3 domains. This is the Zen 2 **CCX** — Core Complex. The Ryzen 7 3800X packages its eight cores as two CCXs of four, each with its own slice of L3. Cores in the same CCX exchange a line through that shared L3. Cores in different CCXs can't — the line has to leave the CCX, cross the IO die over the Infinity Fabric interconnect, and come back. That detour is the whole 2.2×.
+
+The seam is a property of the package topology, and the measurement recovers it from timing alone, then confirms it against what the cache hierarchy reports about itself. When the number and the sysfs topology agree, you can trust both.
+
+## Reading the matrix honestly
+
+A sharp reader will notice the intra-CCX cells aren't identical — some read 71, some 72, some 73. It's tempting to read structure into that: is core 1 a little closer to core 2 than to core 3?
+
+No. Those differences are the measurement resolution, not the topology. The per-placement medians land on a discrete ladder about one to four cycles apart — an artifact of `rdtscp` granularity and the fact that a round trip is a whole number of coherence hops, not a continuous quantity. Within a CCX, latency is flat to the resolution floor. The honest statement is "intra-CCX RTT is about 72 nanoseconds," full stop; the nanosecond of scatter between cells is quantisation, and comparing one intra cell against another is reading tea leaves.
+
+The chart is built to resist that misreading. The colour scale has exactly two levels, split at the empty gap between the bands — so both blocks render flat, and no within-block gradient appears to invite a comparison the data can't support. Hover any cell for its actual spread across placements, including the worst placement seen; the typical value is what the cell shows.
+
+That word — *placements* — is doing quiet work, and it's the second half of this story.
+
+## The protocol matters, and it measures a real choice
+
+There's more than one way to make two cores ping-pong a line, and the choice changes the number by a lot.
+
+The headline uses a single shared line — one `std::atomic`, both threads taking turns on it. An alternative uses *two* lines, one per direction: the leader writes its line, the follower writes a different one. That two-flag handshake looks similar but drags two cache lines across the interconnect per round trip instead of one, so it pays the crossing twice:
+
+| Protocol                            | Same-CCX pair (1↔2) | Cross-CCX pair (1↔4) | Seam ratio (cross ÷ same) |
+| ----------------------------------- | ------------------- | -------------------- | ------------------------- |
+| `exchange` — one shared line        | 72.1 ns             | 158.8 ns             | 2.20×                     |
+| `twoflag` — one line per direction  | 86.3 ns             | 244.7 ns             | 2.83×                     |
+
+*Medians across 20 independent cache-line placements per cell. Each ratio is that protocol's own seam — its cross-CCX figure over its same-CCX figure — not a comparison between protocols. Full spreads in `archive/10-core-to-core.protocol_2026-07-27.json`.*
+
+Single-line exchange gives the 2.2× seam. The two-flag version gives something closer to 2.8×, because the extra fabric crossing lands entirely on the cross-CCX pairs. Neither is wrong — they measure different things. But the two-flag ratio is the more flattering headline, and reaching for it would mean quoting a number inflated by a protocol choice rather than by the interconnect. The single line is the honest measure of *the seam*; the two-flag comparison is worth showing precisely because it makes visible how much the harness shape can move a "hardware" number.
+
+## The finding underneath the finding
+
+Cross-CCX latency isn't one number — it depends on where the cache line sits in memory. A line's physical address decides which of the four L3 slices in a CCX it homes to, and some slices are a little farther from the two cores doing the talking than others. Walk one cache line through memory 64 bytes at a time and the cross-CCX round trip flips between two levels about 5 nanoseconds apart — roughly a 4% swing — depending on which slice each address lands on. Intra-CCX latency doesn't move: within a CCX the slice is close enough either way that the difference washes out.
+
+{/* No existing chart component fits a 1-D offset sweep (32k points per series);
+    summarised as a table per the draft note. A dedicated sweep figure is a
+    candidate follow-up. */}
+
+| Pair            | Across the 2 MiB sweep, 64 B steps | Levels                    |
+| --------------- | ---------------------------------- | ------------------------- |
+| Same-CCX (1↔2)  | flat                               | ≈72.1 ns at every offset  |
+| Cross-CCX (1↔4) | bimodal on line address            | ≈158.6 ns / ≈163.5 ns     |
+
+*Each point is a single placement's median — no across-placement averaging, so the raw slice structure is visible. Full series in `10-core-to-core.slice-sweep.json`.*
+
+This is the finding underneath the seam: the interconnect cost has fine structure, and the structure tracks L3 slice placement. It's the reason the matrix above measures each cell across twenty independent placements — so this swing is averaged into a typical value and reported in the spread, rather than deciding a cell's number by luck of where its line happened to land.
+
+Which is exactly the thing that nearly went wrong.
+
+## How this measurement lied to me first
+
+The first version of this benchmark used one arena — one block of memory — and sampled twenty offsets inside it. It produced a clean, tight, plausible result: the two CCXs weren't symmetric. Every pair in CCX0 ran about 8 nanoseconds slower than the equivalent pair in CCX1, with error bars so tight the difference looked unarguable. There was even a tidy explanation ready to hand — CCX0 contains core 0, the housekeeping core that carries the kernel's timer interrupts, so of course its cache traffic runs a little hotter. A real hardware asymmetry, with a mechanism. It would have made a good paragraph.
+
+It was an artifact, and the calibration step that exists to catch exactly this caught it. Re-running the same pair a second time gave a number 11% different — with error bars that didn't overlap the first. Two "precise" measurements that disagree by more than their stated uncertainty aren't precise; the uncertainty is lying.
+
+The cause: latency depends not just on the offset *within* a block of memory but on *which physical block* the kernel handed you, because the high-order address bits feed the L3 slice hash too. Sampling twenty offsets inside one block explores the axis intra-CCX latency is flat on, and stays blind to the axis it varies on. Whichever slice that one block happened to occupy became the answer — reported with a falsely confident error bar, because every sample agreed with every other sample about a value they were all equally wrong about. The "CCX0 is slower" asymmetry was just the particular slice that capture's arena landed on.
+
+The fix is to measure each cell across twenty *independent* memory allocations, held live at once so they're guaranteed to occupy distinct physical frames, and reused identically for every cell so the matrix stays internally comparable. Do that and the asymmetry vanishes: both CCXs land in the same 71–73 ns band, and two independent captures now agree cell for cell within their spread. The tidy story about the housekeeping core was false. The seam is real; the asymmetry was the measurement measuring itself.
+
+The lesson generalises past this chip. An error bar computed over samples that all share a hidden variable will be confidently wrong, and the only defence is a second capture that varies what the first one held fixed. The number that survives two independent captures is the number worth publishing.
+
+## What this means if you're pinning threads
+
+For anyone placing latency-sensitive threads by hand — and if you're reading Crucible you probably are — the practical shape is simple: two threads that talk to each other constantly want to be in the same CCX. The cross-CCX tax is 2.2× on every cache-line handoff, it's structural, and no amount of tuning removes it, because it's the physical cost of leaving the core complex and coming back over the fabric. A producer/consumer pair, a lock and its hot waiters, two threads sharing a queue head — same CCX. The topology is right there in `shared_cpu_list`; pin against it, not against core numbers, because the mapping from core index to CCX is a firmware decision and not one to assume.
+
+## What this is and isn't
+
+These are bare-metal numbers — native Linux, no hypervisor — so the absolute nanoseconds stand without a virtualisation caveat. They do carry two other caveats, and they're the load-bearing ones. The cross-CCX figure depends on the Infinity Fabric clock, which is a tunable; a different FCLK gives a different absolute latency. And all of it is specific to this Matisse part — Zen 3 collapsed the two four-core CCXs into a single eight-core complex sharing one L3, which changes this picture entirely and largely erases the seam this post is about. **The portable claim is the ratio and the shape** — same-complex is cheap, cross-complex is a multiple dearer, and the boundary is exactly the L3-sharing boundary. The absolute nanoseconds are this chip on this day.
+
+## Reconciliation
+
+This measurement doesn't stand alone. Two earlier posts leaned on the same CCX boundary. The false-sharing demo saw cross-CCX placement widen the contention gap by about 1.2× at the operation level — small, because there the interconnect cost is one component amortised across everything else each operation does. The allocator demo saw a cross-CCX queue handoff cost about 2.4× at the median and as much as 4.85× at malloc's tail — close to this demo's bare-line 2.2× at the median, because a queue handoff is essentially a cache-line transfer, and worse at the tail because cross-complex crossings serialise badly under load. Same boundary, three magnitudes: heavily amortised, bare, and amplified. This demo is the bare-metal figure the other two were implicitly assuming, and the L3-sharing split it reads from `shared_cpu_list` is the same split the false-sharing demo's `lscpu` topology reports independently.
+
+---
+
+*Captured on AMD Ryzen 7 3800X (Zen 2, Matisse), governor `performance`, boost off, SMT off, isolated CPUs 1–7 (core 0 cannot be kernel-isolated), native Ubuntu 24.04. Each cell is the median across 20 independent cache-line placements, 20 timing windows of 1000 round trips each per placement; two independent captures corroborated. Full matrix, per-cell spreads, and both supporting exhibits are in the committed capture JSON.*

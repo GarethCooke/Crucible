@@ -53,4 +53,10 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_SYSTEM_PROCESSOR MATCHES "aarch6
     add_subdirectory(demos/09-arm-neon)
 endif()
 
+# Demo 10 is x86-64 only: rdtscp + the Matisse invariant TSC. The source has a
+# hard #error on other ISAs, so gate the target rather than break a Pi build.
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64")
+    add_subdirectory(demos/10-core-to-core)
+endif()
+
 option(CRUCIBLE_BUILD_PILOTS "Build throwaway pilot benches under bench/pilots/" OFF)
