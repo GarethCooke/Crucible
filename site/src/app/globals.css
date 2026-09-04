@@ -24,6 +24,11 @@
   --color-surface-700: #0c1220;
   --color-surface-600: #1c2d4a;
 
+  /* Content shell — 1120px column with 24px gutters, matching garethcooke.com
+     (Navbar.tsx:87, Footer.tsx:19, ProjectDetailClient.tsx:236) and .topnav-inner
+     below. Backs the max-w-shell utility used by <main> and the footer. */
+  --container-shell: 1120px;
+
   /* Fonts */
   --font-sans: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
   --font-body: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
@@ -92,7 +97,7 @@ body {
 }
 
 .topnav-inner {
-  max-width: 1120px;
+  max-width: var(--container-shell);
   margin: 0 auto;
   padding: 0 24px;
   height: 88px;
@@ -269,7 +274,6 @@ body {
 /* ── Prose styles for MDX content ────────────────────────────────────────── */
 .prose {
   color: var(--text-primary);
-  max-width: 72ch;
 }
 .prose h1, .prose h2, .prose h3 {
   font-family: var(--font-sans);
