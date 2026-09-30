@@ -43,3 +43,4 @@ shielding
 /**/build2/
 /**/build3/
 .playwright-mcp/
+.vscode/
