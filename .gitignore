@@ -42,3 +42,4 @@ shielding
 /**/build/
 /**/build2/
 /**/build3/
+.playwright-mcp/

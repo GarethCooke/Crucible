@@ -19,14 +19,14 @@ const tdClass =
 /**
  * Homepage "At a glance" summary: one row per numbered demo.
  *
- * sm and up is a real <table>; each row links to its post via a stretched
- * link on the topic (an <a> cannot wrap a <tr>). Below sm the same rows
- * render as stacked cards so nothing scrolls sideways on a phone.
+ * lg and up is a real <table>; each row links to its post via a stretched
+ * link on the topic (an <a> cannot wrap a <tr>). Below lg the same rows
+ * render as stacked cards; between sm and lg the table is too cramped.
  */
 export function FindingsTable({ rows }: Props) {
   return (
     <>
-      <table className="hidden sm:table -mx-4 w-[calc(100%+2rem)] border-separate border-spacing-0">
+      <table className="hidden lg:table -mx-4 w-[calc(100%+2rem)] border-separate border-spacing-0">
         <thead>
           <tr style={{ color: 'var(--text-muted)' }}>
             <th className={thClass} scope="col">#</th>
@@ -71,7 +71,7 @@ export function FindingsTable({ rows }: Props) {
         </tbody>
       </table>
 
-      <ul className="sm:hidden space-y-px">
+      <ul className="lg:hidden space-y-px">
         {rows.map((row) => (
           <li key={row.slug}>
             <a
