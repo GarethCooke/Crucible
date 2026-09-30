@@ -1,0 +1,27 @@
+{
+  "slug": "09-arm-neon",
+  "topic": "ARM NEON",
+  "what_it_is": "ARM's 128-bit SIMD instruction set, running the demo 03 kernel on a Raspberry Pi 5.",
+  "headline": {
+    "kind": "ratio",
+    "source": "09-arm-neon",
+    "numerator": {
+      "where": {
+        "variant": "scalarpoly",
+        "n": 1048576
+      },
+      "field": "ns_per_op.median"
+    },
+    "denominator": {
+      "where": {
+        "variant": "neon",
+        "n": 1048576
+      },
+      "field": "ns_per_op.median"
+    },
+    "decimals": 1,
+    "suffix": "×"
+  },
+  "condition": "1 M options, scalar poly vs NEON",
+  "finding": "The speedup is capped by vector width; there's no wider unit to reach for."
+}

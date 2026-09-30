@@ -1,0 +1,31 @@
+{
+  "slug": "08-sorting-shootout",
+  "topic": "Sorting",
+  "what_it_is": "Comparison sorts can't beat n log n; radix sort sidesteps that by bucketing integer keys a byte at a time.",
+  "headline": {
+    "kind": "ratio",
+    "source": "08-sorting-shootout",
+    "numerator": {
+      "where": {
+        "variant": "std_sort",
+        "n": 67108864,
+        "distribution": "random",
+        "key_type": "u32"
+      },
+      "field": "ns_per_op.median"
+    },
+    "denominator": {
+      "where": {
+        "variant": "radix_lsd",
+        "n": 67108864,
+        "distribution": "random",
+        "key_type": "u32"
+      },
+      "field": "ns_per_op.median"
+    },
+    "decimals": 1,
+    "suffix": "×"
+  },
+  "condition": "67 M random u32 keys, std::sort vs radix",
+  "finding": "On narrow integer keys radix wins, and its cost doesn't depend on input order."
+}

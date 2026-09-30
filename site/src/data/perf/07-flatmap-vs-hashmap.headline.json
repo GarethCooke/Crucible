@@ -1,0 +1,11 @@
+{
+  "slug": "07-flatmap-vs-hashmap",
+  "topic": "Hash maps vs flat maps",
+  "what_it_is": "Choosing a key→value container: node-based tree, sorted vector, or open-addressing hash table.",
+  "headline": {
+    "kind": "text",
+    "text": "No crossover"
+  },
+  "condition": "N = 8 to ~4 M, lookup and modify mixes",
+  "finding": "absl::flat_hash_map is fastest at every size; the expected small-N crossover never appears."
+}

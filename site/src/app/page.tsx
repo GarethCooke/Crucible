@@ -1,6 +1,8 @@
 import type { Metadata } from 'next'
 import { getAllPosts } from '@/lib/posts'
+import { getFindings } from '@/lib/findings'
 import { StatusPill } from '@/components/StatusPill'
+import { FindingsTable } from '@/components/FindingsTable'
 
 export const metadata: Metadata = {
   title: 'Crucible',
@@ -8,7 +10,7 @@ export const metadata: Metadata = {
 }
 
 export default async function HomePage() {
-  const posts = await getAllPosts()
+  const [posts, findings] = await Promise.all([getAllPosts(), getFindings()])
 
   return (
     <div>
@@ -30,6 +32,17 @@ export default async function HomePage() {
           real hardware measurements on a documented reference machine, and visualisations
           of system behaviour rather than algorithm steps.
         </p>
+      </section>
+
+      <section className="mb-16">
+        <h2
+          className="font-sans text-xs font-semibold uppercase tracking-widest mb-6"
+          style={{ color: 'var(--text-muted)' }}
+        >
+          At a glance
+        </h2>
+
+        <FindingsTable rows={findings} />
       </section>
 
       <section>

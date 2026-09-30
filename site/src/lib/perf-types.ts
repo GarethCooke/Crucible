@@ -97,3 +97,33 @@ export interface LatencyMatrixFile {
   notes?: string
   latency_matrix?: LatencyMatrixBlock
 }
+
+// ─── Homepage "At a glance" headline sidecars ────────────────────────────────
+// One `NN-*.headline.json` per numbered demo, beside its capture JSON. The
+// sidecar holds a selector into the capture rather than a number, so the
+// figure is recomputed at build time and recaptures flow through unedited.
+
+export interface RunSelector {
+  /** Dotted path to the array to search. Default "runs". */
+  collection?: string
+  /** Exact-match filter on keys of each element. */
+  where: Record<string, string | number | boolean>
+  /** Dotted path to a numeric leaf, e.g. "ns_per_op.median". */
+  field: string
+  /** "single" (default): exactly one match is required, else throw.
+   *  "median": the median of the field across all matches (>= 1 required). */
+  aggregate?: 'single' | 'median'
+}
+
+export type Headline =
+  | { kind: 'ratio'; source: string; numerator: RunSelector; denominator: RunSelector; decimals: number; suffix: string }
+  | { kind: 'text'; text: string }
+
+export interface HeadlineSpec {
+  slug: string          // post slug, e.g. "02-false-sharing"
+  topic: string
+  what_it_is: string
+  headline: Headline
+  condition: string
+  finding: string
+}
