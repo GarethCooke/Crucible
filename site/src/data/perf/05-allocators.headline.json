@@ -1,0 +1,11 @@
+{
+  "slug": "05-allocators",
+  "topic": "Allocators",
+  "what_it_is": "Where `new` gets its memory; custom pools avoid the general-purpose heap's locking and bookkeeping.",
+  "headline": {
+    "kind": "text",
+    "text": "No winner"
+  },
+  "condition": "freelist vs arena vs new/delete, two captures",
+  "finding": "Neither pool reproducibly beats the other; both beat new/delete on the tail, and the arena's tail stays flat under pressure."
+}

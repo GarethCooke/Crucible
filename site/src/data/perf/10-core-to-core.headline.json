@@ -1,0 +1,29 @@
+{
+  "slug": "10-core-to-core",
+  "topic": "Core-to-core latency",
+  "what_it_is": "How long one core takes to see a cache line another core has just written.",
+  "headline": {
+    "kind": "ratio",
+    "source": "10-core-to-core",
+    "numerator": {
+      "collection": "latency_matrix.pairs",
+      "where": {
+        "same_ccx": false
+      },
+      "field": "rtt_ns.median",
+      "aggregate": "median"
+    },
+    "denominator": {
+      "collection": "latency_matrix.pairs",
+      "where": {
+        "same_ccx": true
+      },
+      "field": "rtt_ns.median",
+      "aggregate": "median"
+    },
+    "decimals": 1,
+    "suffix": "×"
+  },
+  "condition": "median cross-CCX vs same-CCX round trip",
+  "finding": "Crossing the CCX boundary taxes every handoff; pin chatty threads within one CCX."
+}

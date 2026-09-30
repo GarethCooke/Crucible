@@ -1,0 +1,29 @@
+{
+  "slug": "02-false-sharing",
+  "topic": "False sharing",
+  "what_it_is": "Two threads write different variables that happen to share one 64-byte cache line, so the line ping-pongs between cores.",
+  "headline": {
+    "kind": "ratio",
+    "source": "02-false-sharing-pnl",
+    "numerator": {
+      "where": {
+        "variant": "unpadded",
+        "threads": 8,
+        "placement": "cross-ccx"
+      },
+      "field": "ns_per_op.median"
+    },
+    "denominator": {
+      "where": {
+        "variant": "padded",
+        "threads": 8,
+        "placement": "cross-ccx"
+      },
+      "field": "ns_per_op.median"
+    },
+    "decimals": 1,
+    "suffix": "×"
+  },
+  "condition": "8 threads across both CCXs, unpadded vs padded",
+  "finding": "Padding each accumulator onto its own cache line is the whole fix: layout beats algorithm."
+}

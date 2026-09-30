@@ -1,0 +1,29 @@
+{
+  "slug": "06-aos-vs-soa",
+  "topic": "Data layout (AoS vs SoA)",
+  "what_it_is": "Storing each record's fields together (array of structs) versus each field in its own array (struct of arrays).",
+  "headline": {
+    "kind": "ratio",
+    "source": "06-aos-vs-soa",
+    "numerator": {
+      "where": {
+        "variant": "aos-scalar",
+        "n": 1048576,
+        "k": 1
+      },
+      "field": "ns_per_op.median"
+    },
+    "denominator": {
+      "where": {
+        "variant": "soa-scalar",
+        "n": 1048576,
+        "k": 1
+      },
+      "field": "ns_per_op.median"
+    },
+    "decimals": 1,
+    "suffix": "×"
+  },
+  "condition": "N = 1 M, one hot field, AoS vs SoA",
+  "finding": "SoA wins only when few fields are hot and the data spills past L3."
+}

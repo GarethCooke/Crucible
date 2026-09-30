@@ -1,0 +1,27 @@
+{
+  "slug": "01-branch-prediction",
+  "topic": "Branch prediction",
+  "what_it_is": "The CPU guesses which way an `if` goes before it knows; a wrong guess throws away work already in flight.",
+  "headline": {
+    "kind": "ratio",
+    "source": "01-branch-prediction",
+    "numerator": {
+      "where": {
+        "variant": "unsorted",
+        "n": 33554432
+      },
+      "field": "ns_per_op.median"
+    },
+    "denominator": {
+      "where": {
+        "variant": "sorted",
+        "n": 33554432
+      },
+      "field": "ns_per_op.median"
+    },
+    "decimals": 1,
+    "suffix": "×"
+  },
+  "condition": "N = 32 M, unsorted vs sorted",
+  "finding": "Unpredictable branches, not the work, dominate the loop — and branchless code recovers most of the gap without sorting."
+}
