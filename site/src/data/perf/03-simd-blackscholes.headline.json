@@ -1,0 +1,27 @@
+{
+  "slug": "03-simd-blackscholes",
+  "topic": "SIMD",
+  "what_it_is": "One instruction operates on several values at once, using wide vector registers.",
+  "headline": {
+    "kind": "ratio",
+    "source": "03-simd-blackscholes",
+    "numerator": {
+      "where": {
+        "variant": "scalarlibm",
+        "n": 1048576
+      },
+      "field": "ns_per_op.median"
+    },
+    "denominator": {
+      "where": {
+        "variant": "avx2fma",
+        "n": 1048576
+      },
+      "field": "ns_per_op.median"
+    },
+    "decimals": 1,
+    "suffix": "×"
+  },
+  "condition": "1 M options, scalar libm vs AVX2+FMA",
+  "finding": "A polynomial erfc barely helps on its own, but it unlocks vectorisation that libm can't reach."
+}

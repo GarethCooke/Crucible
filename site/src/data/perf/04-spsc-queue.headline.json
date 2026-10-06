@@ -1,0 +1,29 @@
+{
+  "slug": "04-spsc-queue",
+  "topic": "Lock-free queues",
+  "what_it_is": "Passing messages between threads with atomic operations instead of a lock that can put a thread to sleep.",
+  "headline": {
+    "kind": "ratio",
+    "source": "04-spsc-queue",
+    "numerator": {
+      "where": {
+        "variant": "mutex-condvar",
+        "mode": "paced",
+        "offered_rate_hz": 1000000
+      },
+      "field": "latency_ns.stats.p99_9"
+    },
+    "denominator": {
+      "where": {
+        "variant": "lockfree-handrolled",
+        "mode": "paced",
+        "offered_rate_hz": 1000000
+      },
+      "field": "latency_ns.stats.p99_9"
+    },
+    "decimals": 1,
+    "suffix": "×"
+  },
+  "condition": "p99.9 at 1 MHz offered load, mutex vs lock-free",
+  "finding": "Mutex latency is thread wake-ups; lock-free keeps the tail tight."
+}
